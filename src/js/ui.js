@@ -4,7 +4,7 @@ import {
     summaryTotalLocations, toteQtyPerBayInput, totesDeepSelect
 } from './dom.js';
 import { drawWarehouse, drawRackDetail, drawElevationView } from './drawing.js';
-import { parseNumber } from './utils.js';
+import { parseNumber, formatNumber } from './utils.js'; // Added formatNumber
 
 export let calculationResults = {
     totalBays: 0,
