@@ -32,7 +32,12 @@ function updateSolverResults(results) {
     solverResultPerfDensity.textContent = (results.density || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     solverFinalResults = results; // Store for the "Apply" button
-    applySolverButton.style.display = 'block';
+    
+    // Apply the results to the inputs on the Configuration tab
+    systemLengthInput.value = formatNumber(solverFinalResults.L);
+    systemWidthInput.value = formatNumber(solverFinalResults.W);
+    
+    requestRedraw();
 }
 
 // --- Solver Main Function ---
@@ -147,18 +152,4 @@ export function initializeSolver() {
 
     solverModalBackdrop.addEventListener('click', hideSolverModal);
 
-    applySolverButton.addEventListener('click', () => {
-        if (solverFinalResults) {
-            // Apply the results to the inputs on the Configuration tab
-            systemLengthInput.value = formatNumber(solverFinalResults.L);
-            systemWidthInput.value = formatNumber(solverFinalResults.W);
-
-            // !! REMOVED: Tab-switching logic. User stays on solver screen.
-            // mainViewTabs.querySelector('[data-tab="configTabContent"]').click();
-
-            // Trigger a redraw of the canvases (which are on this tab)
-            // with the new values.
-            requestRedraw();
-        }
-    });
 }
