@@ -938,7 +938,3 @@ function showErrorOnCanvas(ctx, message, canvasWidth, canvasHeight) {
     ctx.fillText(message, canvasWidth / 2, canvasHeight / 2);
     ctx.restore();
 }
-
-// --- REMOVED Zoom & Pan Logic ---
-// This logic has been moved to ui.js to fix a circular dependency
-// and resolve the ReferenceError.
