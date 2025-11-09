@@ -11,6 +11,7 @@ import {
 import { parseNumber, formatNumber } from './utils.js';
 import { getMetrics } from './calculations.js';
 import { requestRedraw } from './ui.js';
+import { defaultConfig, configurations } from './config.js';
 
 let solverTempResults = null;
 let solverFinalResults = null;
@@ -52,10 +53,8 @@ async function runSolver(continueForPerformance = false) {
     const maxDensity = parseNumber(solverMaxPerfDensityInput.value) || 50;
     
     // Get Selected Configuration (for future use)
-    const selectedConfig = solverConfigSelect.value;
-    // FOR NOW: The 'getMetrics' function will implicitly use the 'default' config
-    // by reading values from the Configuration tab's inputs.
-    // LATER: This 'selectedConfig' could be used to fetch different parameter sets.
+    const selectedConfigName = solverConfigSelect.value;
+    const selectedConfig = configurations[selectedConfigName] || defaultConfig;
 
     if (storageReq === 0 || throughputReq === 0 || aspectRatio === 0) {
         solverStatus.textContent = "Error: Please check solver inputs.";
@@ -82,7 +81,7 @@ async function runSolver(continueForPerformance = false) {
             currentL += step;
             let currentW = currentL / aspectRatio;
             // Get metrics using the *current* config params from the other tab
-            metrics = getMetrics(currentL, currentW); 
+            metrics = getMetrics(currentL, currentW, selectedConfig); 
 
             if (metrics.totalLocations >= storageReq) {
                 // Found storage target
@@ -108,7 +107,7 @@ async function runSolver(continueForPerformance = false) {
             // --- Loop 2: Find Performance ---
             currentL += step;
             let currentW = currentL / aspectRatio;
-            metrics = getMetrics(currentL, currentW);
+            metrics = getMetrics(currentL, currentW, selectedConfig);
             let density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
 
             if (density <= maxDensity) {

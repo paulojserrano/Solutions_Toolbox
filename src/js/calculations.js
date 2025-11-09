@@ -10,6 +10,7 @@ import {
     toteHeightInput, minClearanceInput, overheadClearanceInput,
     sprinklerClearanceInput, sprinklerThresholdInput
 } from './dom.js';
+import { defaultConfig, configurations } from './config.js';
 // --- END ADDED IMPORTS ---
 
 import { roundUpTo50 } from './utils.js';
@@ -215,22 +216,23 @@ export function calculateElevationLayout(inputs, evenDistribution = false) {
 }
 
 // --- NEW FUNCTION TO FIX ERROR ---
-export function getMetrics(sysLength, sysWidth) {
+export function getMetrics(sysLength, sysWidth, config = defaultConfig) {
     // --- 1. Get all other inputs (top-down) ---
-    const toteWidth = parseNumber(toteWidthInput.value) || 0;
-    const toteLength = parseNumber(toteLengthInput.value) || 0;
-    const toteQtyPerBay = parseNumber(toteQtyPerBayInput.value) || 1;
-    const totesDeep = parseNumber(totesDeepSelect.value) || 1;
-    const toteToToteDist = parseNumber(toteToToteDistInput.value) || 0;
-    const toteToUprightDist = parseNumber(toteToUprightDistInput.value) || 0;
-    const toteBackToBackDist = parseNumber(toteBackToBackDistInput.value) || 0;
-    const uprightLength = parseNumber(uprightLengthInput.value) || 0;
-    const hookAllowance = parseNumber(hookAllowanceInput.value) || 0;
-    const aisleWidth = parseNumber(aisleWidthInput.value) || 0;
+    const toteWidth = config['tote-width'] ?? (parseNumber(toteWidthInput.value) || 0);
+    const toteLength = config['tote-length'] ?? (parseNumber(toteLengthInput.value) || 0);
+    const toteQtyPerBay = config['tote-qty-per-bay'] ?? (parseNumber(toteQtyPerBayInput.value) || 1);
+    const totesDeep = config['totes-deep'] ?? (parseNumber(totesDeepSelect.value) || 1);
+    const toteToToteDist = config['tote-to-tote-dist'] ?? (parseNumber(toteToToteDistInput.value) || 0);
+    const toteToUprightDist = config['tote-to-upright-dist'] ?? (parseNumber(toteToUprightDistInput.value) || 0);
+    const toteBackToBackDist = config['tote-back-to-back-dist'] ?? (parseNumber(toteBackToBackDistInput.value) || 0);
+    const uprightLength = config['upright-length'] ?? (parseNumber(uprightLengthInput.value) || 0);
+    const hookAllowance = config['hook-allowance'] ?? (parseNumber(hookAllowanceInput.value) || 0);
+    const aisleWidth = config['aisle-width'] ?? (parseNumber(aisleWidthInput.value) || 0);
+    const flueSpace = config['flue-space'] ?? (parseNumber(flueSpaceInput.value) || 0);
+
     const setbackTop = parseNumber(setbackTopInput.value) || 0;
     const setbackBottom = parseNumber(setbackBottomInput.value) || 0;
     const layoutMode = layoutModeSelect.value;
-    const flueSpace = parseNumber(flueSpaceInput.value) || 0;
 
     // --- 2. Calculate Bay Dimensions ---
     const bayWidth = (toteQtyPerBay * toteLength) +
@@ -250,13 +252,13 @@ export function getMetrics(sysLength, sysWidth) {
     // Note: The solver only changes L and W. We use the current clearHeight setting.
     const coreElevationInputs = {
         WH: parseNumber(clearHeightInput.value),
-        BaseHeight: parseNumber(baseBeamHeightInput.value),
-        BW: parseNumber(beamWidthInput.value),
-        TH: parseNumber(toteHeightInput.value),
-        MC: parseNumber(minClearanceInput.value),
-        OC: parseNumber(overheadClearanceInput.value),
-        SC: parseNumber(sprinklerClearanceInput.value),
-        ST: parseNumber(sprinklerThresholdInput.value)
+        BaseHeight: config['base-beam-height'] ?? (parseNumber(baseBeamHeightInput.value) || 0),
+        BW: config['beam-width'] ?? (parseNumber(beamWidthInput.value) || 0),
+        TH: config['tote-height'] ?? (parseNumber(toteHeightInput.value) || 0),
+        MC: config['min-clearance'] ?? (parseNumber(minClearanceInput.value) || 0),
+        OC: config['overhead-clearance'] ?? (parseNumber(overheadClearanceInput.value) || 0),
+        SC: config['sprinkler-clearance'] ?? (parseNumber(sprinklerClearanceInput.value) || 0),
+        ST: config['sprinkler-threshold'] ?? (parseNumber(sprinklerThresholdInput.value) || 0)
     };
 
     // --- 5. Calculate Elevation (Max Levels) ---

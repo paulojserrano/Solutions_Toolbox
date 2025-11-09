@@ -49,37 +49,85 @@
                     <h2 class="text-lg font-semibold text-slate-900 border-b border-slate-300 pb-3 mb-5">
                         1. Requirements
                     </h2>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-5">
-                        <!-- NEW: Configuration Selector -->
-                        <div>
-                            <label for="solverConfigSelect" class="block text-sm font-medium text-slate-700 mb-1">Configuration</label>
-                            <select id="solverConfigSelect" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                <option value="default">HPS3-E2, Double Deep</option>
-                                <!-- Other configs would be added here -->
-                            </select>
-                            <p class="helper-text">Uses parameters from Configuration tab.</p>
-                        </div>
-                        <div>
-                            <!-- Spacer, or add another input -->
+                    <!-- MODIFIED: Grid changed to 3 cols -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-2"> <!-- gap-y-2 to tighten groups -->
+                        
+                        <!-- Col 1: Warehouse Constraints (MOVED FROM CONFIG) -->
+                        <div class="space-y-5"> <!-- Added space-y-5 for grouping -->
+                            <h3 class="text-base font-semibold text-slate-900 -mb-1">Warehouse</h3>
+                            <!-- System Length -->
+                            <div>
+                                <label for="systemLength" class="block text-sm font-medium text-slate-700 mb-1">Length (mm)</label>
+                                <input type="text" id="systemLength" value="30,000" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            </div>
+                            <!-- System Width -->
+                            <div>
+                                <label for="systemWidth" class="block text-sm font-medium text-slate-700 mb-1">Width (mm)</label>
+                                <input type="text" id="systemWidth" value="25,000" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            </div>
+                            <!-- Clear Height -->
+                            <div>
+                                <label for="clearHeight" class="block text-sm font-medium text-slate-700 mb-1">Clear Height (mm)</label>
+                                <input type="text" id="clearHeight" value="10,000" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <p class="helper-text">For elevation view</p>
+                            </div>
                         </div>
 
-                        <!-- Solver Inputs -->
-                        <div>
-                            <label for="solverStorageReq" class="block text-sm font-medium text-slate-700 mb-1">Storage Requirement (Locations)</label>
-                            <input type="text" id="solverStorageReq" value="30,000" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <!-- Col 2: Solver Inputs (EXISTING) -->
+                        <div class="space-y-5"> <!-- Added space-y-5 for grouping -->
+                            <h3 class="text-base font-semibold text-slate-900 -mb-1">Solver</h3>
+                            <!-- Config Selector -->
+                            <div>
+                                <label for="solverConfigSelect" class="block text-sm font-medium text-slate-700 mb-1">Configuration</label>
+                                <select id="solverConfigSelect" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                    <option value="default">HPS3-E2, Double Deep</option>
+                                    <!-- Other configs would be added here -->
+                                </select>
+                                <p class="helper-text">Uses parameters from Configuration tab.</p>
+                            </div>
+                            <!-- Solver Inputs -->
+                            <div>
+                                <label for="solverStorageReq" class="block text-sm font-medium text-slate-700 mb-1">Storage Requirement (Locations)</label>
+                                <input type="text" id="solverStorageReq" value="30,000" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label for="solverThroughputReq" class="block text-sm font-medium text-slate-700 mb-1">Throughput Requirement (Total PPH)</label>
+                                <input type="text" id="solverThroughputReq" value="2,000" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label for="solverAspectRatio" class="block text-sm font-medium text-slate-700 mb-1">Aspect Ratio (L / W)</label>
+                                <input type="text" id="solverAspectRatio" value="1.5" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <p class="helper-text">e.g., 1.5 for (L = 1.5 * W)</p>
+                            </div>
+                            <div>
+                                <label for="solverMaxPerfDensity" class="block text-sm font-medium text-slate-700 mb-1">Max Performance Density (PPH/m²)</label>
+                                <input type="text" id="solverMaxPerfDensity" value="50" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            </div>
                         </div>
-                        <div>
-                            <label for="solverThroughputReq" class="block text-sm font-medium text-slate-700 mb-1">Throughput Requirement (Total PPH)</label>
-                            <input type="text" id="solverThroughputReq" value="2,000" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                        </div>
-                        <div>
-                            <label for="solverAspectRatio" class="block text-sm font-medium text-slate-700 mb-1">Aspect Ratio (L / W)</label>
-                            <input type="text" id="solverAspectRatio" value="1.5" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            <p class="helper-text">e.g., 1.5 for (L = 1.5 * W)</p>
-                        </div>
-                        <div>
-                            <label for="solverMaxPerfDensity" class="block text-sm font-medium text-slate-700 mb-1">Max Performance Density (PPH/m²)</label>
-                            <input type="text" id="solverMaxPerfDensity" value="50" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+
+                        <!-- Col 3: Performance (MOVED FROM CONFIG) -->
+                        <div class="space-y-5"> <!-- Added space-y-5 for grouping -->
+                            <h3 class="text-base font-semibold text-slate-900 -mb-1">Performance</h3>
+                            <!-- Inbound Presentations per Hour -->
+                            <div>
+                                <label for="inboundPPH" class="block text-sm font-medium text-slate-700 mb-1">Inbound PPH</label>
+                                <input type="text" id="inboundPPH" value="500" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            </div>
+                            <!-- Outbound Presentations per Hour -->
+                            <div>
+                                <label for="outboundPPH" class="block text-sm font-medium text-slate-700 mb-1">Outbound PPH</label>
+                                <input type="text" id="outboundPPH" value="500" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            </div>
+                            <!-- Inbound Workstation Rate -->
+                            <div>
+                                <label for="inboundWSRate" class="block text-sm font-medium text-slate-700 mb-1">Inbound WS Rate</LabeL>
+                                <input type="text" id="inboundWSRate" value="100" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            </div>
+                            <!-- Outbound Workstation Rate -->
+                            <div>
+                                <label for="outboundWSRate" class="block text-sm font-medium text-slate-700 mb-1">Outbound WS Rate</LabeL>
+                                <input type="text" id="outboundWSRate" value="100" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            </div>
                         </div>
                     </div>
                     <div class="mt-6">
@@ -128,9 +176,16 @@
 
             <!-- Bottom Row: Box 3 (Visualizations) - MOVED FROM VIZ TAB -->
             <section class="bg-white p-6 rounded-lg shadow-lg flex-1 flex flex-col overflow-hidden">
-                <h2 class="text-lg font-semibold text-slate-900 pb-3 mb-4">
-                    3. Visualizations
-                </h2>
+                <div class="flex justify-between items-center pb-3 mb-4">
+                    <h2 class="text-lg font-semibold text-slate-900">
+                        3. Visualizations
+                    </h2>
+                    <!-- NEW: Detail View Toggle Switch -->
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" id="detailViewToggle" class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+                        <label for="detailViewToggle" class="text-sm font-medium text-slate-700">Show Detail View</label>
+                    </div>
+                </div>
                 <!-- Sub-Tab Navigation -->
                 <div class="border-b border-slate-300 -mt-4 mb-4 overflow-x-auto">
                     <nav class="-mb-px flex gap-4" id="viewSubTabs">
@@ -143,7 +198,19 @@
                 <!-- Sub-Tab Content -->
                 <!-- Top-Down View Content -->
                 <div id="topDownView" class="sub-tab-content active">
-                    <div class="flex-1 w-full bg-slate-50 rounded-md overflow-hidden">
+                    <!-- NEW: Detail View Toggle -->
+                    <div class="absolute top-2 right-2 z-10">
+                        <label for="detailViewToggle" class="flex items-center cursor-pointer">
+                            <span class="mr-2 text-sm font-medium text-slate-700">Detail View</span>
+                            <div class="relative">
+                                <input type="checkbox" id="detailViewToggle" class="sr-only toggle-checkbox">
+                                <div class="toggle-bg bg-slate-200 border-2 border-slate-300 h-6 w-11 rounded-full"></div>
+                                <div class="toggle-dot absolute left-1 top-1 bg-white h-4 w-4 rounded-full transition-transform"></div>
+                            </div>
+                        </label>
+                    </div>
+                    <!-- END NEW -->
+                    <div class="flex-1 w-full bg-slate-50 rounded-md overflow-hidden relative"> <!-- Added relative -->
                         <canvas id="warehouseCanvas"></canvas>
                     </div>
                 </div>
@@ -176,37 +243,14 @@
                     <button class="text-sm bg-blue-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-700">Save Configuration</button>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4">
+                <!-- MODIFIED: Grid changed to 3 cols -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4">
                     
-                    <!-- Col 1: Warehouse Constraints -->
+                    <!-- Col 1: Rack Specifications (Tote) -->
                     <div>
+                        <!-- MODIFIED: Renumbered -->
                         <h2 class="text-base font-semibold text-slate-900 border-b border-slate-300 pb-3 mb-5">
-                            1. Warehouse
-                        </h2>
-                        <div class="grid grid-cols-1 gap-x-4 gap-y-5">
-                            <!-- System Length -->
-                            <div>
-                                <label for="systemLength" class="block text-sm font-medium text-slate-700 mb-1">Length (mm)</label>
-                                <input type="text" id="systemLength" value="30,000" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            </div>
-                            <!-- System Width -->
-                            <div>
-                                <label for="systemWidth" class="block text-sm font-medium text-slate-700 mb-1">Width (mm)</label>
-                                <input type="text" id="systemWidth" value="25,000" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            </div>
-                            <!-- Clear Height -->
-                            <div>
-                                <label for="clearHeight" class="block text-sm font-medium text-slate-700 mb-1">Clear Height (mm)</label>
-                                <input type="text" id="clearHeight" value="10,000" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                <p class="helper-text">For elevation view</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Col 2: Rack Specifications (Tote) -->
-                    <div>
-                        <h2 class="text-base font-semibold text-slate-900 border-b border-slate-300 pb-3 mb-5">
-                            2. Rack Specs (Tote)
+                            1. Rack Specs (Tote)
                         </h2>
                         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 gap-x-4 gap-y-5">
                             <!-- Tote Width -->
@@ -263,8 +307,9 @@
                         </div>
                     </div>
 
-                    <!-- Col 3: Rack Specifications (Structure) -->
+                    <!-- Col 2: Rack Specifications (Structure) -->
                     <div>
+                        <!-- MODIFIED: Renumbered -->
                         <h2 class="text-base font-semibold text-slate-900 border-b border-slate-300 pb-3 mb-5">
                             2. Rack Specs (Structure)
                         </h2>
@@ -319,9 +364,10 @@
                         </div>
                     </div>
 
-                    <!-- Col 4: Vertical & Performance -->
+                    <!-- Col 3: Vertical -->
                     <div>
                         <!-- Vertical Constraints -->
+                        <!-- MODIFIED: Renumbered -->
                         <h2 class="text-base font-semibold text-slate-900 border-b border-slate-300 pb-3 mb-5">
                             3. Vertical
                         </h2>
@@ -361,32 +407,7 @@
                             </div>
                         </div>
                         
-                        <!-- Performance Requirements -->
-                        <h2 class="text-base font-semibold text-slate-900 border-b border-slate-300 pb-3 mb-5">
-                            4. Performance
-                        </h2>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 gap-x-4 gap-y-5">
-                            <!-- Inbound Presentations per Hour -->
-                            <div>
-                                <label for="inboundPPH" class="block text-sm font-medium text-slate-700 mb-1">Inbound PPH</label>
-                                <input type="text" id="inboundPPH" value="500" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            </div>
-                            <!-- Outbound Presentations per Hour -->
-                            <div>
-                                <label for="outboundPPH" class="block text-sm font-medium text-slate-700 mb-1">Outbound PPH</label>
-                                <input type="text" id="outboundPPH" value="500" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            </div>
-                            <!-- Inbound Workstation Rate -->
-                            <div>
-                                <label for="inboundWSRate" class="block text-sm font-medium text-slate-700 mb-1">Inbound WS Rate</LabeL>
-                                <input type="text" id="inboundWSRate" value="100" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            </div>
-                            <!-- Outbound Workstation Rate -->
-                            <div>
-                                <label for="outboundWSRate" class="block text-sm font-medium text-slate-700 mb-1">Outbound WS Rate</LabeL>
-                                <input type="text" id="outboundWSRate" value="100" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            </div>
-                        </div>
+                        <!-- Performance Requirements (MOVED) -->
                     </div>
 
                 </div>

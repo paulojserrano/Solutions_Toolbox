@@ -10,7 +10,8 @@ import {
     summaryInboundWS, summaryOutboundWS, clearHeightInput,
     baseBeamHeightInput, beamWidthInput, toteHeightInput, minClearanceInput,
     overheadClearanceInput, sprinklerClearanceInput, sprinklerThresholdInput,
-    summaryMaxLevels, warehouseCanvas, rackDetailCanvas, elevationCanvas
+    summaryMaxLevels, warehouseCanvas, rackDetailCanvas, elevationCanvas,
+    detailViewToggle // NEW: Import toggle
 } from './dom.js';
 import { parseNumber } from './utils.js';
 import { calculateLayout, calculateElevationLayout } from './calculations.js';
@@ -22,98 +23,196 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
         ctx, scale, offsetX, offsetY,
         bayWidth, bayDepth, // Note: bayDepth is calculated rack depth
         flueSpace,
-        usableLength_world, setbackTop_world
+        usableLength_world, setbackTop_world,
+        isDetailView, detailParams // NEW: Get detail params
     } = params;
 
     const rackX_canvas = offsetX + (x_world * scale);
     // Calculate Y start and height based on setbacks
-    const rackY_canvas = offsetY + (setbackTop_world * scale);
+    const rackY_canvas_start = offsetY + (setbackTop_world * scale);
     const rackHeight_canvas = usableLength_world * scale;
 
     if (rackHeight_canvas <= 0) return; // Don't draw if no height
 
-    if (rackType === 'single') {
-        const rackWidth_canvas = rackDepth_world * scale;
+    // --- NEW: Detail View Logic ---
+    if (isDetailView) {
+        const bayWidth_world = bayWidth;
+        const bayWidth_canvas = bayWidth_world * scale;
 
-        ctx.fillStyle = '#cbd5e1'; // slate-300
-        ctx.fillRect(rackX_canvas, rackY_canvas, rackWidth_canvas, rackHeight_canvas);
+        const baysPerRack = (bayWidth > 0 && usableLength_world > 0) ? Math.floor(usableLength_world / bayWidth) : 0;
+        if (baysPerRack === 0) return; // No bays to draw
 
-        if (bayWidth > 0) {
-            ctx.strokeStyle = '#94a3b8'; // slate-400
-            ctx.lineWidth = 0.5;
-            ctx.beginPath();
-            let currentBayY_world_relative = bayWidth;
-            while (currentBayY_world_relative < usableLength_world) {
-                const bayY_canvas = rackY_canvas + (currentBayY_world_relative * scale);
-                ctx.moveTo(rackX_canvas, bayY_canvas);
-                ctx.lineTo(rackX_canvas + rackWidth_canvas, bayY_canvas);
-                currentBayY_world_relative += bayWidth;
+        // Create the canvas-scaled parameter object for the helper functions
+        // These helpers (drawStructure, drawTotes) expect parameters scaled
+        // to the *current* canvas transform, which is the main warehouse scale.
+        const bayDetailHelpersParams = {
+            ...detailParams, // totesDeep, toteQtyPerBay, etc. (world values)
+            upLength_c: detailParams.uprightLength_world * scale,
+            upWidth_c: detailParams.uprightWidth_world * scale,
+            toteWidth_c: detailParams.toteWidth * scale,
+            toteLength_c: detailParams.toteLength * scale,
+            toteToTote_c: detailParams.toteToToteDist * scale,
+            toteToUpright_c: detailParams.toteToUprightDist * scale,
+            toteBackToBack_c: detailParams.toteBackToBackDist * scale
+        };
+
+        // Loop `baysPerRack` times
+        for (let i = 0; i < baysPerRack; i++) {
+            const bayY_canvas = rackY_canvas_start + (i * bayWidth_canvas);
+            
+            if (rackType === 'single') {
+                const bay_x_canvas = rackX_canvas;
+                const bay_w_canvas = bayDepth * scale; // Horizontal dimension
+                const bay_h_canvas = bayWidth_canvas;  // Vertical dimension
+
+                // --- We need to draw the bay rotated 90 degrees ---
+                // The helpers draw (Bay Width = horizontal, Bay Depth = vertical)
+                // Our canvas is (Bay Width = vertical, Bay Depth = horizontal)
+                
+                const drawWidth = bay_h_canvas; // Helper's width = Our height
+                const drawHeight = bay_w_canvas; // Helper's height = Our width
+
+                const centerX = bay_x_canvas + bay_w_canvas / 2;
+                const centerY = bayY_canvas + bay_h_canvas / 2;
+
+                ctx.save();
+                ctx.translate(centerX, centerY);
+                ctx.rotate(Math.PI / 2); // 90 degrees
+                
+                // Calculate offsets for helpers (origin is now center)
+                const helper_offsetX = -drawWidth / 2;
+                const helper_offsetY = -drawHeight / 2;
+                
+                // Call helpers
+                drawStructure(ctx, helper_offsetX, helper_offsetY, drawWidth, drawHeight, scale, bayDetailHelpersParams);
+                drawTotes(ctx, helper_offsetX, helper_offsetY, scale, bayDetailHelpersParams);
+                
+                ctx.restore();
+
+            } else if (rackType === 'double') {
+                const rack1_x_canvas = rackX_canvas;
+                const rack1_w_canvas = bayDepth * scale; // bayDepth is single rack depth
+                
+                const flue_w_canvas = flueSpace * scale;
+                
+                const rack2_x_canvas = rack1_x_canvas + rack1_w_canvas + flue_w_canvas;
+                const rack2_w_canvas = bayDepth * scale;
+
+                const bay_h_canvas = bayWidth_canvas; // Vertical dimension
+
+                // --- Rack 1 ---
+                const drawWidth1 = bay_h_canvas;
+                const drawHeight1 = rack1_w_canvas;
+                const centerX1 = rack1_x_canvas + rack1_w_canvas / 2;
+                const centerY1 = bayY_canvas + bay_h_canvas / 2;
+
+                ctx.save();
+                ctx.translate(centerX1, centerY1);
+                ctx.rotate(Math.PI / 2);
+                drawStructure(ctx, -drawWidth1 / 2, -drawHeight1 / 2, drawWidth1, drawHeight1, scale, bayDetailHelpersParams);
+                drawTotes(ctx, -drawWidth1 / 2, -drawHeight1 / 2, scale, bayDetailHelpersParams);
+                ctx.restore();
+
+                // --- Rack 2 ---
+                const drawWidth2 = bay_h_canvas;
+                const drawHeight2 = rack2_w_canvas;
+                const centerX2 = rack2_x_canvas + rack2_w_canvas / 2;
+                const centerY2 = bayY_canvas + bay_h_canvas / 2;
+
+                ctx.save();
+                ctx.translate(centerX2, centerY2);
+                ctx.rotate(Math.PI / 2);
+                drawStructure(ctx, -drawWidth2 / 2, -drawHeight2 / 2, drawWidth2, drawHeight2, scale, bayDetailHelpersParams);
+                drawTotes(ctx, -drawWidth2 / 2, -drawHeight2 / 2, scale, bayDetailHelpersParams);
+                ctx.restore();
             }
-            ctx.stroke();
         }
+    }
+    // --- ELSE: Original Simple View ---
+    else {
+        if (rackType === 'single') {
+            const rackWidth_canvas = rackDepth_world * scale;
 
-        ctx.strokeStyle = '#64748b'; // slate-500
-        ctx.lineWidth = 1;
-        ctx.strokeRect(rackX_canvas, rackY_canvas, rackWidth_canvas, rackHeight_canvas);
+            ctx.fillStyle = '#cbd5e1'; // slate-300
+            ctx.fillRect(rackX_canvas, rackY_canvas_start, rackWidth_canvas, rackHeight_canvas);
 
-    } else if (rackType === 'double') {
-        // This 'bayDepth' is the single rack depth from the new calculation
-        const rack1_width_canvas = bayDepth * scale;
-        const flue_width_canvas = flueSpace * scale;
-        const rack2_width_canvas = bayDepth * scale;
-        const rack2_x_canvas = rackX_canvas + rack1_width_canvas + flue_width_canvas;
-
-        // --- Draw Rack 1 ---
-        ctx.fillStyle = '#cbd5e1'; // slate-300
-        ctx.fillRect(rackX_canvas, rackY_canvas, rack1_width_canvas, rackHeight_canvas);
-        if (bayWidth > 0) {
-            ctx.strokeStyle = '#94a3b8'; // slate-400
-            ctx.lineWidth = 0.5;
-            ctx.beginPath();
-            let currentBayY_world_relative = bayWidth;
-            while (currentBayY_world_relative < usableLength_world) {
-                const bayY_canvas = rackY_canvas + (currentBayY_world_relative * scale);
-                ctx.moveTo(rackX_canvas, bayY_canvas);
-                ctx.lineTo(rackX_canvas + rack1_width_canvas, bayY_canvas);
-                currentBayY_world_relative += bayWidth;
+            if (bayWidth > 0) {
+                ctx.strokeStyle = '#94a3b8'; // slate-400
+                ctx.lineWidth = 0.5;
+                ctx.beginPath();
+                let currentBayY_world_relative = bayWidth;
+                while (currentBayY_world_relative < usableLength_world) {
+                    const bayY_canvas = rackY_canvas_start + (currentBayY_world_relative * scale);
+                    ctx.moveTo(rackX_canvas, bayY_canvas);
+                    ctx.lineTo(rackX_canvas + rackWidth_canvas, bayY_canvas);
+                    currentBayY_world_relative += bayWidth;
+                }
+                ctx.stroke();
             }
-            ctx.stroke();
-        }
-        ctx.strokeStyle = '#64748b'; // slate-500
-        ctx.lineWidth = 1;
-        ctx.strokeRect(rackX_canvas, rackY_canvas, rack1_width_canvas, rackHeight_canvas);
 
-        // --- Draw Rack 2 ---
-        ctx.fillStyle = '#cbd5e1'; // slate-300
-        ctx.fillRect(rack2_x_canvas, rackY_canvas, rack2_width_canvas, rackHeight_canvas);
-        if (bayWidth > 0) {
-            ctx.strokeStyle = '#94a3b8'; // slate-400
-            ctx.lineWidth = 0.5;
-            ctx.beginPath();
-            let currentBayY_world_relative = bayWidth;
-            while (currentBayY_world_relative < usableLength_world) {
-                const bayY_canvas = rackY_canvas + (currentBayY_world_relative * scale);
-                ctx.moveTo(rack2_x_canvas, bayY_canvas);
-                ctx.lineTo(rack2_x_canvas + rack2_width_canvas, bayY_canvas);
-                currentBayY_world_relative += bayWidth;
+            ctx.strokeStyle = '#64748b'; // slate-500
+            ctx.lineWidth = 1;
+            ctx.strokeRect(rackX_canvas, rackY_canvas_start, rackWidth_canvas, rackHeight_canvas);
+
+        } else if (rackType === 'double') {
+            // This 'bayDepth' is the single rack depth from the new calculation
+            const rack1_width_canvas = bayDepth * scale;
+            const flue_width_canvas = flueSpace * scale;
+            const rack2_width_canvas = bayDepth * scale;
+            const rack2_x_canvas = rackX_canvas + rack1_width_canvas + flue_width_canvas;
+
+            // --- Draw Rack 1 ---
+            ctx.fillStyle = '#cbd5e1'; // slate-300
+            ctx.fillRect(rackX_canvas, rackY_canvas_start, rack1_width_canvas, rackHeight_canvas);
+            if (bayWidth > 0) {
+                ctx.strokeStyle = '#94a3b8'; // slate-400
+                ctx.lineWidth = 0.5;
+                ctx.beginPath();
+                let currentBayY_world_relative = bayWidth;
+                while (currentBayY_world_relative < usableLength_world) {
+                    const bayY_canvas = rackY_canvas_start + (currentBayY_world_relative * scale);
+                    ctx.moveTo(rackX_canvas, bayY_canvas);
+                    ctx.lineTo(rackX_canvas + rack1_width_canvas, bayY_canvas);
+                    currentBayY_world_relative += bayWidth;
+                }
+                ctx.stroke();
             }
-            ctx.stroke();
+            ctx.strokeStyle = '#64748b'; // slate-500
+            ctx.lineWidth = 1;
+            ctx.strokeRect(rackX_canvas, rackY_canvas_start, rack1_width_canvas, rackHeight_canvas);
+
+            // --- Draw Rack 2 ---
+            ctx.fillStyle = '#cbd5e1'; // slate-300
+            ctx.fillRect(rack2_x_canvas, rackY_canvas_start, rack2_width_canvas, rackHeight_canvas);
+            if (bayWidth > 0) {
+                ctx.strokeStyle = '#94a3b8'; // slate-400
+                ctx.lineWidth = 0.5;
+                ctx.beginPath();
+                let currentBayY_world_relative = bayWidth;
+                while (currentBayY_world_relative < usableLength_world) {
+                    const bayY_canvas = rackY_canvas_start + (currentBayY_world_relative * scale);
+                    ctx.moveTo(rack2_x_canvas, bayY_canvas);
+                    ctx.lineTo(rack2_x_canvas + rack2_width_canvas, bayY_canvas);
+                    currentBayY_world_relative += bayWidth;
+                }
+                ctx.stroke();
+            }
+            ctx.strokeStyle = '#64748b'; // slate-500
+            ctx.lineWidth = 1;
+            ctx.strokeRect(rack2_x_canvas, rackY_canvas_start, rack2_width_canvas, rackHeight_canvas);
         }
-        ctx.strokeStyle = '#64748b'; // slate-500
-        ctx.lineWidth = 1;
-        ctx.strokeRect(rack2_x_canvas, rackY_canvas, rack2_width_canvas, rackHeight_canvas);
     }
 }
 
 // --- Helper Function to Draw Dimensions (General) ---
-function drawDimensions(ctx, x1, y1, drawWidth, drawHeight, sysWidth_label, sysLength_label) {
-    const extensionLength = 20;
-    const textPadding = 10;
+function drawDimensions(ctx, x1, y1, drawWidth, drawHeight, sysWidth_label, sysLength_label, zoomScale = 1) {
+    const extensionLength = 20 / zoomScale;
+    const textPadding = 10 / zoomScale;
 
     ctx.strokeStyle = '#64748b'; // slate-500
     ctx.fillStyle = '#64748b'; // slate-500
-    ctx.lineWidth = 1;
-    ctx.font = '12px Inter, sans-serif';
+    ctx.lineWidth = 1 / zoomScale; // Adjust line width for zoom
+    ctx.font = `${12 / zoomScale}px Inter, sans-serif`; // Adjust font size for zoom
     ctx.textBaseline = 'middle';
 
     // --- Horizontal (System Width) ---
@@ -166,10 +265,14 @@ export function drawWarehouse() {
     // Now apply the clean scale for HiDPI
     warehouseCtx.scale(dpr, dpr);
 
-    // const canvasWidth = warehouseCanvas.clientWidth; // REMOVED
-    // const canvasHeight = warehouseCanvas.clientHeight; // REMOVED
-
     warehouseCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+    // Get the current zoom/pan state
+    const state = getViewState(warehouseCanvas);
+
+    // Apply zoom and pan transformations
+    warehouseCtx.translate(state.offsetX, state.offsetY);
+    warehouseCtx.scale(state.scale, state.scale);
 
     // --- Get Values & Calculate Bay Dimensions (Using NEW Logic) ---
     const toteWidth = parseNumber(toteWidthInput.value) || 0; // Along bay depth
@@ -180,7 +283,7 @@ export function drawWarehouse() {
     const toteToUprightDist = parseNumber(toteToUprightDistInput.value) || 0;
     const toteBackToBackDist = parseNumber(toteBackToBackDistInput.value) || 0;
     const uprightLength = parseNumber(uprightLengthInput.value) || 0;
-    const uprightWidth = parseNumber(uprightWidthInput.value) || 0;
+    const uprightWidth = parseNumber(uprightWidthInput.value) || 0; // NEW: Get this for detail view
     const hookAllowance = parseNumber(hookAllowanceInput.value) || 0;
 
     // Bay Width (horizontal)
@@ -202,6 +305,9 @@ export function drawWarehouse() {
     const setbackBottom = parseNumber(setbackBottomInput.value) || 0;
     const layoutMode = layoutModeSelect.value;
     const flueSpace = parseNumber(flueSpaceInput.value) || 0;
+    
+    // NEW: Get detail view state
+    const isDetailView = detailViewToggle.checked;
 
     // --- Run Layout Calculation ---
     // Pass the *calculated* bayWidth and bayDepth
@@ -233,39 +339,47 @@ export function drawWarehouse() {
     summaryInboundWS.textContent = reqInboundWS.toLocaleString('en-US');
     summaryOutboundWS.textContent = reqOutboundWS.toLocaleString('en-US');
 
-    // --- Calculate Scaling and Centering ---
-    const padding = 80; // Generous padding for dimensions
+    // --- Calculate Scaling and Centering for the content itself (independent of zoom/pan) ---
+    // This scale is for fitting the *world* content into the *initial* canvas view,
+    // before any user zoom/pan is applied.
+    const contentPadding = 80; // Generous padding for dimensions
+    const contentScaleX = (canvasWidth / state.scale - contentPadding * 2) / sysWidth;
+    const contentScaleY = (canvasHeight / state.scale - contentPadding * 2) / sysLength;
+    const contentScale = Math.min(contentScaleX, contentScaleY);
 
-    // Calculate scale to fit both width and height
-    const scaleX = (canvasWidth - padding * 2) / sysWidth;
-    const scaleY = (canvasHeight - padding * 2) / sysLength;
-    const scale = Math.min(scaleX, scaleY);
+    if (contentScale <= 0 || !isFinite(contentScale)) return;
 
-    if (scale <= 0 || !isFinite(scale)) return; // Don't draw if no space or invalid scale
+    const drawWidth = sysWidth * contentScale;
+    const drawHeight = sysLength * contentScale;
 
-    // Calculate dimensions of the *drawing* (not canvas)
-    const drawWidth = sysWidth * scale;
-    const drawHeight = sysLength * scale;
-
-    // Calculate offsets to center the *drawing*
-    const drawOffsetX = (canvasWidth - drawWidth) / 2;
-    const drawOffsetY = (canvasHeight - drawHeight) / 2;
+    // Calculate offsets to center the *drawing* within the current view
+    const drawOffsetX = (canvasWidth / state.scale - drawWidth) / 2;
+    const drawOffsetY = (canvasHeight / state.scale - drawHeight) / 2;
 
     // --- Calculate Centering for the *Layout* ---
-    // This centers the actual racks/aisles within the system footprint
     const layoutOffsetX_world = (sysWidth - layout.totalLayoutWidth) / 2;
 
-    // Final offset = drawing offset + layout offset
-    const offsetX = drawOffsetX + (layoutOffsetX_world * scale);
+    // Final offset for drawing elements (relative to the transformed canvas)
+    const offsetX = drawOffsetX + (layoutOffsetX_world * contentScale);
     const offsetY = drawOffsetY;
+
+    // NEW: Create detail params object (world values)
+    const detailParams = {
+        toteWidth, toteLength, toteToToteDist, toteToUprightDist, toteBackToBackDist,
+        toteQtyPerBay, totesDeep,
+        uprightLength_world: uprightLength,
+        uprightWidth_world: uprightWidth // Pass this
+    };
 
     // Create params object for the helper function
     const drawParams = {
-        ctx: warehouseCtx, scale, offsetX, offsetY,
+        ctx: warehouseCtx, scale: contentScale, offsetX, offsetY, // Use contentScale here
         bayWidth, bayDepth, // Pass calculated values
         flueSpace, sysLength,
         usableLength_world: layout.usableLength,
-        setbackTop_world: setbackTop
+        setbackTop_world: setbackTop,
+        isDetailView: isDetailView, // NEW
+        detailParams: detailParams // NEW
     };
 
     // --- Start Drawing ---
@@ -273,7 +387,7 @@ export function drawWarehouse() {
     // Draw background footprint
     warehouseCtx.fillStyle = '#f8fafc'; // slate-50
     warehouseCtx.strokeStyle = '#64748b'; // slate-500
-    warehouseCtx.lineWidth = 2;
+    warehouseCtx.lineWidth = 2 / state.scale; // Adjust line width for zoom
     warehouseCtx.fillRect(drawOffsetX, drawOffsetY, drawWidth, drawHeight);
     warehouseCtx.strokeRect(drawOffsetX, drawOffsetY, drawWidth, drawHeight);
 
@@ -289,25 +403,25 @@ export function drawWarehouse() {
     // Draw Top and Bottom Setbacks
     if (setbackTop > 0) {
         warehouseCtx.fillStyle = 'rgba(239, 68, 68, 0.1)'; // red-500 with 10% opacity
-        warehouseCtx.fillRect(drawOffsetX, drawOffsetY, drawWidth, setbackTop * scale);
+        warehouseCtx.fillRect(drawOffsetX, drawOffsetY, drawWidth, setbackTop * contentScale);
         warehouseCtx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
-        warehouseCtx.setLineDash([5, 5]);
-        warehouseCtx.strokeRect(drawOffsetX, drawOffsetY, drawWidth, setbackTop * scale);
+        warehouseCtx.setLineDash([5 / state.scale, 5 / state.scale]); // Adjust line dash for zoom
+        warehouseCtx.strokeRect(drawOffsetX, drawOffsetY, drawWidth, setbackTop * contentScale);
         warehouseCtx.setLineDash([]);
     }
     if (setbackBottom > 0) {
-        const setbackY_canvas = drawOffsetY + (sysLength - setbackBottom) * scale;
+        const setbackY_canvas = drawOffsetY + (sysLength - setbackBottom) * contentScale;
         warehouseCtx.fillStyle = 'rgba(239, 68, 68, 0.1)'; // red-500 with 10% opacity
-        warehouseCtx.fillRect(drawOffsetX, setbackY_canvas, drawWidth, setbackBottom * scale);
+        warehouseCtx.fillRect(drawOffsetX, setbackY_canvas, drawWidth, setbackBottom * contentScale);
         warehouseCtx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
-        warehouseCtx.setLineDash([5, 5]);
-        warehouseCtx.strokeRect(drawOffsetX, setbackY_canvas, drawWidth, setbackBottom * scale);
+        warehouseCtx.setLineDash([5 / state.scale, 5 / state.scale]); // Adjust line dash for zoom
+        warehouseCtx.strokeRect(drawOffsetX, setbackY_canvas, drawWidth, setbackBottom * contentScale);
         warehouseCtx.setLineDash([]);
     }
 
 
     // Draw dimension lines
-    drawDimensions(warehouseCtx, drawOffsetX, drawOffsetY, drawWidth, drawHeight, sysWidth, sysLength);
+    drawDimensions(warehouseCtx, drawOffsetX, drawOffsetY, drawWidth, drawHeight, sysWidth, sysLength, state.scale); // Pass state.scale
 }
 
 // --- Rack Detail Drawing Code ---
@@ -328,55 +442,58 @@ function drawStructure(ctx, offsetX, offsetY, drawWidth, drawHeight, scale, para
     ctx.fillRect(offsetX + drawWidth - upLength_c, offsetY + drawHeight - upWidth_c, upLength_c, upWidth_c);
 
     // --- Draw Upright C-Channels (lines on top of filled uprights) ---
-    ctx.strokeStyle = '#64748b'; // slate-500
-    ctx.lineWidth = 2;
+    // Only draw if scale is large enough to see
+    if (upLength_c > 10) {
+        ctx.strokeStyle = '#64748b'; // slate-500
+        ctx.lineWidth = 2;
 
-    // Calculate offsets for two lines, centered in the upright
-    const lineGap_world = 65;
-    const margin_world = (uprightLength_world - lineGap_world) / 2;
+        // Calculate offsets for two lines, centered in the upright
+        const lineGap_world = 65;
+        const margin_world = (uprightLength_world - lineGap_world) / 2;
 
-    const line1_offset_c = margin_world * scale;
-    const line2_offset_c = (margin_world + lineGap_world) * scale;
+        const line1_offset_c = margin_world * scale;
+        const line2_offset_c = (margin_world + lineGap_world) * scale;
 
-    // --- Left upright C-Channel ---
-    const leftLine1_x = offsetX + line1_offset_c;
-    const leftLine2_x = offsetX + line2_offset_c;
+        // --- Left upright C-Channel ---
+        const leftLine1_x = offsetX + line1_offset_c;
+        const leftLine2_x = offsetX + line2_offset_c;
 
-    ctx.beginPath();
-    // Top cap
-    ctx.moveTo(leftLine1_x, offsetY);
-    ctx.lineTo(leftLine2_x, offsetY);
-    // Bottom cap
-    ctx.moveTo(leftLine1_x, offsetY + drawHeight);
-    ctx.lineTo(leftLine2_x, offsetY + drawHeight);
-    // Vertical web 1
-    ctx.moveTo(leftLine1_x, offsetY);
-    ctx.lineTo(leftLine1_x, offsetY + drawHeight);
-    // Vertical web 2
-    ctx.moveTo(leftLine2_x, offsetY);
-    ctx.lineTo(leftLine2_x, offsetY + drawHeight);
-    ctx.stroke();
+        ctx.beginPath();
+        // Top cap
+        ctx.moveTo(leftLine1_x, offsetY);
+        ctx.lineTo(leftLine2_x, offsetY);
+        // Bottom cap
+        ctx.moveTo(leftLine1_x, offsetY + drawHeight);
+        ctx.lineTo(leftLine2_x, offsetY + drawHeight);
+        // Vertical web 1
+        ctx.moveTo(leftLine1_x, offsetY);
+        ctx.lineTo(leftLine1_x, offsetY + drawHeight);
+        // Vertical web 2
+        ctx.moveTo(leftLine2_x, offsetY);
+        ctx.lineTo(leftLine2_x, offsetY + drawHeight);
+        ctx.stroke();
 
 
-    // --- Right upright C-Channel ---
-    const rightUprightX_c = offsetX + drawWidth - upLength_c;
-    const rightLine1_x = rightUprightX_c + line1_offset_c;
-    const rightLine2_x = rightUprightX_c + line2_offset_c;
+        // --- Right upright C-Channel ---
+        const rightUprightX_c = offsetX + drawWidth - upLength_c;
+        const rightLine1_x = rightUprightX_c + line1_offset_c;
+        const rightLine2_x = rightUprightX_c + line2_offset_c;
 
-    ctx.beginPath();
-    // Top cap
-    ctx.moveTo(rightLine1_x, offsetY);
-    ctx.lineTo(rightLine2_x, offsetY);
-    // Bottom cap
-    ctx.moveTo(rightLine1_x, offsetY + drawHeight);
-    ctx.lineTo(rightLine2_x, offsetY + drawHeight);
-    // Vertical web 1
-    ctx.moveTo(rightLine1_x, offsetY);
-    ctx.lineTo(rightLine1_x, offsetY + drawHeight);
-    // Vertical web 2
-    ctx.moveTo(rightLine2_x, offsetY);
-    ctx.lineTo(rightLine2_x, offsetY + drawHeight);
-    ctx.stroke();
+        ctx.beginPath();
+        // Top cap
+        ctx.moveTo(rightLine1_x, offsetY);
+        ctx.lineTo(rightLine2_x, offsetY);
+        // Bottom cap
+        ctx.moveTo(rightLine1_x, offsetY + drawHeight);
+        ctx.lineTo(rightLine2_x, offsetY + drawHeight);
+        // Vertical web 1
+        ctx.moveTo(rightLine1_x, offsetY);
+        ctx.lineTo(rightLine1_x, offsetY + drawHeight);
+        // Vertical web 2
+        ctx.moveTo(rightLine2_x, offsetY);
+        ctx.lineTo(rightLine2_x, offsetY + drawHeight);
+        ctx.stroke();
+    }
 
     // --- Draw Horizontal Beams ---
     const beamGap_world = 40;
@@ -384,24 +501,26 @@ function drawStructure(ctx, offsetX, offsetY, drawWidth, drawHeight, scale, para
     const beam_x1 = offsetX + upLength_c; // Inner edge of left upright
     const beam_x2 = offsetX + drawWidth - upLength_c; // Inner edge of right upright
 
-    ctx.beginPath();
-    // Top beam (flush to top edge)
-    const top_y1 = offsetY;
-    const top_y2 = offsetY + beamGap_c;
-    ctx.moveTo(beam_x1, top_y1);
-    ctx.lineTo(beam_x2, top_y1);
-    ctx.moveTo(beam_x1, top_y2);
-    ctx.lineTo(beam_x2, top_y2);
+    if (beamGap_c > 1) { // Only draw if visible
+        ctx.beginPath();
+        // Top beam (flush to top edge)
+        const top_y1 = offsetY;
+        const top_y2 = offsetY + beamGap_c;
+        ctx.moveTo(beam_x1, top_y1);
+        ctx.lineTo(beam_x2, top_y1);
+        ctx.moveTo(beam_x1, top_y2);
+        ctx.lineTo(beam_x2, top_y2);
 
-    // Bottom beam (flush to bottom edge)
-    const bottom_y1 = offsetY + drawHeight - beamGap_c;
-    const bottom_y2 = offsetY + drawHeight;
-    ctx.moveTo(beam_x1, bottom_y1);
-    ctx.lineTo(beam_x2, bottom_y1);
-    ctx.moveTo(beam_x1, bottom_y2);
-    ctx.lineTo(beam_x2, bottom_y2);
+        // Bottom beam (flush to bottom edge)
+        const bottom_y1 = offsetY + drawHeight - beamGap_c;
+        const bottom_y2 = offsetY + drawHeight;
+        ctx.moveTo(beam_x1, bottom_y1);
+        ctx.lineTo(beam_x2, bottom_y1);
+        ctx.moveTo(beam_x1, bottom_y2);
+        ctx.lineTo(beam_x2, bottom_y2);
 
-    ctx.stroke();
+        ctx.stroke();
+    }
 }
 
 // --- Refactored Drawing Helper: Totes ---
@@ -532,11 +651,15 @@ export function drawRackDetail() {
     rackDetailCtx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
     rackDetailCtx.scale(dpr, dpr);
 
-    // const canvasWidth = rackDetailCanvas.clientWidth; // REMOVED
-    // const canvasHeight = rackDetailCanvas.clientHeight; // REMOVED
     const ctx = rackDetailCtx;
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
+    // Get the current zoom/pan state
+    const state = getViewState(rackDetailCanvas);
+
+    // Apply zoom and pan transformations
+    ctx.translate(state.offsetX, state.offsetY);
+    ctx.scale(state.scale, state.scale);
 
     // --- 1. Get Values ---
     const toteWidth = parseNumber(toteWidthInput.value) || 0;
@@ -556,17 +679,17 @@ export function drawRackDetail() {
 
     if (bayWidth === 0 || bayDepth_total === 0) return;
 
-    // --- 3. Calculate Scaling and Centering ---
-    const padding = 100; // Generous padding for detail dimensions
-    const scaleX = (canvasWidth - padding * 2) / bayWidth;
-    const scaleY = (canvasHeight - padding * 2) / bayDepth_total;
-    const scale = Math.min(scaleX, scaleY);
-    if (scale <= 0 || !isFinite(scale)) return;
+    // --- 3. Calculate Scaling and Centering for the content itself (independent of zoom/pan) ---
+    const contentPadding = 100; // Generous padding for detail dimensions
+    const contentScaleX = (canvasWidth / state.scale - contentPadding * 2) / bayWidth;
+    const contentScaleY = (canvasHeight / state.scale - contentPadding * 2) / bayDepth_total;
+    const contentScale = Math.min(contentScaleX, contentScaleY);
+    if (contentScale <= 0 || !isFinite(contentScale)) return;
 
-    const drawWidth = bayWidth * scale;
-    const drawHeight = bayDepth_total * scale;
-    const offsetX = (canvasWidth - drawWidth) / 2;
-    const offsetY = (canvasHeight - drawHeight) / 2;
+    const drawWidth = bayWidth * contentScale;
+    const drawHeight = bayDepth_total * contentScale;
+    const offsetX = (canvasWidth / state.scale - drawWidth) / 2;
+    const offsetY = (canvasHeight / state.scale - drawHeight) / 2;
 
     // --- 4. Create Parameters Object for Helpers ---
     const params = {
@@ -576,28 +699,28 @@ export function drawRackDetail() {
         uprightLength_world: uprightLength,
 
         // Canvas-scaled values
-        upLength_c: uprightLength * scale,
-        upWidth_c: uprightWidth * scale,
-        toteWidth_c: toteWidth * scale,
-        toteLength_c: toteLength * scale,
-        toteToTote_c: toteToToteDist * scale,
-        toteToUpright_c: toteToUprightDist * scale,
-        toteBackToBack_c: toteBackToBackDist * scale
+        upLength_c: uprightLength * contentScale,
+        upWidth_c: uprightWidth * contentScale,
+        toteWidth_c: toteWidth * contentScale,
+        toteLength_c: toteLength * contentScale,
+        toteToTote_c: toteToToteDist * contentScale,
+        toteToUpright_c: toteToUprightDist * contentScale,
+        toteBackToBack_c: toteBackToBackDist * contentScale
     };
 
     // --- 5. Execute Drawing Functions in Order ---
 
     // Draw structure first
-    drawStructure(ctx, offsetX, offsetY, drawWidth, drawHeight, scale, params);
+    drawStructure(ctx, offsetX, offsetY, drawWidth, drawHeight, contentScale, params);
 
     // Draw totes on top of structure
-    drawTotes(ctx, offsetX, offsetY, scale, params);
+    drawTotes(ctx, offsetX, offsetY, contentScale, params);
 
     // Draw overall dimensions
-    drawDimensions(ctx, offsetX, offsetY, drawWidth, drawHeight, bayWidth, bayDepth_total);
+    drawDimensions(ctx, offsetX, offsetY, drawWidth, drawHeight, bayWidth, bayDepth_total, state.scale); // Pass state.scale
 
     // Draw detail (pink) dimensions on top of everything
-    drawDetailDimensions(ctx, offsetX, offsetY, scale, params);
+    drawDetailDimensions(ctx, offsetX, offsetY, contentScale, params);
 }
 
 // --- NEW: Elevation View Logic ---
@@ -620,13 +743,21 @@ export function drawElevationView() {
     const ctx = elevationCtx;
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
+    // Get the current zoom/pan state
+    const state = getViewState(elevationCanvas);
+
+    // Apply zoom and pan transformations
+    ctx.translate(state.offsetX, state.offsetY);
+    ctx.scale(state.scale, state.scale);
+
     // --- Define Viewports ---
-    const frontViewWidth = canvasWidth / 2;
-    const sideViewWidth = canvasWidth / 2;
-    const viewHeight = canvasHeight;
+    // These widths and height are now in "world" coordinates relative to the zoomed canvas
+    const frontViewWidth = (canvasWidth / state.scale) / 2;
+    const sideViewWidth = (canvasWidth / state.scale) / 2;
+    const viewHeight = canvasHeight / state.scale;
     const frontViewOffsetX = 0;
-    const sideViewOffsetX = canvasWidth / 2;
-    const padding = 40; // Base padding for both
+    const sideViewOffsetX = (canvasWidth / state.scale) / 2;
+    const padding = 40 / state.scale; // Adjust padding for zoom
 
     // --- 1. Get All Input Values (as numbers) ---
     const inputs = {
@@ -656,7 +787,7 @@ export function drawElevationView() {
     // --- 2. Validate Inputs ---
     const elevationInputs = { ...inputs, UW: 0, NT: 0, TW: 0, TTD: 0, TUD: 0 }; // Pass dummy values
     if (Object.values(elevationInputs).some(v => isNaN(v) || v < 0)) {
-        showErrorOnCanvas(ctx, "Please enter valid positive numbers.", canvasWidth, canvasHeight);
+        showErrorOnCanvas(ctx, "Please enter valid positive numbers.", canvasWidth / state.scale, canvasHeight / state.scale); // Adjust canvas dimensions for error message
         calculationResults.maxLevels = 0; // Update global state
         summaryMaxLevels.textContent = '0';
         return;
@@ -665,7 +796,7 @@ export function drawElevationView() {
     const { WH, BaseHeight, BW, TH, MC, OC } = inputs;
 
     if (WH <= (BaseHeight + BW + TH + OC)) {
-        showErrorOnCanvas(ctx, "Height is too small for first level + overhead.", canvasWidth, canvasHeight);
+        showErrorOnCanvas(ctx, "Height is too small for first level + overhead.", canvasWidth / state.scale, canvasHeight / state.scale); // Adjust canvas dimensions for error message
         calculationResults.maxLevels = 0; // Update global state
         summaryMaxLevels.textContent = '0';
         return;
@@ -675,7 +806,7 @@ export function drawElevationView() {
     const layoutResult = calculateElevationLayout(elevationInputs, true); // True for even distribution
 
     if (!layoutResult || layoutResult.N === 0) {
-        showErrorOnCanvas(ctx, "Could not calculate layout based on inputs.", canvasWidth, canvasHeight);
+        showErrorOnCanvas(ctx, "Could not calculate layout based on inputs.", canvasWidth / state.scale, canvasHeight / state.scale); // Adjust canvas dimensions for error message
         calculationResults.maxLevels = 0; // Update global state
         summaryMaxLevels.textContent = '0';
         return;
@@ -689,18 +820,18 @@ export function drawElevationView() {
 
     // --- 5. Draw Separator ---
     ctx.strokeStyle = '#cbd5e1'; // slate-300
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 1 / state.scale; // Adjust line width for zoom
     ctx.beginPath();
-    ctx.moveTo(canvasWidth / 2, 0);
-    ctx.lineTo(canvasWidth / 2, canvasHeight);
+    ctx.moveTo(canvasWidth / (2 * state.scale), 0); // Adjust coordinates for zoom
+    ctx.lineTo(canvasWidth / (2 * state.scale), viewHeight); // Adjust coordinates for zoom
     ctx.stroke();
 
     // --- 6. Draw Labels ---
     ctx.fillStyle = '#1e293b'; // slate-800
-    ctx.font = 'bold 14px Inter, sans-serif';
+    ctx.font = `bold ${14 / state.scale}px Inter, sans-serif`; // Adjust font size for zoom
     ctx.textAlign = 'center';
-    ctx.fillText("Front View", frontViewWidth / 2, padding - 10);
-    ctx.fillText("Side View", sideViewOffsetX + sideViewWidth / 2, padding - 10);
+    ctx.fillText("Front View", frontViewWidth / 2, padding - (10 / state.scale)); // Adjust text position for zoom
+    ctx.fillText("Side View", sideViewOffsetX + sideViewWidth / 2, padding - (10 / state.scale)); // Adjust text position for zoom
 
     // --- 7.A. DRAW FRONT ELEVATION (LEFT) ---
     {
@@ -709,50 +840,50 @@ export function drawElevationView() {
         const BCO = (NT_front * TW_front) + (Math.max(0, NT_front - 1) * TTD_front) + (2 * TUD_front);
         const totalRackWidthMM = (NB * BCO) + ((NB + 1) * UW_front);
 
-        const scaleX = (frontViewWidth - padding * 2) / totalRackWidthMM;
-        const scaleY = (viewHeight - 2 * padding) / WH;
-        const scale = Math.min(scaleX, scaleY);
+        const contentScaleX = (frontViewWidth - padding * 2) / totalRackWidthMM;
+        const contentScaleY = (viewHeight - 2 * padding) / WH;
+        const contentScale = Math.min(contentScaleX, contentScaleY);
 
-        if (scale > 0 && isFinite(scale)) {
-            const uprightWidthPx = UW_front * scale;
-            const bayClearOpeningPx = BCO * scale;
-            const toteWidthPx = TW_front * scale;
-            const toteToToteDistPx = TTD_front * scale;
-            const totalRackWidthPx = totalRackWidthMM * scale;
+        if (contentScale > 0 && isFinite(contentScale)) {
+            const uprightWidthPx = UW_front * contentScale;
+            const bayClearOpeningPx = BCO * contentScale;
+            const toteWidthPx = TW_front * contentScale;
+            const toteToToteDistPx = TTD_front * contentScale;
+            const totalRackWidthPx = totalRackWidthMM * contentScale;
 
             let rackStartX = frontViewOffsetX + (frontViewWidth - totalRackWidthPx) / 2;
-            const y_coord = (mm) => (viewHeight - padding) - (mm * scale);
+            const y_coord = (mm) => (viewHeight - padding) - (mm * contentScale);
 
             const groundY = y_coord(0);
             const ceilingY = y_coord(WH);
 
-            ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 2;
+            ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 2 / state.scale; // Adjust line width for zoom
             ctx.beginPath(); ctx.moveTo(frontViewOffsetX, groundY); ctx.lineTo(frontViewOffsetX + frontViewWidth, groundY); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(frontViewOffsetX, ceilingY); ctx.lineTo(frontViewOffsetX + frontViewWidth, ceilingY); ctx.stroke();
 
             ctx.fillStyle = 'rgba(239, 68, 68, 0.1)';
-            ctx.fillRect(rackStartX, ceilingY, totalRackWidthPx, OC * scale);
+            ctx.fillRect(rackStartX, ceilingY, totalRackWidthPx, OC * contentScale);
             ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
-            ctx.setLineDash([5, 5]);
-            ctx.strokeRect(rackStartX, ceilingY, totalRackWidthPx, OC * scale);
+            ctx.setLineDash([5 / state.scale, 5 / state.scale]); // Adjust line dash for zoom
+            ctx.strokeRect(rackStartX, ceilingY, totalRackWidthPx, OC * contentScale);
             ctx.setLineDash([]);
 
             let currentX = rackStartX;
             const bayStartX = currentX;
             const bayWidthPx = bayClearOpeningPx + uprightWidthPx;
-            const toteAreaStartX = currentX + uprightWidthPx + TUD_front * scale;
+            const toteAreaStartX = currentX + uprightWidthPx + TUD_front * contentScale;
 
             ctx.fillStyle = '#94a3b8'; // Left Upright
-            ctx.fillRect(currentX, ceilingY, uprightWidthPx, WH * scale);
+            ctx.fillRect(currentX, ceilingY, uprightWidthPx, WH * contentScale);
 
             levels.forEach(level => {
                 const beamY = y_coord(level.beamTop);
-                const beamHeightPx = BW * scale;
+                const beamHeightPx = BW * contentScale;
                 const toteY = y_coord(level.toteTop);
-                const toteHeightPx = TH * scale;
+                const toteHeightPx = TH * contentScale;
 
                 ctx.fillStyle = '#64748b'; // Beam
-                ctx.strokeStyle = '#334155'; ctx.lineWidth = 0.5;
+                ctx.strokeStyle = '#334155'; ctx.lineWidth = 0.5 / state.scale; // Adjust line width for zoom
                 ctx.fillRect(bayStartX, beamY, bayWidthPx, beamHeightPx);
                 ctx.strokeRect(bayStartX, beamY, bayWidthPx, beamHeightPx);
 
@@ -767,10 +898,10 @@ export function drawElevationView() {
 
                 if (level.sprinklerAdded > 0) {
                     const sprinklerBoxY = y_coord(level.toteTop + MC + inputs.SC);
-                    const sprinklerBoxHeight = inputs.SC * scale;
+                    const sprinklerBoxHeight = inputs.SC * contentScale;
                     ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
                     ctx.strokeStyle = 'rgba(239, 68, 68, 0.5)';
-                    ctx.setLineDash([4, 4]);
+                    ctx.setLineDash([4 / state.scale, 4 / state.scale]); // Adjust line dash for zoom
                     ctx.fillRect(bayStartX + uprightWidthPx, sprinklerBoxY, bayClearOpeningPx, sprinklerBoxHeight);
                     ctx.strokeRect(bayStartX + uprightWidthPx, sprinklerBoxY, bayClearOpeningPx, sprinklerBoxHeight);
                     ctx.setLineDash([]);
@@ -779,7 +910,7 @@ export function drawElevationView() {
 
             currentX += (uprightWidthPx + bayClearOpeningPx);
             ctx.fillStyle = '#94a3b8'; // Right Upright
-            ctx.fillRect(currentX, ceilingY, uprightWidthPx, WH * scale);
+            ctx.fillRect(currentX, ceilingY, uprightWidthPx, WH * contentScale);
         }
     }
 
@@ -790,44 +921,44 @@ export function drawElevationView() {
         const bayDepth_internal = (TotesDeep * ToteDepth) + (Math.max(0, TotesDeep - 1) * ToteDepthGap) + HookAllowance;
         const totalRackWidthMM = bayDepth_internal + (2 * UW_side); // Add front and back uprights
 
-        const scaleX = (sideViewWidth - padding * 2) / totalRackWidthMM;
-        const scaleY = (viewHeight - 2 * padding) / WH;
-        const scale = Math.min(scaleX, scaleY);
+        const contentScaleX = (sideViewWidth - padding * 2) / totalRackWidthMM;
+        const contentScaleY = (viewHeight - 2 * padding) / WH;
+        const contentScale = Math.min(contentScaleX, contentScaleY);
 
-        if (scale > 0 && isFinite(scale)) {
-            const uprightWidthPx = UW_side * scale;
-            const totalRackWidthPx = totalRackWidthMM * scale;
-            const toteDepthPx = ToteDepth * scale;
-            const toteDepthGapPx = ToteDepthGap * scale;
+        if (contentScale > 0 && isFinite(contentScale)) {
+            const uprightWidthPx = UW_side * contentScale;
+            const totalRackWidthPx = totalRackWidthMM * contentScale;
+            const toteDepthPx = ToteDepth * contentScale;
+            const toteDepthGapPx = ToteDepthGap * contentScale;
 
             let rackStartX = sideViewOffsetX + (sideViewWidth - totalRackWidthPx) / 2;
-            const y_coord = (mm) => (viewHeight - padding) - (mm * scale);
+            const y_coord = (mm) => (viewHeight - padding) - (mm * contentScale);
 
             const groundY = y_coord(0);
             const ceilingY = y_coord(WH);
 
-            ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 2;
+            ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 2 / state.scale; // Adjust line width for zoom
             ctx.beginPath(); ctx.moveTo(sideViewOffsetX, groundY); ctx.lineTo(sideViewOffsetX + sideViewWidth, groundY); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(sideViewOffsetX, ceilingY); ctx.lineTo(sideViewOffsetX + sideViewWidth, ceilingY); ctx.stroke();
 
             ctx.fillStyle = 'rgba(239, 68, 68, 0.1)';
-            ctx.fillRect(rackStartX, ceilingY, totalRackWidthPx, OC * scale);
+            ctx.fillRect(rackStartX, ceilingY, totalRackWidthPx, OC * contentScale);
             ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
-            ctx.setLineDash([5, 5]);
-            ctx.strokeRect(rackStartX, ceilingY, totalRackWidthPx, OC * scale);
+            ctx.setLineDash([5 / state.scale, 5 / state.scale]); // Adjust line dash for zoom
+            ctx.strokeRect(rackStartX, ceilingY, totalRackWidthPx, OC * contentScale);
             ctx.setLineDash([]);
 
             const toteAreaStartX = rackStartX + uprightWidthPx;
 
             ctx.fillStyle = '#94a3b8'; // Left Upright (Front)
-            ctx.fillRect(rackStartX, ceilingY, uprightWidthPx, WH * scale);
+            ctx.fillRect(rackStartX, ceilingY, uprightWidthPx, WH * contentScale);
 
             levels.forEach(level => {
                 const toteY = y_coord(level.toteTop);
-                const toteHeightPx = TH * scale;
+                const toteHeightPx = TH * contentScale;
 
                 ctx.fillStyle = '#60a5fa'; // Totes
-                ctx.strokeStyle = '#2563eb'; ctx.lineWidth = 0.5;
+                ctx.strokeStyle = '#2563eb'; ctx.lineWidth = 0.5 / state.scale; // Adjust line width for zoom
                 let currentToteX = toteAreaStartX;
                 for (let k = 0; k < TotesDeep; k++) {
                     ctx.fillRect(currentToteX, toteY, toteDepthPx, toteHeightPx);
@@ -837,12 +968,12 @@ export function drawElevationView() {
 
                 if (level.sprinklerAdded > 0) {
                     const sprinklerBoxY = y_coord(level.toteTop + MC + SC);
-                    const sprinklerBoxHeight = SC * scale;
+                    const sprinklerBoxHeight = SC * contentScale;
                     const internalWidthPx = totalRackWidthPx - (2 * uprightWidthPx);
 
                     ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
                     ctx.strokeStyle = 'rgba(239, 68, 68, 0.5)';
-                    ctx.setLineDash([4, 4]);
+                    ctx.setLineDash([4 / state.scale, 4 / state.scale]); // Adjust line dash for zoom
                     ctx.fillRect(rackStartX + uprightWidthPx, sprinklerBoxY, internalWidthPx, sprinklerBoxHeight);
                     ctx.strokeRect(rackStartX + uprightWidthPx, sprinklerBoxY, internalWidthPx, sprinklerBoxHeight);
                     ctx.setLineDash([]);
@@ -851,7 +982,7 @@ export function drawElevationView() {
 
             const rightUprightX = rackStartX + totalRackWidthPx - uprightWidthPx;
             ctx.fillStyle = '#94a3b8'; // Right Upright (Back)
-            ctx.fillRect(rightUprightX, ceilingY, uprightWidthPx, WH * scale);
+            ctx.fillRect(rightUprightX, ceilingY, uprightWidthPx, WH * contentScale);
         }
     }
 }
@@ -866,3 +997,89 @@ function showErrorOnCanvas(ctx, message, canvasWidth, canvasHeight) {
     ctx.fillText(message, canvasWidth / 2, canvasHeight / 2);
     ctx.restore();
 }
+
+// --- Zoom & Pan State and Logic ---
+
+const viewStates = new WeakMap();
+
+function getViewState(canvas) {
+    if (!viewStates.has(canvas)) {
+        viewStates.set(canvas, {
+            scale: 1.0,
+            offsetX: 0,
+            offsetY: 0,
+            isPanning: false,
+            lastPanX: 0,
+            lastPanY: 0,
+            initialFit: null,
+        });
+    }
+    return viewStates.get(canvas);
+}
+
+function applyZoomPan(canvas, drawFunction) {
+    const state = getViewState(canvas);
+
+    const wheelHandler = (event) => {
+        event.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = event.clientX - rect.left;
+        const mouseY = event.clientY - rect.top;
+
+        const worldX_before = (mouseX - state.offsetX) / state.scale;
+        const worldY_before = (mouseY - state.offsetY) / state.scale;
+
+        const zoomFactor = 1.1;
+        const newScale = event.deltaY < 0 ? state.scale * zoomFactor : state.scale / zoomFactor;
+        state.scale = Math.max(0.1, Math.min(newScale, 50)); // Clamp scale
+
+        state.offsetX = mouseX - worldX_before * state.scale;
+        state.offsetY = mouseY - worldY_before * state.scale;
+
+        drawFunction();
+    };
+
+    const mouseDownHandler = (event) => {
+        state.isPanning = true;
+        state.lastPanX = event.clientX;
+        state.lastPanY = event.clientY;
+        canvas.style.cursor = 'grabbing';
+    };
+
+    const mouseMoveHandler = (event) => {
+        if (!state.isPanning) return;
+        const dx = event.clientX - state.lastPanX;
+        const dy = event.clientY - state.lastPanY;
+        state.offsetX += dx;
+        state.offsetY += dy;
+        state.lastPanX = event.clientX;
+        state.lastPanY = event.clientY;
+        drawFunction();
+    };
+
+    const mouseUpHandler = () => {
+        state.isPanning = false;
+        canvas.style.cursor = 'grab';
+    };
+    
+    const mouseLeaveHandler = () => {
+        state.isPanning = false;
+        canvas.style.cursor = 'default';
+    };
+
+
+    // Add event listeners
+    canvas.addEventListener('wheel', wheelHandler);
+    canvas.addEventListener('mousedown', mouseDownHandler);
+    canvas.addEventListener('mousemove', mouseMoveHandler);
+    canvas.addEventListener('mouseup', mouseUpHandler);
+    canvas.addEventListener('mouseleave', mouseLeaveHandler);
+
+}
+
+// --- Initialize Zoom/Pan for all canvases ---
+document.addEventListener('DOMContentLoaded', () => {
+    applyZoomPan(warehouseCanvas, drawWarehouse);
+    applyZoomPan(rackDetailCanvas, drawRackDetail);
+    applyZoomPan(elevationCanvas, drawElevationView);
+});

@@ -12,7 +12,8 @@ import {
     overheadClearanceInput, sprinklerThresholdInput, sprinklerClearanceInput,
     inboundPPHInput, outboundPPHInput, inboundWSRateInput, outboundWSRateInput,
     solverStorageReqInput, solverThroughputReqInput, solverAspectRatioInput, solverMaxPerfDensityInput,
-    solverConfigSelect // Import new element
+    solverConfigSelect,
+    detailViewToggle
 } from './dom.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -30,7 +31,8 @@ document.addEventListener('DOMContentLoaded', () => {
         overheadClearanceInput, sprinklerThresholdInput, sprinklerClearanceInput,
         // Add performance inputs, as they trigger results recalculation
         inboundPPHInput, outboundPPHInput,
-        inboundWSRateInput, outboundWSRateInput
+        inboundWSRateInput, outboundWSRateInput,
+        detailViewToggle
     ];
 
     // All inputs that should be formatted as numbers

@@ -74,3 +74,6 @@ export const solverModalMessage = document.getElementById('solverModalMessage');
 export const solverModalContinue = document.getElementById('solverModalContinue');
 export const solverModalStop = document.getElementById('solverModalStop');
 export const solverModalBackdrop = document.getElementById('solverModalBackdrop');
+
+// --- NEW: Detail View Toggle ---
+export const detailViewToggle = document.getElementById('detailViewToggle');

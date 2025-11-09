@@ -92,3 +92,13 @@
         #solverModal {
             background-color: rgba(0, 0, 0, 0.5);
         }
+
+        /* --- NEW: Toggle Switch Styles --- */
+        .toggle-checkbox:checked + .toggle-bg {
+            background-color: #2563eb; /* blue-600 */
+            border-color: #2563eb;
+        }
+        .toggle-checkbox:checked + .toggle-bg + .toggle-dot {
+            transform: translateX(20px);
+        }
+        

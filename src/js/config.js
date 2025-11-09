@@ -1,1 +1,65 @@
-export const a = 1;
+export const defaultConfig = {
+    "tote-width": 400,
+    "tote-length": 600,
+    "tote-height": 320,
+    "tote-qty-per-bay": 4,
+    "totes-deep": 2,
+    "tote-to-tote-dist": 25,
+    "tote-to-upright-dist": 50,
+    "tote-back-to-back-dist": 0,
+    "upright-length": 100,
+    "upright-width": 100,
+    "hook-allowance": 0,
+    "aisle-width": 2400,
+    "flue-space": 150,
+    "base-beam-height": 150,
+    "beam-width": 127,
+    "min-clearance": 100,
+    "overhead-clearance": 500,
+    "sprinkler-threshold": 7620,
+    "sprinkler-clearance": 450,
+};
+
+export const configurations = {
+    "hps1-s1": {
+        "tote-to-tote-dist": 25,
+        "tote-to-upright-dist": 50,
+        "totes-deep": 1,
+    },
+    "hps2-s1": {
+        "tote-to-tote-dist": 25,
+        "tote-to-upright-dist": 50,
+        "totes-deep": 1,
+    },
+    "hps3-e2": {
+        "tote-to-tote-dist": 25,
+        "tote-to-upright-dist": 50,
+        "totes-deep": 3,
+    },
+    "hps3-e2-double-deep": {
+        "tote-to-tote-dist": 25,
+        "tote-to-upright-dist": 50,
+        "totes-deep": 2,
+    },
+    "hps3-e2-triple-deep": {
+        "tote-to-tote-dist": 25,
+        "tote-to-upright-dist": 50,
+        "totes-deep": 3,
+    },
+    "hps3-e2-x": {
+        "tote-width": 850,
+        "tote-length": 650,
+        "tote-height": 300,
+        "tote-to-tote-dist": 50,
+        "tote-to-upright-dist": 50,
+        "totes-deep": 2,
+    },
+    "hpc": {
+        "tote-width": 100,
+        "tote-length": 100,
+        "tote-height": 100,
+        "tote-to-tote-dist": 10,
+        "tote-to-upright-dist": 10,
+        "totes-deep": 1,
+    },
+};
