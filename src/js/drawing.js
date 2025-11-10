@@ -20,7 +20,8 @@ import { getViewState } from './viewState.js'; // <-- ADDED IMPORT
 function drawRack(x_world, rackDepth_world, rackType, params) {
     const {
         ctx, scale, offsetX, offsetY,
-        bayDepth, // Note: bayDepth is calculated rack depth
+        bayDepth, // Note: bayDepth is calculated *config* rack depth
+        singleBayDepth, // <<< NEWLY ADDED
         flueSpace,
         usableLength_world, setbackTop_world,
         isDetailView, detailParams, // NEW: Get detail params
@@ -53,8 +54,15 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
     if (isDetailView) {
         if (baysPerRack === 0) return; // No bays to draw
 
+        // --- FIX: Determine the correct 'totesDeep' for *this* rack ---
+        // Use a small tolerance for floating point comparison
+        const isSingleDeepRack = Math.abs(rackDepth_world - singleBayDepth) < 0.01;
+        // Use 1 if it's a single-deep rack, otherwise use the config's totesDeep
+        const currentTotesDeep = isSingleDeepRack ? 1 : detailParams.totesDeep;
+
         const bayDetailHelpersParams = {
             ...detailParams, // totesDeep, toteQtyPerBay, etc. (world values)
+            totesDeep: currentTotesDeep, // <<< OVERRIDE totesDeep with the correct value
             upLength_c: detailParams.uprightLength_world * scale,
             upWidth_c: detailParams.uprightWidth_world * scale,
             toteWidth_c: detailParams.toteWidth * scale,
@@ -63,6 +71,7 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
             toteToUpright_c: detailParams.toteToUprightDist * scale,
             toteBackToBack_c: detailParams.toteBackToBackDist * scale
         };
+        // --- END FIX ---
         
         let currentY_canvas = rackY_canvas_start;
 
@@ -80,7 +89,8 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
                 bayDrawWidth_canvas = uprightLength_canvas; // The width of the upright
                 
                 if (rackType === 'single') {
-                    const bay_w_canvas = bayDepth * scale; // Horizontal dimension
+                    // MODIFIED: A single rack's width is rackDepth_world
+                    const bay_w_canvas = rackDepth_world * scale; // Horizontal dimension
                     const centerX = rackX_canvas + bay_w_canvas / 2;
                     const centerY = bayY_canvas + bayDrawWidth_canvas / 2;
                     ctx.save();
@@ -90,7 +100,7 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
                     drawStructure(ctx, -bayDrawWidth_canvas / 2, -bay_w_canvas / 2, bayDrawWidth_canvas, bay_w_canvas, scale, bayDetailHelpersParams, 'starter');
                     ctx.restore();
                 } else if (rackType === 'double') {
-                    // ... (Logic for double rack starter upright) ...
+                    // MODIFIED: A double rack's components are bayDepth (config)
                     const rack1_w_canvas = bayDepth * scale;
                     const flue_w_canvas = flueSpace * scale;
                     const rack2_x_canvas = rackX_canvas + rack1_w_canvas + flue_w_canvas;
@@ -121,7 +131,8 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
             bayDrawWidth_canvas = clearOpening_canvas + uprightLength_canvas;
             
             if (rackType === 'single') {
-                const bay_w_canvas = bayDepth * scale; // Horizontal dimension
+                // MODIFIED: A single rack's width is rackDepth_world
+                const bay_w_canvas = rackDepth_world * scale; // Horizontal dimension
                 const centerX = rackX_canvas + bay_w_canvas / 2;
                 const centerY = bayY_canvas + bayDrawWidth_canvas / 2;
 
@@ -137,6 +148,7 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
                 ctx.restore();
 
             } else if (rackType === 'double') {
+                // MODIFIED: A double rack's components are bayDepth (config)
                 const rack1_w_canvas = bayDepth * scale; // bayDepth is single rack depth
                 const flue_w_canvas = flueSpace * scale;
                 const rack2_x_canvas = rackX_canvas + rack1_w_canvas + flue_w_canvas;
@@ -213,7 +225,7 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
             ctx.strokeRect(rackX_canvas, rackY_canvas_start, rackWidth_canvas, rackHeight_canvas);
 
         } else if (rackType === 'double') {
-            // This 'bayDepth' is the single rack depth from the new calculation
+            // MODIFIED: A double rack's components are bayDepth (config)
             const rack1_width_canvas = bayDepth * scale;
             const flue_width_canvas = flueSpace * scale;
             const rack2_width_canvas = bayDepth * scale;
@@ -413,7 +425,7 @@ export function drawWarehouse(sysLength, sysWidth, sysHeight, config) {
     const toteWidth = config['tote-width'] || 0;
     const toteLength = config['tote-length'] || 0;
     const toteQtyPerBay = config['tote-qty-per-bay'] || 1;
-    const totesDeep = config['totes-deep'] || 1;
+    const totesDeep = config['totes-deep'] || 1; // This is config totes-deep
     const toteToToteDist = config['tote-to-tote-dist'] || 0;
     const toteToUprightDist = config['tote-to-upright-dist'] || 0;
     const toteBackToBackDist = config['tote-back-to-back-dist'] || 0;
@@ -444,13 +456,18 @@ export function drawWarehouse(sysLength, sysWidth, sysHeight, config) {
         (Math.max(0, toteQtyPerBay - 1) * toteToToteDist);
 
     // --- Bay Depth (vertical) for a SINGLE rack ---
-    const bayDepth = (totesDeep * toteWidth) +
+    // MODIFIED: Calculate both depths
+    const configBayDepth = (totesDeep * toteWidth) +
         (Math.max(0, totesDeep - 1) * toteBackToBackDist) +
+        hookAllowance;
+        
+    const singleBayDepth = (1 * toteWidth) +
+        (Math.max(0, 1 - 1) * toteBackToBackDist) +
         hookAllowance;
 
     // --- Run Layout Calculation ---
     // MODIFIED: Call calculateLayout with new params
-    const layout = calculateLayout(bayDepth, aisleWidth, sysLength, sysWidth, layoutMode, flueSpace, setbackTop, setbackBottom, setbackLeft, setbackRight, uprightLength, clearOpening, considerTunnels);
+    const layout = calculateLayout(configBayDepth, singleBayDepth, aisleWidth, sysLength, sysWidth, layoutMode, flueSpace, setbackTop, setbackBottom, setbackLeft, setbackRight, uprightLength, clearOpening, considerTunnels);
 
     // --- Calculate Scaling and Centering for the content itself (independent of zoom/pan) ---
     const contentPadding = 80; // Generous padding for dimensions
@@ -529,7 +546,8 @@ export function drawWarehouse(sysLength, sysWidth, sysHeight, config) {
     // MODIFIED: Pass new params to drawParams
     const drawParams = {
         ctx: warehouseCtx, scale: contentScale, offsetX, offsetY, // Use contentScale here
-        bayDepth, // Pass calculated single rack depth
+        bayDepth: configBayDepth, // Pass calculated *config* rack depth
+        singleBayDepth: singleBayDepth, // <<< ADD THIS
         flueSpace, sysLength,
         usableLength_world: layout.usableLength,
         totalRackLength_world: layout.totalRackLength_world, // NEW
@@ -553,7 +571,7 @@ export function drawWarehouse(sysLength, sysWidth, sysHeight, config) {
     // Draw layout items (racks and aisles)
     layout.layoutItems.forEach(item => {
         if (item.type === 'rack') {
-            // drawRack 'bayDepth' param is rackDepth_world
+            // drawRack 'rackDepth_world' param is item.width
             drawRack(item.x, item.width, item.rackType, drawParams);
         }
         // We don't visually draw aisles, they are the empty space

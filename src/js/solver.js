@@ -211,7 +211,7 @@ function exportResultsToJSON() {
     const toteWidth = config['tote-width'] || 0;
     const toteLength = config['tote-length'] || 0;
     const toteQtyPerBay = config['tote-qty-per-bay'] || 1;
-    const totesDeep = config['totes-deep'] || 1;
+    const totesDeep = config['totes-deep'] || 1; // This is config totes deep
     const toteToToteDist = config['tote-to-tote-dist'] || 0;
     const toteToUprightDist = config['tote-to-upright-dist'] || 0;
     const toteBackToBackDist = config['tote-back-to-back-dist'] || 0;
@@ -232,12 +232,18 @@ function exportResultsToJSON() {
         (2 * toteToUprightDist) +
         (Math.max(0, toteQtyPerBay - 1) * toteToToteDist);
 
-    const bayDepth = (totesDeep * toteWidth) +
+    // MODIFIED: Calculate both depths
+    const configBayDepth = (totesDeep * toteWidth) +
         (Math.max(0, totesDeep - 1) * toteBackToBackDist) +
+        hookAllowance;
+        
+    const singleBayDepth = (1 * toteWidth) +
+        (Math.max(0, 1 - 1) * toteBackToBackDist) +
         hookAllowance;
 
     // --- Run Layout Calculation ---
-    const layout = calculateLayout(bayDepth, aisleWidth, sysLength, sysWidth, layoutMode, flueSpace, setbackTop, setbackBottom, setbackLeft, setbackRight, uprightLength, clearOpening, considerTunnels);
+    // MODIFIED: Pass both depths
+    const layout = calculateLayout(configBayDepth, singleBayDepth, aisleWidth, sysLength, sysWidth, layoutMode, flueSpace, setbackTop, setbackBottom, setbackLeft, setbackRight, uprightLength, clearOpening, considerTunnels);
 
     // --- Generate Tunnel/Backpack Sets (from drawWarehouse) ---
     let tunnelPositions = new Set();
@@ -302,7 +308,8 @@ function exportResultsToJSON() {
             const final_y = setbackTop + bay_y_center;
             
             // Calculate X coordinate for Rack 1
-            const bay_x_center_rack1 = layoutOffsetX_world + item.x + (bayDepth / 2);
+            // MODIFIED: A single rack's center is based on item.width (which is singleBayDepth or configBayDepth)
+            const bay_x_center_rack1 = layoutOffsetX_world + item.x + (item.width / 2);
             const final_x_rack1 = setbackLeft + bay_x_center_rack1;
 
             outputBays.push({
@@ -313,7 +320,8 @@ function exportResultsToJSON() {
 
             // Calculate X coordinate for Rack 2 if it's a double
             if (item.rackType === 'double') {
-                const bay_x_center_rack2 = layoutOffsetX_world + item.x + bayDepth + flueSpace + (bayDepth / 2);
+                // MODIFIED: A double rack's components are *always* configBayDepth
+                const bay_x_center_rack2 = layoutOffsetX_world + item.x + configBayDepth + flueSpace + (configBayDepth / 2);
                 const final_x_rack2 = setbackLeft + bay_x_center_rack2;
                 
                 outputBays.push({

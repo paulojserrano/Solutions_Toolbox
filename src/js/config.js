@@ -118,8 +118,8 @@ export const configurations = {
         "beam-width": 60,
         "min-clearance": 40,
         "overhead-clearance": 915,
-        "sprinkler-threshold": 4000,
-        "sprinkler-clearance": 500,
+        "sprinkler-threshold": 4572,
+        "sprinkler-clearance": 200,
         "max-perf-density": 1.2, // REQ 4: Added
     },
     "hps3-e2-650-td": {
@@ -173,8 +173,8 @@ export const configurations = {
         "beam-width": 60,
         "min-clearance": 40,
         "overhead-clearance": 915,
-        "sprinkler-threshold": 4000,
-        "sprinkler-clearance": 500,
+        "sprinkler-threshold": 4572,
+        "sprinkler-clearance": 200,
         "max-perf-density": 0.65, // REQ 4: Added
     },
     "hps3-e2-850-dd": {
@@ -228,9 +228,64 @@ export const configurations = {
         "beam-width": 60,
         "min-clearance": 40,
         "overhead-clearance": 915,
-        "sprinkler-threshold": 4000,
+        "sprinkler-threshold": 4572,
         "sprinkler-clearance": 500,
         "max-perf-density": 1, // REQ 4: Added
+    },
+    "HPC": {
+        "name": "HPC - Single Deep",
+        // NEW: Grouped LISP export properties
+        "lispExportProps": {
+            "standard": {
+                "blockName": "HPS3-E2-850-DD-STD",
+                "color": 256,
+                "rotation": 0,
+                "xOffset": 0,
+                "yOffset": 0
+            },
+            "backpack": {
+                "blockName": "HPS3-E2-850-DD-BP",
+                "color": 5,
+                "rotation": 0,
+                "xOffset": 0,
+                "yOffset": 0
+            },
+            "tunnel": {
+                "blockName": "HPS3-E2-850-DD-TUN",
+                "color": 2,
+                "rotation": 90,
+                "xOffset": 0,
+                "yOffset": 0
+            }
+        },
+        "dynamicPropName": "BayType", // NEW: For LISP export
+        "layout-mode": "all-singles",
+        "top-setback": 1000,
+        "bottom-setback": 3000,
+        "setback-left": 200, // NEW
+        "setback-right": 200, // NEW
+        "considerTunnels": false, // NEW
+        "considerBackpacks": false, // NEW
+        "tote-width": 650,
+        "tote-length": 450,
+        "tote-height": 300,
+        "tote-qty-per-bay": 3, // Example change
+        "totes-deep": 2,
+        "tote-to-tote-dist": 140, // Example change
+        "tote-to-upright-dist": 25, // Example change
+        "tote-back-to-back-dist": 30,
+        "upright-length": 90, // Example change
+        "upright-width": 70, // Example change
+        "hook-allowance": 0,
+        "aisle-width": 900, // Example change
+        "rack-flue-space": 150,
+        "base-beam-height": 900,
+        "beam-width": 60,
+        "min-clearance": 40,
+        "overhead-clearance": 915,
+        "sprinkler-threshold": 4572,
+        "sprinkler-clearance": 200,
+        "max-perf-density": 2.5, // REQ 4: Added
     },
     "hps3-e2-850-td": {
         "name": "HPS3-E2 - 850x650x400 - Triple Deep",

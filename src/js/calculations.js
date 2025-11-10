@@ -5,8 +5,8 @@ import { roundUpTo50, parseNumber } from './utils.js'; // Added parseNumber
 
 // --- Layout Calculation Function (Top-Down) ---
 // MODIFIED: Signature changed.
-// Added setbackLeft, setbackRight, considerTunnels
-export function calculateLayout(bayDepth, aisleWidth, sysLength, sysWidth, layoutMode, flueSpace, setbackTop, setbackBottom, setbackLeft, setbackRight, uprightLength, clearOpening, considerTunnels = false) {
+// Changed bayDepth to configBayDepth and added singleBayDepth
+export function calculateLayout(configBayDepth, singleBayDepth, aisleWidth, sysLength, sysWidth, layoutMode, flueSpace, setbackTop, setbackBottom, setbackLeft, setbackRight, uprightLength, clearOpening, considerTunnels = false) {
     let layoutItems = [];
     let currentX_world = 0;
 
@@ -39,30 +39,53 @@ export function calculateLayout(bayDepth, aisleWidth, sysLength, sysWidth, layou
     // --- END MODIFICATION ---
 
     if (layoutMode === 'all-singles') {
-        const rackWidth = bayDepth; // bayDepth is the calculated single rack depth
-        // MODIFIED: Check against usableWidth
-        if (usableWidth >= rackWidth) {
-            layoutItems.push({ type: 'rack', x: 0, width: rackWidth, rackType: 'single' });
-            // totalBays += numStorageBays; // This will be calculated at the end
-            currentX_world += rackWidth;
-        } else {
+        // NEW LOGIC: First and last racks are singleBayDepth, middle are configBayDepth
+        const singleRackWidth = singleBayDepth;
+        const configRackWidth = configBayDepth;
+
+        // 1. Try to add first [Single Rack]
+        if (usableWidth < singleRackWidth) {
             // Not enough room for even one rack
             return { layoutItems: [], totalBays: 0, totalLayoutWidth: 0, usableLength: 0, baysPerRack: 0, clearOpening: 0, totalRackLength_world: 0 };
         }
+        
+        layoutItems.push({ type: 'rack', x: 0, width: singleRackWidth, rackType: 'single' });
+        currentX_world += singleRackWidth;
 
-        // MODIFIED: Check against usableWidth
-        while (currentX_world + aisleWidth + rackWidth <= usableWidth) {
-            layoutItems.push({ type: 'aisle', x: currentX_world, width: aisleWidth });
-            currentX_world += aisleWidth;
-
-            layoutItems.push({ type: 'rack', x: currentX_world, width: rackWidth, rackType: 'single' });
-            // totalBays += numStorageBays;
-            currentX_world += rackWidth;
+        // 2. Loop, adding [Aisle] + [Config Rack]s in the middle
+        while (true) {
+            // Check if we have space for a final [Aisle] + [Single Rack]
+            if (currentX_world + aisleWidth + singleRackWidth <= usableWidth) {
+                // We have space for at least one more rack.
+                
+                // Check if we have space to add an [Aisle] + [Config Rack] AND still fit the final [Aisle] + [Single Rack]
+                if (currentX_world + aisleWidth + configRackWidth + aisleWidth + singleRackWidth <= usableWidth) {
+                    // Yes, add the [Aisle] + [Config Rack]
+                    layoutItems.push({ type: 'aisle', x: currentX_world, width: aisleWidth });
+                    currentX_world += aisleWidth;
+                    layoutItems.push({ type: 'rack', x: currentX_world, width: configRackWidth, rackType: 'single' });
+                    currentX_world += configRackWidth;
+                    // ... and continue the loop
+                } else {
+                    // We can't fit a config rack. We must just add the final [Aisle] + [Single Rack] and break.
+                    layoutItems.push({ type: 'aisle', x: currentX_world, width: aisleWidth });
+                    currentX_world += aisleWidth;
+                    layoutItems.push({ type: 'rack', x: currentX_world, width: singleRackWidth, rackType: 'single' });
+                    currentX_world += singleRackWidth;
+                    break; // This is the last rack
+                }
+            } else {
+                // We can't even fit the final [Aisle] + [Single Rack].
+                // This means the first rack we added is the *only* rack.
+                // We are done.
+                break;
+            }
         }
     }
     else if (layoutMode === 's-d-s') {
-        const singleRackWidth = bayDepth; // calculated single rack depth
-        const doubleRackWidth = (bayDepth * 2) + flueSpace; // flueSpace is RACK flue
+        // REVERTED: 'single' racks in s-d-s now use the configBayDepth, not singleBayDepth
+        const singleRackWidth = configBayDepth;
+        const doubleRackWidth = (configBayDepth * 2) + flueSpace;
 
         // 1. Try to add first [Single Rack]
         // MODIFIED: Check against usableWidth
@@ -75,31 +98,33 @@ export function calculateLayout(bayDepth, aisleWidth, sysLength, sysWidth, layou
         }
 
         // 2. Loop, adding [Aisle] + [Double Rack]
-        // MODIFIED: Check against usableWidth
-        while (currentX_world + aisleWidth + doubleRackWidth <= usableWidth) {
-             // Check if we can fit the *next* single rack after this double
-            if (currentX_world + aisleWidth + doubleRackWidth + aisleWidth + singleRackWidth > usableWidth) {
-                // We can't fit the repeating s-d-s pattern.
-                // But maybe we can fit just the d part?
-                if (currentX_world + aisleWidth + doubleRackWidth <= usableWidth) {
-                     // This is fine, we'll add it and break
-                } else {
-                    break; // Can't even fit the double, so stop
-                }
+        // --- MODIFICATION START ---
+        // This loop now checks if adding an [A][D] unit will *prevent*
+        // the final [A][S] unit from fitting.
+        while (true) {
+            // Check if we can fit the next unit [A][D]
+            const nextUnitEndX = currentX_world + aisleWidth + doubleRackWidth;
+            
+            if (nextUnitEndX > usableWidth) {
+                break; // Can't even fit the next [A][D], so stop
             }
 
+            // Now, check if, *after* adding this unit, we can *still* fit the final [A][S]
+            if (nextUnitEndX + aisleWidth + singleRackWidth > usableWidth) {
+                // This [A][D] fits, but it's the last one. It would prevent the final [A][S].
+                // So, don't add it. Just break and let the final [A][S] be added later.
+                break; 
+            }
+            
+            // If we get here, [A][D] fits AND there's room for the final [A][S] after it.
+            // So, add the [A][D].
             layoutItems.push({ type: 'aisle', x: currentX_world, width: aisleWidth });
             currentX_world += aisleWidth;
 
             layoutItems.push({ type: 'rack', x: currentX_world, width: doubleRackWidth, rackType: 'double' });
-            // totalBays += (numStorageBays * 2); // Double rack has two rows of bays
             currentX_world += doubleRackWidth;
-            
-            // If we've hit the condition where the next single won't fit, break now
-            if (currentX_world + aisleWidth + singleRackWidth > usableWidth) {
-                break;
-            }
         }
+        // --- MODIFICATION END ---
 
         // 3. Try to add final [Aisle] + [Single Rack]
         // MODIFIED: Check against usableWidth
@@ -117,6 +142,11 @@ export function calculateLayout(bayDepth, aisleWidth, sysLength, sysWidth, layou
     }
 
     // NEW: Calculate totalBays (total storage bays) at the end
+    // MODIFICATION: This logic is now complex because rack widths vary.
+    // We need to pass the tote-deep value for *each* rack.
+    // FOR NOW: This calculation is slightly incorrect if a mix of depths is used,
+    // as totalStorageBays assumes all racks have the same numStorageBays.
+    // This is a limitation of the current structure.
     let totalStorageBays = 0;
     for (const item of layoutItems) {
         if (item.type === 'rack') {
@@ -274,7 +304,7 @@ export function getMetrics(sysLength, sysWidth, sysHeight, config) {
     const toteLength = config['tote-length'] || 0;
     const toteHeight = config['tote-height'] || 0; // NEW
     const toteQtyPerBay = config['tote-qty-per-bay'] || 1;
-    const totesDeep = config['totes-deep'] || 1;
+    const totesDeep = config['totes-deep'] || 1; // This is the "config" totes deep
     const toteToToteDist = config['tote-to-tote-dist'] || 0;
     const toteToUprightDist = config['tote-to-upright-dist'] || 0;
     const toteBackToBackDist = config['tote-back-to-back-dist'] || 0;
@@ -301,13 +331,19 @@ export function getMetrics(sysLength, sysWidth, sysHeight, config) {
         (2 * toteToUprightDist) +
         (Math.max(0, toteQtyPerBay - 1) * toteToToteDist);
 
-    const bayDepth = (totesDeep * toteWidth) +
+    // MODIFIED: This is the "config" bay depth
+    const configBayDepth = (totesDeep * toteWidth) +
         (Math.max(0, totesDeep - 1) * toteBackToBackDist) +
+        hookAllowance;
+        
+    // NEW: Calculate single-deep bay depth (based on 1 tote deep)
+    const singleBayDepth = (1 * toteWidth) +
+        (Math.max(0, 1 - 1) * toteBackToBackDist) +
         hookAllowance;
 
     // --- 4. Calculate Layout (Total Bays) ---
-    // MODIFIED: Pass uprightLength, clearOpening, setbacks, and tunnel flag
-    const layout = calculateLayout(bayDepth, aisleWidth, sysLength, sysWidth, layoutMode, flueSpace, setbackTop, setbackBottom, setbackLeft, setbackRight, uprightLength, clearOpening, considerTunnels);
+    // MODIFIED: Pass configBayDepth and singleBayDepth
+    const layout = calculateLayout(configBayDepth, singleBayDepth, aisleWidth, sysLength, sysWidth, layoutMode, flueSpace, setbackTop, setbackBottom, setbackLeft, setbackRight, uprightLength, clearOpening, considerTunnels);
     
     // --- NEW: Calculate number of rows ---
     const numRows = (layout.baysPerRack > 0 && layout.totalBays > 0) ? (layout.totalBays / (layout.baysPerRack - (considerTunnels ? Math.floor(layout.baysPerRack / 9) : 0))) : 0;
