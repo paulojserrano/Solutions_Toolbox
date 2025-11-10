@@ -10,6 +10,10 @@ export const configTemplate = {
     "layout-mode": "s-d-s",
     "top-setback": 3000,
     "bottom-setback": 3000,
+    "setback-left": 1500, // NEW
+    "setback-right": 1500, // NEW
+    "considerTunnels": true, // NEW
+    "considerBackpacks": true, // NEW
     "tote-width": 400,
     "tote-length": 600,
     "tote-height": 320,
@@ -41,6 +45,10 @@ export const configurations = {
         "layout-mode": "s-d-s",
         "top-setback": 3000,
         "bottom-setback": 3000,
+        "setback-left": 1500, // NEW
+        "setback-right": 1500, // NEW
+        "considerTunnels": true, // NEW
+        "considerBackpacks": true, // NEW
         "tote-width": 650,
         "tote-length": 450,
         "tote-height": 300,
@@ -67,6 +75,10 @@ export const configurations = {
         "layout-mode": "s-d-s",
         "top-setback": 3000,
         "bottom-setback": 3000,
+        "setback-left": 1500, // NEW
+        "setback-right": 1500, // NEW
+        "considerTunnels": true, // NEW
+        "considerBackpacks": true, // NEW
         "tote-width": 650,
         "tote-length": 450,
         "tote-height": 300,
@@ -93,6 +105,10 @@ export const configurations = {
         "layout-mode": "s-d-s",
         "top-setback": 3000,
         "bottom-setback": 3000,
+        "setback-left": 1500, // NEW
+        "setback-right": 1500, // NEW
+        "considerTunnels": true, // NEW
+        "considerBackpacks": true, // NEW
         "tote-width": 850,
         "tote-length": 650,
         "tote-height": 400,
@@ -119,6 +135,10 @@ export const configurations = {
         "layout-mode": "s-d-s",
         "top-setback": 3000,
         "bottom-setback": 3000,
+        "setback-left": 1500, // NEW
+        "setback-right": 1500, // NEW
+        "considerTunnels": true, // NEW
+        "considerBackpacks": true, // NEW
         "tote-width": 850,
         "tote-length": 650,
         "tote-height": 400,

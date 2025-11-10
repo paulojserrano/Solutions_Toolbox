@@ -130,3 +130,31 @@
             color: #334155; /* slate-700 */
         }
         
+        /* --- NEW: Metrics Table Styles --- */
+        .metric-table {
+            table-layout: fixed;
+            width: 100%;
+            font-size: 0.875rem; /* text-sm */
+        }
+        .metric-table th, .metric-table td {
+            padding: 0.5rem 0.25rem; /* py-2 px-1 */
+            text-align: right;
+        }
+        .metric-table th:first-child, .metric-table td:first-child {
+            text-align: left;
+            font-weight: 600;
+            color: #475569; /* slate-600 */
+        }
+        .metric-table thead th {
+            border-bottom: 1px solid #cbd5e1; /* slate-300 */
+            font-weight: 600;
+            color: #1e293b; /* slate-800 */
+        }
+        .metric-table tbody tr.total-row td {
+            border-top: 1px solid #cbd5e1; /* slate-300 */
+            font-weight: 700;
+            color: #1e293b; /* slate-800 */
+        }
+        .metric-table .total-col {
+            font-weight: 700;
+        }

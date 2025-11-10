@@ -159,6 +159,57 @@
                             Apply to Configuration
                         </button>
                     </div>
+
+                    <!-- MOVED: Layout Metrics Table -->
+                    <h2 class="text-lg font-semibold text-slate-900 border-b border-slate-300 pb-3 mb-4 mt-8">
+                        Layout Metrics
+                    </h2>
+                    <div class="space-y-4">
+                        <!-- NEW TABLE STRUCTURE -->
+                        <table class="metric-table">
+                            <thead>
+                                <tr>
+                                    <th>Bay Type</th>
+                                    <th>Locs / Level</th>
+                                    <th>Levels</th>
+                                    <th>Num. Bays</th>
+                                    <th class="total-col">Total Locs</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Standard</td>
+                                    <td><span id="metric-std-locs-lvl">0</span></td>
+                                    <td><span id="metric-std-levels">0</span></td>
+                                    <td><span id="metric-std-bays">0</span></td>
+                                    <td class="total-col"><span id="metric-std-locs-total">0</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Backpack</td>
+                                    <td><span id="metric-bp-locs-lvl">0</span></td>
+                                    <td><span id="metric-bp-levels">0</span></td>
+                                    <td><span id="metric-bp-bays">0</span></td>
+                                    <td class="total-col"><span id="metric-bp-locs-total">0</span></td>
+                                </tr>
+                                <tr>
+                                    <td>Tunnel</td>
+                                    <td><span id="metric-tun-locs-lvl">0</span></td>
+                                    <td><span id="metric-tun-levels">0</span></td>
+                                    <td><span id="metric-tun-bays">0</span></td>
+                                    <td class="total-col"><span id="metric-tun-locs-total">0</span></td>
+                                </tr>
+                                 <tr class="total-row">
+                                    <td class="font-bold">Total</td>
+                                    <td class="total-col">—</td>
+                                    <td class="total-col">—</td>
+                                    <td class="total-col"><span id="metric-tot-bays">0</span></td>
+                                    <td class="total-col"><span id="metric-tot-locs-total">0</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <!-- END: Layout Metrics Table -->
+                    </div>
+
                 </section>
 
             </div>
@@ -175,10 +226,11 @@
                     </div>
                 </div>
 
-                <div class="flex-1 grid grid-cols-1 lg:grid-cols-2 lg:grid-rows-2 gap-4 overflow-hidden">
+                <!-- MODIFIED: Visualization Layout -->
+                <div class="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 overflow-hidden">
             
-                    <!-- Row 1: Top-Down View (spans 2 cols on large screens) -->
-                    <div class="flex flex-col h-full bg-slate-50 rounded-md overflow-hidden border border-slate-200 lg:col-span-2">
+                    <!-- Row 1: Top-Down View (Full Width) -->
+                    <div class="flex flex-col h-full bg-slate-50 rounded-md overflow-hidden border border-slate-200 lg:col-span-2 lg:row-span-1">
                         <h3 class="text-sm font-semibold text-slate-700 bg-slate-100 px-3 py-2 border-b border-slate-200">
                             Top-Down View
                         </h3>
@@ -187,8 +239,8 @@
                         </div>
                     </div>
                     
-                    <!-- Row 2, Col 1: Elevation View -->
-                    <div class="flex flex-col h-full bg-slate-50 rounded-md overflow-hidden border border-slate-200">
+                    <!-- Row 2, Col 1: Elevation View (Half Width) -->
+                    <div class="flex flex-col h-full bg-slate-50 rounded-md overflow-hidden border border-slate-200 lg:col-span-1 lg:row-span-1">
                         <h3 class="text-sm font-semibold text-slate-700 bg-slate-100 px-3 py-2 border-b border-slate-200">
                             Elevation View
                         </h3>
@@ -197,8 +249,8 @@
                         </div>
                     </div>
     
-                    <!-- Row 2, Col 2: Rack Detail View -->
-                    <div class="flex flex-col h-full bg-slate-50 rounded-md overflow-hidden border border-slate-200">
+                    <!-- Row 2, Col 2: Rack Detail View (Half Width) -->
+                    <div class="flex flex-col h-full bg-slate-50 rounded-md overflow-hidden border border-slate-200 lg:col-span-1 lg:row-span-1">
                          <h3 class="text-sm font-semibold text-slate-700 bg-slate-100 px-3 py-2 border-b border-slate-200">
                             Rack Detail View
                         </h3>

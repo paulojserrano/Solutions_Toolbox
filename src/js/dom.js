@@ -59,3 +59,23 @@ export const runAllOptionsContainer = document.getElementById('runAllOptionsCont
 export const runAllOptionsButton = document.getElementById('runAllOptionsButton');
 export const runAllStatus = document.getElementById('runAllStatus');
 export const comparisonResultsContainer = document.getElementById('comparisonResultsContainer');
+
+// --- NEW: Layout Metrics Table Elements ---
+// Standard Row
+export const metricStdLocsLvl = document.getElementById('metric-std-locs-lvl');
+export const metricStdLevels = document.getElementById('metric-std-levels');
+export const metricStdBays = document.getElementById('metric-std-bays');
+export const metricStdLocsTotal = document.getElementById('metric-std-locs-total');
+// Backpack Row
+export const metricBpLocsLvl = document.getElementById('metric-bp-locs-lvl');
+export const metricBpLevels = document.getElementById('metric-bp-levels');
+export const metricBpBays = document.getElementById('metric-bp-bays');
+export const metricBpLocsTotal = document.getElementById('metric-bp-locs-total');
+// Tunnel Row
+export const metricTunLocsLvl = document.getElementById('metric-tun-locs-lvl');
+export const metricTunLevels = document.getElementById('metric-tun-levels');
+export const metricTunBays = document.getElementById('metric-tun-bays');
+export const metricTunLocsTotal = document.getElementById('metric-tun-locs-total');
+// Total Row
+export const metricTotBays = document.getElementById('metric-tot-bays');
+export const metricTotLocsTotal = document.getElementById('metric-tot-locs-total');

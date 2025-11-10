@@ -44,6 +44,10 @@ function createParamHTML(label, value, unit = '') {
     if (label === "Layout Mode") {
         value = value === 's-d-s' ? 'Single-Double-Single' : 'All Singles';
     }
+    // Format booleans
+    else if (typeof value === 'boolean') {
+        value = value ? 'Yes' : 'No';
+    }
     // Format numbers
     else if (typeof value === 'number') {
         // Special case for Max Perf. Density (allow decimals)
@@ -111,14 +115,16 @@ function buildReadOnlyConfigPage() {
                             ${createParamHTML("Rack Flue Space", config['rack-flue-space'], 'mm')}
                             ${createParamHTML("Top Setback", config['top-setback'], 'mm')}
                             ${createParamHTML("Bottom Setback", config['bottom-setback'], 'mm')}
+                            ${createParamHTML("Left Setback", config['setback-left'], 'mm')}
+                            ${createParamHTML("Right Setback", config['setback-right'], 'mm')}
                             ${createParamHTML("Layout Mode", config['layout-mode'])}
                         </div>
                     </div>
 
-                    <!-- Col 3: Vertical -->
+                    <!-- Col 3: Vertical & Logic -->
                     <div>
                         <h4 class="text-base font-semibold text-slate-900 mb-3">
-                            3. Vertical
+                            3. Vertical & Logic
                         </h4>
                         <div class="space-y-3">
                             ${createParamHTML("Base Beam Height", config['base-beam-height'], 'mm')}
@@ -128,6 +134,8 @@ function buildReadOnlyConfigPage() {
                             ${createParamHTML("Sprinkler Threshold", config['sprinkler-threshold'], 'mm')}
                             ${createParamHTML("Sprinkler Clearance", config['sprinkler-clearance'], 'mm')}
                             ${createParamHTML("Max Perf. Density", config['max-perf-density'])}
+                            ${createParamHTML("Consider Tunnels", config['considerTunnels'])}
+                            ${createParamHTML("Consider Backpacks", config['considerBackpacks'])}
                         </div>
                     </div>
 
