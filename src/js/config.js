@@ -7,6 +7,9 @@ as a template for creating new configurations.
 // This object is a template for creating new configs.
 export const configTemplate = {
     "name": "TEMPLATE: System - ToteSize - Depth",
+    "layout-mode": "s-d-s",
+    "top-setback": 3000,
+    "bottom-setback": 3000,
     "tote-width": 400,
     "tote-length": 600,
     "tote-height": 320,
@@ -19,7 +22,7 @@ export const configTemplate = {
     "upright-width": 100,
     "hook-allowance": 0,
     "aisle-width": 2400,
-    "flue-space": 150,
+    "rack-flue-space": 150,
     "base-beam-height": 150,
     "beam-width": 127,
     "min-clearance": 100,
@@ -35,6 +38,9 @@ export const configTemplate = {
 export const configurations = {
     "hps3-e2-650-dd": {
         "name": "HPS3-E2 - 650x450x300 - Double Deep",
+        "layout-mode": "s-d-s",
+        "top-setback": 3000,
+        "bottom-setback": 3000,
         "tote-width": 650,
         "tote-length": 450,
         "tote-height": 300,
@@ -45,19 +51,22 @@ export const configurations = {
         "tote-back-to-back-dist": 0,
         "upright-length": 90,
         "upright-width": 70,
-        "hook-allowance": 90,
-        "aisle-width": 1500,
-        "flue-space": 150,
-        "base-beam-height": 430,
-        "beam-width": 60,
+    "hook-allowance": 90,
+    "aisle-width": 1500,
+    "rack-flue-space": 150,
+    "base-beam-height": 430,
+    "beam-width": 60,
         "min-clearance": 40,
         "overhead-clearance": 915,
         "sprinkler-threshold": 4000,
         "sprinkler-clearance": 500,
-        "max-perf-density": 50, // REQ 4: Added
+        "max-perf-density": 1.2, // REQ 4: Added
     },
     "hps3-e2-650-td": {
         "name": "HPS3-E2 - 650x450x300 - Triple Deep",
+        "layout-mode": "s-d-s",
+        "top-setback": 3000,
+        "bottom-setback": 3000,
         "tote-width": 650,
         "tote-length": 450,
         "tote-height": 300,
@@ -68,19 +77,22 @@ export const configurations = {
         "tote-back-to-back-dist": 0,
         "upright-length": 90,
         "upright-width": 70,
-        "hook-allowance": 90,
-        "aisle-width": 1500,
-        "flue-space": 150,
-        "base-beam-height": 430,
-        "beam-width": 60,
+    "hook-allowance": 90,
+    "aisle-width": 1500,
+    "rack-flue-space": 150,
+    "base-beam-height": 430,
+    "beam-width": 60,
         "min-clearance": 40,
         "overhead-clearance": 915,
         "sprinkler-threshold": 4000,
         "sprinkler-clearance": 500,
-        "max-perf-density": 50, // REQ 4: Added
+        "max-perf-density": 0.65, // REQ 4: Added
     },
     "hps3-e2-850-dd": {
         "name": "HPS3-E2 - 850x650x400 - Double Deep",
+        "layout-mode": "s-d-s",
+        "top-setback": 3000,
+        "bottom-setback": 3000,
         "tote-width": 850,
         "tote-length": 650,
         "tote-height": 400,
@@ -91,19 +103,22 @@ export const configurations = {
         "tote-back-to-back-dist": 0,
         "upright-length": 100, // Example change
         "upright-width": 80, // Example change
-        "hook-allowance": 90,
-        "aisle-width": 1600, // Example change
-        "flue-space": 150,
-        "base-beam-height": 430,
-        "beam-width": 60,
+    "hook-allowance": 90,
+    "aisle-width": 1600, // Example change
+    "rack-flue-space": 150,
+    "base-beam-height": 430,
+    "beam-width": 60,
         "min-clearance": 40,
         "overhead-clearance": 915,
         "sprinkler-threshold": 4000,
         "sprinkler-clearance": 500,
-        "max-perf-density": 50, // REQ 4: Added
+        "max-perf-density": 1, // REQ 4: Added
     },
     "hps3-e2-850-td": {
         "name": "HPS3-E2 - 850x650x400 - Triple Deep",
+        "layout-mode": "s-d-s",
+        "top-setback": 3000,
+        "bottom-setback": 3000,
         "tote-width": 850,
         "tote-length": 650,
         "tote-height": 400,
@@ -114,16 +129,16 @@ export const configurations = {
         "tote-back-to-back-dist": 0,
         "upright-length": 100,
         "upright-width": 80,
-        "hook-allowance": 90,
-        "aisle-width": 1600,
-        "flue-space": 150,
-        "base-beam-height": 430,
-        "beam-width": 60,
+    "hook-allowance": 90,
+    "aisle-width": 1600,
+    "rack-flue-space": 150,
+    "base-beam-height": 430,
+    "beam-width": 60,
         "min-clearance": 40,
         "overhead-clearance": 915,
         "sprinkler-threshold": 4000,
         "sprinkler-clearance": 500,
-        "max-perf-density": 50, // REQ 4: Added
+        "max-perf-density": 0.4, // REQ 4: Added
     }
     // Add more configurations here following the same pattern
 };
