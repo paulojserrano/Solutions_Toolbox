@@ -1,11 +1,17 @@
 import {
     warehouseCtx, rackDetailCtx, elevationCtx,
-    // --- REMOVED ALL CONFIG INPUTS ---
-    // --- KEPT GLOBAL INPUTS ---
-    setbackTopInput, setbackBottomInput, layoutModeSelect,
-    // REQ 3 & 5: Removed all summary and performance inputs
-    warehouseCanvas, rackDetailCanvas, elevationCanvas,
-    detailViewToggle
+    toteWidthInput, toteLengthInput, toteQtyPerBayInput, totesDeepSelect,
+    toteToToteDistInput, toteToUprightDistInput, toteBackToBackDistInput,
+    uprightLengthInput, uprightWidthInput, hookAllowanceInput,
+    aisleWidthInput, systemLengthInput, systemWidthInput,
+    setbackTopInput, setbackBottomInput, layoutModeSelect, flueSpaceInput,
+    inboundPPHInput, outboundPPHInput, inboundWSRateInput, outboundWSRateInput,
+    summaryTotalBays, summaryFootprint, summaryPerfDensity,
+    summaryInboundWS, summaryOutboundWS, clearHeightInput,
+    baseBeamHeightInput, beamWidthInput, toteHeightInput, minClearanceInput,
+    overheadClearanceInput, sprinklerClearanceInput, sprinklerThresholdInput,
+    summaryMaxLevels, warehouseCanvas, rackDetailCanvas, elevationCanvas,
+    detailViewToggle // NEW: Import toggle
 } from './dom.js';
 import { parseNumber } from './utils.js';
 import { calculateLayout, calculateElevationLayout } from './calculations.js';
@@ -303,9 +309,35 @@ export function drawWarehouse(sysLength, sysWidth, sysHeight, config) {
     // --- Run Layout Calculation ---
     const layout = calculateLayout(bayWidth, bayDepth, aisleWidth, sysLength, sysWidth, layoutMode, flueSpace, setbackTop, setbackBottom);
 
-    // --- REQ 3: Update Results Panel removed ---
+    // --- Update Results Panel ---
+    calculationResults.totalBays = layout.totalBays; // Update global state
+    summaryTotalBays.textContent = layout.totalBays.toLocaleString('en-US');
 
-    // ... (Scaling and Centering - no changes) ...
+    // Get performance values
+    const inboundPPH = parseNumber(inboundPPHInput.value) || 0;
+    const outboundPPH = parseNumber(outboundPPHInput.value) || 0;
+    // Get WS Rates
+    const inboundWSRate = parseNumber(inboundWSRateInput.value) || 0;
+    const outboundWSRate = parseNumber(outboundWSRateInput.value) || 0;
+
+    // Calculate Footprint
+    const footprintM2 = (sysLength / 1000) * (sysWidth / 1000);
+    summaryFootprint.textContent = footprintM2.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+    // Calculate Performance Density
+    const totalPPH = inboundPPH + outboundPPH;
+    const perfDensity = (footprintM2 > 0) ? totalPPH / footprintM2 : 0;
+    summaryPerfDensity.textContent = perfDensity.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    // --- Solver Calculation ---
+    const reqInboundWS = (inboundWSRate > 0) ? Math.ceil(inboundPPH / inboundWSRate) : 0;
+    const reqOutboundWS = (outboundWSRate > 0) ? Math.ceil(outboundPPH / outboundWSRate) : 0;
+    summaryInboundWS.textContent = reqInboundWS.toLocaleString('en-US');
+    summaryOutboundWS.textContent = reqOutboundWS.toLocaleString('en-US');
+
+    // --- Calculate Scaling and Centering for the content itself (independent of zoom/pan) ---
+    // This scale is for fitting the *world* content into the *initial* canvas view,
+    // before any user zoom/pan is applied.
     const contentPadding = 80; // Generous padding for dimensions
     const contentScaleX = (canvasWidth / state.scale - contentPadding * 2) / sysWidth;
     const contentScaleY = (canvasHeight / state.scale - contentPadding * 2) / sysLength;
@@ -938,3 +970,89 @@ function showErrorOnCanvas(ctx, message, canvasWidth, canvasHeight) {
     ctx.fillText(message, canvasWidth / 2, canvasHeight / 2);
     ctx.restore();
 }
+
+// --- Zoom & Pan State and Logic ---
+
+const viewStates = new WeakMap();
+
+function getViewState(canvas) {
+    if (!viewStates.has(canvas)) {
+        viewStates.set(canvas, {
+            scale: 1.0,
+            offsetX: 0,
+            offsetY: 0,
+            isPanning: false,
+            lastPanX: 0,
+            lastPanY: 0,
+            initialFit: null,
+        });
+    }
+    return viewStates.get(canvas);
+}
+
+function applyZoomPan(canvas, drawFunction) {
+    const state = getViewState(canvas);
+
+    const wheelHandler = (event) => {
+        event.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = event.clientX - rect.left;
+        const mouseY = event.clientY - rect.top;
+
+        const worldX_before = (mouseX - state.offsetX) / state.scale;
+        const worldY_before = (mouseY - state.offsetY) / state.scale;
+
+        const zoomFactor = 1.1;
+        const newScale = event.deltaY < 0 ? state.scale * zoomFactor : state.scale / zoomFactor;
+        state.scale = Math.max(0.1, Math.min(newScale, 50)); // Clamp scale
+
+        state.offsetX = mouseX - worldX_before * state.scale;
+        state.offsetY = mouseY - worldY_before * state.scale;
+
+        drawFunction();
+    };
+
+    const mouseDownHandler = (event) => {
+        state.isPanning = true;
+        state.lastPanX = event.clientX;
+        state.lastPanY = event.clientY;
+        canvas.style.cursor = 'grabbing';
+    };
+
+    const mouseMoveHandler = (event) => {
+        if (!state.isPanning) return;
+        const dx = event.clientX - state.lastPanX;
+        const dy = event.clientY - state.lastPanY;
+        state.offsetX += dx;
+        state.offsetY += dy;
+        state.lastPanX = event.clientX;
+        state.lastPanY = event.clientY;
+        drawFunction();
+    };
+
+    const mouseUpHandler = () => {
+        state.isPanning = false;
+        canvas.style.cursor = 'grab';
+    };
+    
+    const mouseLeaveHandler = () => {
+        state.isPanning = false;
+        canvas.style.cursor = 'default';
+    };
+
+
+    // Add event listeners
+    canvas.addEventListener('wheel', wheelHandler);
+    canvas.addEventListener('mousedown', mouseDownHandler);
+    canvas.addEventListener('mousemove', mouseMoveHandler);
+    canvas.addEventListener('mouseup', mouseUpHandler);
+    canvas.addEventListener('mouseleave', mouseLeaveHandler);
+
+}
+
+// --- Initialize Zoom/Pan for all canvases ---
+document.addEventListener('DOMContentLoaded', () => {
+    applyZoomPan(warehouseCanvas, drawWarehouse);
+    applyZoomPan(rackDetailCanvas, drawRackDetail);
+    applyZoomPan(elevationCanvas, drawElevationView);
+});
