@@ -1,7 +1,7 @@
 import {
     // Solver Tab
     solverStorageReqInput, solverThroughputReqInput,
-    solverAspectRatioInput, // REQ 4: solverMaxPerfDensityInput removed
+    solverAspectRatioInput,
     runSolverButton,
     solverStatus, solverResultLength, solverResultWidth,
     solverResultFootprint, solverResultLocations, solverResultPerfDensity,
@@ -9,18 +9,11 @@ import {
     solverModalContinue, solverModalStop, solverModalBackdrop,
     systemLengthInput, systemWidthInput, mainViewTabs,
     solverConfigSelect,
-    // --- FIX: Import clearHeightInput ---
     clearHeightInput,
 
-    // Config Tab Inputs (for loading values)
-    toteWidthInput, toteLengthInput, toteHeightInput,
-    toteQtyPerBayInput, totesDeepSelect,
-    toteToToteDistInput, toteToUprightDistInput, toteBackToBackDistInput,
-    uprightLengthInput, uprightWidthInput, hookAllowanceInput,
-    aisleWidthInput, setbackTopInput, setbackBottomInput,
-    layoutModeSelect, flueSpaceInput,
-    baseBeamHeightInput, beamWidthInput, minClearanceInput,
-    overheadClearanceInput, sprinklerThresholdInput, sprinklerClearanceInput
+    // --- Config Tab Inputs (ALL REMOVED) ---
+    // (toteWidthInput, toteLengthInput, etc. are all gone)
+
 } from './dom.js';
 import { parseNumber, formatNumber } from './utils.js';
 import { getMetrics } from './calculations.js';
@@ -32,37 +25,6 @@ let solverFinalResults = null;
 
 // --- Solver Modal Controls ---
 // ... (no changes here) ...
-
-// --- NEW FUNCTION ---
-// Loads a selected configuration object into the "Configuration" tab's inputs
-function loadConfigToUI(config) {
-    if (!config) return;
-
-    // Use formatNumber to make them look nice
-    toteWidthInput.value = formatNumber(config['tote-width']);
-    toteLengthInput.value = formatNumber(config['tote-length']);
-    toteHeightInput.value = formatNumber(config['tote-height']);
-    toteQtyPerBayInput.value = formatNumber(config['tote-qty-per-bay']);
-    totesDeepSelect.value = config['totes-deep']; // This is a select, not a text input
-    toteToToteDistInput.value = formatNumber(config['tote-to-tote-dist']);
-    toteToUprightDistInput.value = formatNumber(config['tote-to-upright-dist']);
-    toteBackToBackDistInput.value = formatNumber(config['tote-back-to-back-dist']);
-    uprightLengthInput.value = formatNumber(config['upright-length']);
-    uprightWidthInput.value = formatNumber(config['upright-width']);
-    hookAllowanceInput.value = formatNumber(config['hook-allowance']);
-    aisleWidthInput.value = formatNumber(config['aisle-width']);
-    flueSpaceInput.value = formatNumber(config['flue-space']);
-    baseBeamHeightInput.value = formatNumber(config['base-beam-height']);
-    beamWidthInput.value = formatNumber(config['beam-width']);
-    minClearanceInput.value = formatNumber(config['min-clearance']);
-    overheadClearanceInput.value = formatNumber(config['overhead-clearance']);
-    sprinklerThresholdInput.value = formatNumber(config['sprinkler-threshold']);
-    sprinklerClearanceInput.value = formatNumber(config['sprinkler-clearance']);
-
-    // Note: We don't load setback/layout mode as they seem global
-}
-
-// ... (updateSolverResults function - no changes) ...
 function showSolverModal(message) {
     solverModalMessage.textContent = message;
     solverModal.style.display = 'flex';
@@ -71,6 +33,11 @@ function hideSolverModal() {
     solverModal.style.display = 'none';
 }
 
+
+// --- REMOVED FUNCTION ---
+// loadConfigToUI(config) is GONE
+
+// ... (updateSolverResults function - no changes) ...
 function updateSolverResults(results) {
     solverResultLength.textContent = formatNumber(results.L);
     solverResultWidth.textContent = formatNumber(results.W);
@@ -198,16 +165,16 @@ async function runSolver(continueForPerformance = false) {
 export function initializeSolver() {
     runSolverButton.addEventListener('click', () => runSolver(false));
 
-    // --- NEW: Load config to UI on change ---
+    // --- MODIFIED: Remove loadConfigToUI ---
     solverConfigSelect.addEventListener('change', () => {
-        const selectedConfig = configurations[solverConfigSelect.value] || null;
-        loadConfigToUI(selectedConfig);
+        // const selectedConfig = configurations[solverConfigSelect.value] || null;
+        // loadConfigToUI(selectedConfig); // <-- REMOVED
         requestRedraw(); // Redraw visualization with new config
     });
 
-    // --- NEW: Load initial config on startup ---
-    const initialConfig = configurations[solverConfigSelect.value] || null;
-    loadConfigToUI(initialConfig);
+    // --- MODIFIED: Remove initial loadConfigToUI ---
+    // const initialConfig = configurations[solverConfigSelect.value] || null;
+    // loadConfigToUI(initialConfig); // <-- REMOVED
 
     // ... (no changes to modal listeners) ...
     solverModalStop.addEventListener('click', () => {

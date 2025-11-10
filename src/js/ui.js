@@ -1,29 +1,20 @@
 import {
-    layoutModeSelect, flueSpaceContainer, mainViewTabs, viewSubTabs,
+    // MODIFIED: Removed viewSubTabs
+    mainViewTabs,
     warehouseCanvas, rackDetailCanvas, elevationCanvas,
-    // REQ 3: summaryTotalLocations removed
-    toteQtyPerBayInput, totesDeepSelect,
+    
     // --- NEW IMPORTS ---
     solverConfigSelect, systemLengthInput, systemWidthInput, clearHeightInput
 } from './dom.js';
 import { drawWarehouse, drawRackDetail, drawElevationView } from './drawing.js';
 // --- NEW IMPORTS ---
-import { parseNumber, formatNumber } from './utils.js';
+import { parseNumber, formatNumber, formatDecimalNumber } from './utils.js'; // MODIFIED
 import { configurations } from './config.js';
 import { getViewState } from './viewState.js'; // <-- ADDED IMPORT
 
-// REQ 3: calculationResults object removed
 let rafId = null; // Single RAF ID for debouncing all draw calls
 
-// ... (toggleFlueSpace - no changes) ...
-function toggleFlueSpace() {
-    if (layoutModeSelect.value === 's-d-s') {
-        flueSpaceContainer.style.display = 'block';
-    } else {
-        flueSpaceContainer.style.display = 'none';
-    }
-}
-// REQ 3: updateCombinedResults function removed
+// REMOVED: toggleFlueSpace function
 
 
 // --- MODIFIED: Debounced Draw Function ---
@@ -47,21 +38,17 @@ export function requestRedraw() {
         const sysHeight = parseNumber(clearHeightInput.value);
 
         // --- Pass config to all draw functions ---
-        // REQ 3: These functions no longer update a global results object
+        // All three are drawn every time now, since they are all visible.
         drawWarehouse(sysLength, sysWidth, sysHeight, config);
         drawRackDetail(sysLength, sysWidth, sysHeight, config);
         drawElevationView(sysLength, sysWidth, sysHeight, config);
-
-        // REQ 3: This function call was removed
-        // updateCombinedResults();
 
         rafId = null;
     });
 }
 
 // --- NEW: Zoom & Pan Logic (Moved from drawing.js) ---
-// --- REMOVED: viewStates and getViewState (now in viewState.js) ---
-
+// ... (no changes to applyZoomPan or its handlers) ...
 function applyZoomPan(canvas, drawFunction) {
     const state = getViewState(canvas); // <-- THIS WILL NOW WORK
 
@@ -124,18 +111,14 @@ function applyZoomPan(canvas, drawFunction) {
 // --- END: Zoom & Pan Logic ---
 
 
-export function initializeUI(redrawInputs, numberInputs) {
+export function initializeUI(redrawInputs, numberInputs, decimalInputs = []) { // MODIFIED
     // Redraw on input change
     redrawInputs.forEach(input => {
         input.addEventListener('input', requestRedraw);
     });
 
-    // Handle layout mode change
-    layoutModeSelect.addEventListener('change', () => {
-        toggleFlueSpace();
-        requestRedraw();
-    });
-
+    // Handle layout mode change (REMOVED)
+    
     // Apply number formatting on 'blur'
     numberInputs.forEach(input => {
         // Don't format <select> elements
@@ -147,9 +130,21 @@ export function initializeUI(redrawInputs, numberInputs) {
         });
     });
 
+    // NEW: Apply decimal formatting on 'blur'
+    decimalInputs.forEach(input => {
+        // Don't format <select> elements
+        if (input.tagName.toLowerCase() === 'select') return;
+
+        input.value = formatDecimalNumber(input.value, 2); // Format initial
+        input.addEventListener('blur', () => {
+            input.value = formatDecimalNumber(input.value, 2);
+        });
+    });
+
     // Redraw on window resize
     const resizeObserver = new ResizeObserver(requestRedraw);
     // Observe all canvas parent containers
+    // This logic still works with the new 3-column HTML structure
     resizeObserver.observe(warehouseCanvas.parentElement);
     resizeObserver.observe(rackDetailCanvas.parentElement);
     resizeObserver.observe(elevationCanvas.parentElement);
@@ -176,23 +171,12 @@ export function initializeUI(redrawInputs, numberInputs) {
             requestRedraw();
         }
     });
-    // ... (viewSubTabs logic - no changes) ...
-    viewSubTabs.addEventListener('click', (e) => {
-        if (e.target.classList.contains('sub-tab-button')) {
-            // Deactivate all sub-tabs
-            viewSubTabs.querySelectorAll('.sub-tab-button').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.sub-tab-content').forEach(content => content.classList.remove('active'));
 
-            // Activate clicked
-            e.target.classList.add('active');
-            const tabId = e.target.getAttribute('data-tab');
-            document.getElementById(tabId).classList.add('active');
+    /* * --- MODIFICATION ---
+     * Removed the event listener for viewSubTabs as it no longer exists.
+     */
 
-            // Request a redraw to ensure the newly visible canvas is drawn
-            requestRedraw();
-        }
-    });
     // --- Initial Setup ---
-    toggleFlueSpace();
+    // REMOVED: toggleFlueSpace();
     // Initial draw is handled by the ResizeObservers
 }

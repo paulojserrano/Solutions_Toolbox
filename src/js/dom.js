@@ -1,36 +1,11 @@
 // --- Get All Inputs ---
-// Warehouse Constraints
+// Warehouse Constraints (Global)
 export const systemLengthInput = document.getElementById('systemLength');
 export const systemWidthInput = document.getElementById('systemWidth');
 export const clearHeightInput = document.getElementById('clearHeight');
-// Rack Specifications
-export const toteWidthInput = document.getElementById('toteWidth');
-export const toteLengthInput = document.getElementById('toteLength');
-export const toteHeightInput = document.getElementById('toteHeight'); // New
-export const toteQtyPerBayInput = document.getElementById('toteQtyPerBay');
-export const totesDeepSelect = document.getElementById('totesDeep');
-export const toteToToteDistInput = document.getElementById('toteToToteDist');
-export const toteToUprightDistInput = document.getElementById('toteToUprightDist');
-export const toteBackToBackDistInput = document.getElementById('toteBackToBackDist');
-export const uprightLengthInput = document.getElementById('uprightLength');
-export const uprightWidthInput = document.getElementById('uprightWidth');
-export const hookAllowanceInput = document.getElementById('hookAllowance');
-export const aisleWidthInput = document.getElementById('aisleWidth');
-export const setbackTopInput = document.getElementById('setbackTop');
-export const setbackBottomInput = document.getElementById('setbackBottom');
-export const layoutModeSelect = document.getElementById('layoutMode');
-export const flueSpaceInput = document.getElementById('flueSpace');
-export const flueSpaceContainer = document.getElementById('flueSpaceContainer');
-// Vertical Constraints (New)
-export const baseBeamHeightInput = document.getElementById('baseBeamHeight');
-export const beamWidthInput = document.getElementById('beamWidth');
-export const minClearanceInput = document.getElementById('minClearance');
-export const overheadClearanceInput = document.getElementById('overheadClearance');
-export const sprinklerThresholdInput = document.getElementById('sprinklerThreshold');
-export const sprinklerClearanceInput = document.getElementById('sprinklerClearance');
 
-// REQ 5: Performance inputs removed
-// REQ 3: Summary elements removed
+// --- Config Tab Inputs (ALL REMOVED) ---
+// All inputs from the config tab are gone.
 
 // Get Canvases and Contexts
 export const warehouseCanvas = document.getElementById('warehouseCanvas');
@@ -42,14 +17,14 @@ export const elevationCtx = elevationCanvas.getContext('2d'); // New
 
 // Get Tab elements
 export const mainViewTabs = document.getElementById('mainViewTabs'); // NEW
-export const viewSubTabs = document.getElementById('viewSubTabs'); // Renamed
+// MODIFICATION: Removed viewSubTabs
+// export const viewSubTabs = document.getElementById('viewSubTabs'); // Renamed
 
 // --- NEW: Solver Elements ---
 export const solverConfigSelect = document.getElementById('solverConfigSelect'); // NEW
 export const solverStorageReqInput = document.getElementById('solverStorageReq');
 export const solverThroughputReqInput = document.getElementById('solverThroughputReq');
 export const solverAspectRatioInput = document.getElementById('solverAspectRatio');
-// REQ 4: solverMaxPerfDensityInput removed
 export const runSolverButton = document.getElementById('runSolverButton');
 export const solverStatus = document.getElementById('solverStatus');
 export const solverResultLength = document.getElementById('solverResultLength');
@@ -66,3 +41,6 @@ export const solverModalBackdrop = document.getElementById('solverModalBackdrop'
 
 // --- NEW: Detail View Toggle ---
 export const detailViewToggle = document.getElementById('detailViewToggle');
+
+// --- NEW: Read-Only Config Container ---
+export const readOnlyConfigContainer = document.getElementById('readOnlyConfigContainer');

@@ -51,10 +51,10 @@
                     <h2 class="text-lg font-semibold text-slate-900 border-b border-slate-300 pb-3 mb-5">
                         1. Requirements
                     </h2>
-                    <!-- REQ 5: Grid changed to 2 cols -->
+                    <!-- MODIFIED: Grid changed to 2 cols, setback/layout inputs removed -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2"> <!-- gap-y-2 to tighten groups -->
                         
-                        <!-- Col 1: Warehouse Constraints (MOVED FROM CONFIG) -->
+                        <!-- Col 1: Warehouse Constraints (GLOBAL) -->
                         <div class="space-y-5"> <!-- Added space-y-5 for grouping -->
                             <h3 class="text-base font-semibold text-slate-900 -mb-1">Warehouse</h3>
                             <!-- System Length -->
@@ -82,8 +82,7 @@
                             <div>
                                 <label for="solverConfigSelect" class="block text-sm font-medium text-slate-700 mb-1">Configuration</label>
                                 <select id="solverConfigSelect" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                    <option value="default">HPS3-E2, Double Deep</option>
-                                    <!-- Other configs would be added here -->
+                                    <!-- Options populated by app.js -->
                                 </select>
                                 <p class="helper-text">Uses parameters from Configuration tab.</p>
                             </div>
@@ -101,10 +100,7 @@
                                 <input type="text" id="solverAspectRatio" value="1.0" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                                 <p class="helper-text">e.g., 1.5 for (L = 1.5 * W)</p>
                             </div>
-                            <!-- REQ 4: Max Performance Density input REMOVED -->
                         </div>
-
-                        <!-- REQ 5: Col 3 (Performance) REMOVED -->
                         
                     </div>
                     <div class="mt-6">
@@ -153,7 +149,7 @@
 
             <!-- Bottom Row: Box 3 (Visualizations) - MOVED FROM VIZ TAB -->
             <section class="bg-white p-6 rounded-lg shadow-lg flex-1 flex flex-col overflow-hidden">
-                <div class="flex justify-between items-center pb-3 mb-4">
+                <div class="flex justify-between items-center pb-3 mb-4 border-b border-slate-300">
                     <h2 class="text-lg font-semibold text-slate-900">
                         3. Visualizations
                     </h2>
@@ -163,234 +159,78 @@
                         <label for="detailViewToggle" class="text-sm font-medium text-slate-700">Show Detail View</label>
                     </div>
                 </div>
-                <!-- Sub-Tab Navigation -->
-                <div class="border-b border-slate-300 -mt-4 mb-4 overflow-x-auto">
-                    <nav class="-mb-px flex gap-4" id="viewSubTabs">
-                        <button class="sub-tab-button active" data-tab="topDownView">Top-Down View</button>
-                        <button class="sub-tab-button" data-tab="rackDetailView">Rack Detail View</button>
-                        <button class="sub-tab-button" data-tab="elevationView">Elevation View</button>
-                    </nav>
-                </div>
-                
-                <!-- Sub-Tab Content -->
-                <!-- Top-Down View Content -->
-                <div id="topDownView" class="sub-tab-content active">
-                    
-                    <!-- END NEW -->
-                    <div class="flex-1 w-full bg-slate-50 rounded-md overflow-hidden relative"> <!-- Added relative -->
-                        <canvas id="warehouseCanvas"></canvas>
-                    </div>
-                </div>
-                
-                <!-- Rack Detail View Content -->
-                <div id="rackDetailView" class="sub-tab-content">
-                     <div class="flex-1 w-full bg-slate-50 rounded-md overflow-hidden">
-                         <canvas id="rackDetailCanvas"></canvas>
-                    </div>
-                </div>
 
-                <!-- Elevation View Content (now holds both) -->
-                <div id="elevationView" class="sub-tab-content">
-                     <div class="flex-1 w-full bg-slate-50 rounded-md overflow-hidden">
-                         <canvas id="elevationCanvas"></canvas>
+                <!-- 
+                  *** MODIFICATION ***
+                  Changed to a 2x2 grid layout.
+                  Top-Down view spans 2 cols on top row.
+                  Elevation and Rack Detail are on bottom row.
+                  On mobile (default), it's a single column (grid-cols-1), so they stack.
+                  On large screens (lg:), it's a 2x2 grid.
+                -->
+                <div class="flex-1 grid grid-cols-1 lg:grid-cols-2 lg:grid-rows-2 gap-4 overflow-hidden">
+            
+                    <!-- Row 1: Top-Down View (spans 2 cols on large screens) -->
+                    <div class="flex flex-col h-full bg-slate-50 rounded-md overflow-hidden border border-slate-200 lg:col-span-2">
+                        <h3 class="text-sm font-semibold text-slate-700 bg-slate-100 px-3 py-2 border-b border-slate-200">
+                            Top-Down View
+                        </h3>
+                        <!-- This parent div is what the ResizeObserver watches -->
+                        <div class="flex-1 w-full h-full overflow-hidden relative">
+                            <canvas id="warehouseCanvas"></canvas>
+                        </div>
                     </div>
+                    
+                    <!-- Row 2, Col 1: Elevation View -->
+                    <div class="flex flex-col h-full bg-slate-50 rounded-md overflow-hidden border border-slate-200">
+                        <h3 class="text-sm font-semibold text-slate-700 bg-slate-100 px-3 py-2 border-b border-slate-200">
+                            Elevation View
+                        </h3>
+                        <!-- This parent div is what the ResizeObserver watches -->
+                        <div class="flex-1 w-full h-full overflow-hidden relative">
+                             <canvas id="elevationCanvas"></canvas>
+                        </div>
+                    </div>
+    
+                    <!-- Row 2, Col 2: Rack Detail View -->
+                    <div class="flex flex-col h-full bg-slate-50 rounded-md overflow-hidden border border-slate-200">
+                         <h3 class="text-sm font-semibold text-slate-700 bg-slate-100 px-3 py-2 border-b border-slate-200">
+                            Rack Detail View
+                        </h3>
+                        <!-- This parent div is what the ResizeObserver watches -->
+                        <div class="flex-1 w-full h-full overflow-hidden relative">
+                             <canvas id="rackDetailCanvas"></canvas>
+                        </div>
+                    </div>
+                
                 </div>
+                <!-- *** END MODIFICATION *** -->
+
             </section>
             
         </div>
 
         <!-- 3. NEW Main Tab Content: Configuration (scrolls) -->
+        <!-- MODIFIED: This is now a simple container that app.js will populate -->
         <div id="configTabContent" class="main-tab-content space-y-6 overflow-y-auto">
-            <!-- Inputs Panel -->
-            <section class="bg-white p-6 rounded-lg shadow-lg">
-                <div class="flex justify-between items-center border-b border-slate-300 pb-3 mb-5">
-                    <h2 class="text-lg font-semibold text-slate-900">
-                        Configuration: HPS3-E2, Double Deep
-                    </h2>
-                    <button class="text-sm bg-blue-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-700">Save Configuration</button>
-                </div>
+            
+            <h2 class="text-xl font-semibold text-slate-900 px-1 pt-2">
+                Available System Configurations
+            </h2>
+            <p class="text-slate-600 -mt-4 px-1">
+                These are the read-only parameter sets used by the solver.
+            </p>
 
-                <!-- MODIFIED: Grid changed to 3 cols -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4">
-                    
-                    <!-- Col 1: Rack Specifications (Tote) -->
-                    <div>
-                        <!-- MODIFIED: Renumbered -->
-                        <h2 class="text-base font-semibold text-slate-900 border-b border-slate-300 pb-3 mb-5">
-                            1. Rack Specs (Tote)
-                        </h2>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 gap-x-4 gap-y-5">
-                            <!-- Tote Width -->
-                            <div>
-                                <label for="toteWidth" class="block text-sm font-medium text-slate-700 mb-1">Tote Width (mm)</label>
-                                <input type="text" id="toteWidth" value="650" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                <p class="helper-text">Along bay depth</p>
-                            </div>
-                            <!-- Tote Length -->
-                            <div>
-                                <label for="toteLength" class="block text-sm font-medium text-slate-700 mb-1">Tote Length (mm)</label>
-                                <input type="text" id="toteLength" value="450" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                <p class="helper-text">Along bay width</p>
-                            </div>
-                            <!-- Tote Height (New) -->
-                            <div>
-                                <label for="toteHeight" class="block text-sm font-medium text-slate-700 mb-1">Tote Height (mm)</label>
-                                <input type="text" id="toteHeight" value="300" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                <p class="helper-text">For elevation view</p>
-                            </div>
-                            <!-- Totes per Bay -->
-                            <div>
-                                <label for="toteQtyPerBay" class="block text-sm font-medium text-slate-700 mb-1">Totes per Bay (Qty)</label>
-                                <input type="text" id="toteQtyPerBay" value="4" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                <p class="helper-text">Horizontally</p>
-                            </div>
-                            <!-- Totes Deep -->
-                            <div>
-                                <label for="totesDeep" class="block text-sm font-medium text-slate-700 mb-1">Totes Deep (Qty)</label>
-                                <select id="totesDeep" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                    <option value="1">1</option>
-                                    <option value="2" selected>2</option>
-                                    <option value="3">3</option>
-                                </select>
-                            </div>
-                            <!-- Tote to Tote Distance -->
-                            <div>
-                                <label for="toteToToteDist" class="block text-sm font-medium text-slate-700 mb-1">Tote-to-Tote (mm)</label>
-                                <input type="text" id="toteToToteDist" value="40" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                <p class="helper-text">Horizontal gap</p>
-                            </div>
-                            <!-- Tote to Upright Distance -->
-                            <div>
-                                <label for="toteToUprightDist" class="block text-sm font-medium text-slate-700 mb-1">Tote-to-Upright (mm)</label>
-                                <input type="text" id="toteToUprightDist" value="70" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                <p class="helper-text">Side gap</p>
-                            </div>
-                            <!-- Tote Back to Back Distance -->
-                            <div>
-                                <label for="toteBackToBackDist" class="block text-sm font-medium text-slate-700 mb-1">Tote Back-to-Back (mm)</label>
-                                <input type="text" id="toteBackToBackDist" value="0" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                <p class="helper-text">Depth gap</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Col 2: Rack Specifications (Structure) -->
-                    <div>
-                        <!-- MODIFIED: Renumbered -->
-                        <h2 class="text-base font-semibold text-slate-900 border-b border-slate-300 pb-3 mb-5">
-                            2. Rack Specs (Structure)
-                        </h2>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 gap-x-4 gap-y-5">
-                            <!-- Upright Length -->
-                            <div>
-                                <label for="uprightLength" class="block text-sm font-medium text-slate-700 mb-1">Upright Length (mm)</label>
-                                <input type="text" id="uprightLength" value="90" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                <p class="helper-text">Along bay width</p>
-                            </div>
-                            <!-- Upright Width -->
-                            <div>
-                                <label for="uprightWidth" class="block text-sm font-medium text-slate-700 mb-1">Upright Width (mm)</label>
-                                <input type="text" id="uprightWidth" value="70" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                <p class="helper-text">Along bay depth</p>
-                            </div>
-                            <!-- Hook Allowance -->
-                            <div>
-                                <label for="hookAllowance" class="block text-sm font-medium text-slate-700 mb-1">Hook Allowance (mm)</label>
-                                <input type="text" id="hookAllowance" value="90" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                <p class="helper-text">Vertical addition</p>
-                            </div>
-                            <!-- Aisle Width -->
-                            <div>
-                                <label for="aisleWidth" class="block text-sm font-medium text-slate-700 mb-1">Aisle Width (mm)</label>
-                                <input type="text" id="aisleWidth" value="1,500" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            </div>
-                            <!-- Top Setback -->
-                            <div>
-                                <label for="setbackTop" class="block text-sm font-medium text-slate-700 mb-1">Top Setback (mm)</label>
-                                <input type="text" id="setbackTop" value="3,000" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            </div>
-                            <!-- Bottom Setback -->
-                            <div>
-                                <label for="setbackBottom" class="block text-sm font-medium text-slate-700 mb-1">Bottom Setback (mm)</label>
-                                <input type="text" id="setbackBottom" value="3,000" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            </div>
-                            <!-- Layout Mode -->
-                            <div>
-                                <label for="layoutMode" class="block text-sm font-medium text-slate-700 mb-1">Layout Mode</label>
-                                <select id="layoutMode" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                    <option value="s-d-s">Single-Double-Single</option>
-                                    <option value="all-singles">All Singles</option>
-                                </select>
-                            </div>
-                            <!-- Flue Space (Conditional) -->
-                            <div id="flueSpaceContainer">
-                                <label for="flueSpace" class="block text-sm font-medium text-slate-700 mb-1">Rack Flue Space (mm)</label>
-                                <input type="text" id="flueSpace" value="150" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                <p class="helper-text">Between double racks</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Col 3: Vertical -->
-                    <div>
-                        <!-- Vertical Constraints -->
-                        <!-- MODIFIED: Renumbered -->
-                        <h2 class="text-base font-semibold text-slate-900 border-b border-slate-300 pb-3 mb-5">
-                            3. Vertical
-                        </h2>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 gap-x-4 gap-y-5 mb-6">
-                            <!-- Base Beam Height -->
-                            <div>
-                                <label for="baseBeamHeight" class="block text-sm font-medium text-slate-700 mb-1">Base Beam Height (mm)</label>
-                                <input type="text" id="baseBeamHeight" value="430" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            </div>
-                            <!-- Beam Width -->
-                            <div>
-                                <label for="beamWidth" class="block text-sm font-medium text-slate-700 mb-1">Beam Width (mm)</label>
-                                <input type="text" id="beamWidth" value="60" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                <p class="helper-text">Vertical dimension of beam</p>
-                            </div>
-                            <!-- Tote Clearance -->
-                            <div>
-                                <label for="minClearance" class="block text-sm font-medium text-slate-700 mb-1">Tote Clearance (mm)</label>
-                                <input type="text" id="minClearance" value="40" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                <p class="helper-text">Above tote to next beam</p>
-                            </div>
-                            <!-- Overhead Clearance -->
-                            <div>
-                                <label for="overheadClearance" class="block text-sm font-medium text-slate-700 mb-1">Overhead Clearance (mm)</label>
-                                <input type="text" id="overheadClearance" value="915" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                <p class="helper-text">Top tote to ceiling</p>
-                            </div>
-                            <!-- Sprinkler Threshold -->
-                            <div>
-                                <label for="sprinklerThreshold" class="block text-sm font-medium text-slate-700 mb-1">Sprinkler Threshold (mm)</label>
-                                <input type="text" id="sprinklerThreshold" value="4000" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            </div>
-                            <!-- Sprinkler Clearance -->
-                            <div>
-                                <label for="sprinklerClearance" class="block text-sm font-medium text-slate-700 mb-1">Sprinkler Clearance (mm)</label>
-                                <input type="text" id="sprinklerClearance" value="500" class="w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            </div>
-                        </div>
-                        
-                        <!-- Performance Requirements (MOVED) -->
-                    </div>
-
-                </div>
-            </section>
-
-            <!-- REQ 3: Results Panel (now in config tab) REMOVED -->
+            <!-- This container will be filled by app.js -->
+            <div id="readOnlyConfigContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Config cards will be injected here -->
+            </div>
 
         </div>
 
-
         <!-- 4. Main Tab Content: Visualization (This tab is now GONE) -->
-        <!-- <div id="vizTabContent" class="main-tab-content"> ... </div> -->
-
 
         <!-- 5. NEW Main Tab Content: Solver (Old, now replaced) -->
-        <!-- <div id="solverTabContent" class="main-tab-content space-y-6 overflow-y-auto"> ... </div> -->
 
     </main>
 

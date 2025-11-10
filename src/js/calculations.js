@@ -1,14 +1,10 @@
-// --- ADDED IMPORTS ---
-import { parseNumber } from './utils.js';
-import {
-    setbackTopInput, setbackBottomInput,
-    layoutModeSelect
-} from './dom.js';
-// --- END ADDED IMPORTS ---
+// --- REMOVED DOM IMPORTS ---
+// (setbackTopInput, setbackBottomInput, layoutModeSelect are gone)
 
-import { roundUpTo50 } from './utils.js';
+import { roundUpTo50, parseNumber } from './utils.js'; // Added parseNumber
 
 // --- Layout Calculation Function (Top-Down) ---
+// (No changes to this function, it already accepts parameters)
 export function calculateLayout(bayWidth, bayDepth, aisleWidth, sysLength, sysWidth, layoutMode, flueSpace, setbackTop, setbackBottom) {
     let layoutItems = [];
     let totalBays = 0;
@@ -89,6 +85,7 @@ export function calculateLayout(bayWidth, bayDepth, aisleWidth, sysLength, sysWi
  * Calculates the layout of rack levels.
  * Returns an array of level objects, or null if it fails.
  */
+// (No changes to this function)
 export function calculateElevationLayout(inputs, evenDistribution = false) {
     const { WH, BaseHeight, BW, TH, MC, OC, SC, ST } = inputs;
 
@@ -229,13 +226,14 @@ export function getMetrics(sysLength, sysWidth, sysHeight, config) {
     const uprightLength = config['upright-length'] || 0;
     const hookAllowance = config['hook-allowance'] || 0;
     const aisleWidth = config['aisle-width'] || 0;
-    const flueSpace = config['flue-space'] || 0;
+    const flueSpace = config['rack-flue-space'] || 0; // MODIFIED: Get from config
 
-    // --- 2. Get global parameters from DOM (via drawing.js) ---
-    // These are NOT part of the config.
-    const setbackTop = parseNumber(setbackTopInput.value) || 0;
-    const setbackBottom = parseNumber(setbackBottomInput.value) || 0;
-    const layoutMode = layoutModeSelect.value;
+    // --- 2. Get layout parameters from CONFIG ---
+    // MODIFIED: These are now read from the config object
+    const setbackTop = config['top-setback'] || 0;
+    const setbackBottom = config['bottom-setback'] || 0;
+    const layoutMode = config['layout-mode'] || 's-d-s';
+
 
     // --- 3. Calculate Bay Dimensions ---
     const bayWidth = (toteQtyPerBay * toteLength) +

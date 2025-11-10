@@ -1,30 +1,14 @@
 import {
     warehouseCtx, rackDetailCtx, elevationCtx,
-    // REQ 3: Inputs below are no longer needed for drawing.js
-    // They are only read by calculations.js or solver.js
-    // We only need the canvases and the detailViewToggle
     warehouseCanvas, rackDetailCanvas, elevationCanvas,
     detailViewToggle, // NEW: Import toggle
 
-    // --- REQ 3: ALL DOM INPUTS REMOVED ---
-    
-    // --- REQ 3: DOM inputs needed for drawWarehouse results ---
-    // (These should eventually be removed when drawWarehouse
-    // no longer updates the results panel)
-    // --- FIX: REMOVED performance inputs that no longer exist in dom.js ---
-    setbackTopInput, setbackBottomInput, layoutModeSelect
+    // --- ALL DOM INPUTS REMOVED ---
+    // (setbackTopInput, setbackBottomInput, layoutModeSelect removed)
 } from './dom.js';
 import { parseNumber } from './utils.js';
 import { calculateLayout, calculateElevationLayout } from './calculations.js';
-// REQ 3: This global object is no longer used.
-// We import a function to get the view state.
 import { getViewState } from './viewState.js'; // <-- ADDED IMPORT
-
-// --- REQ 3: This object is no longer used or updated ---
-// const calculationResults = {
-//     totalBays: 0,
-//     maxLevels: 0,
-// };
 
 // ... (drawRack helper - no changes) ...
 function drawRack(x_world, rackDepth_world, rackType, params) {
@@ -212,6 +196,7 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
         }
     }
 }
+
 // ... (drawDimensions helper - no changes) ...
 function drawDimensions(ctx, x1, y1, drawWidth, drawHeight, sysWidth_label, sysLength_label, zoomScale = 1) {
     const extensionLength = 20 / zoomScale;
@@ -250,6 +235,7 @@ function drawDimensions(ctx, x1, y1, drawWidth, drawHeight, sysWidth_label, sysL
     ctx.fillText(`${Math.round(sysLength_label).toLocaleString('en-US')} mm`, 0, 0);
     ctx.restore();
 }
+
 // --- MODIFIED: Main Drawing Function (Top-Down) ---
 // REQ 3: This function now receives the global inputs and config object
 export function drawWarehouse(sysLength, sysWidth, sysHeight, config) {
@@ -302,12 +288,14 @@ export function drawWarehouse(sysLength, sysWidth, sysHeight, config) {
     const uprightWidth = config['upright-width'] || 0;
     const hookAllowance = config['hook-allowance'] || 0;
     const aisleWidth = config['aisle-width'] || 0;
-    const flueSpace = config['flue-space'] || 0;
+    const flueSpace = config['rack-flue-space'] || 0; // MODIFIED: Get from config
 
+    // MODIFIED: Get layout values from CONFIG, not global DOM
+    const setbackTop = config['top-setback'] || 0;
+    const setbackBottom = config['bottom-setback'] || 0;
+    const layoutMode = config['layout-mode'] || 's-d-s';
+    
     // Get global values (not part of config)
-    const setbackTop = parseNumber(setbackTopInput.value) || 0;
-    const setbackBottom = parseNumber(setbackBottomInput.value) || 0;
-    const layoutMode = layoutModeSelect.value;
     const isDetailView = detailViewToggle.checked;
 
     // --- Bay Width (horizontal) ---
@@ -323,11 +311,6 @@ export function drawWarehouse(sysLength, sysWidth, sysHeight, config) {
 
     // --- Run Layout Calculation ---
     const layout = calculateLayout(bayWidth, bayDepth, aisleWidth, sysLength, sysWidth, layoutMode, flueSpace, setbackTop, setbackBottom);
-
-    // --- REQ 3: Update Results Panel (REMOVED) ---
-    // The logic to update the summary panel has been moved to app.js
-    // to decouple drawing from DOM updates.
-
 
     // --- Calculate Scaling and Centering for the content itself (independent of zoom/pan) ---
     // This scale is for fitting the *world* content into the *initial* canvas view,
@@ -355,12 +338,14 @@ export function drawWarehouse(sysLength, sysWidth, sysHeight, config) {
     // Final offset for drawing elements (relative to the transformed canvas)
     const offsetX = drawOffsetX + (layoutOffsetX_world * contentScale);
     const offsetY = drawOffsetY;
+    
     // --- NEW: Create detail params object (world values) ---
     const detailParams = {
         toteWidth, toteLength, toteToToteDist, toteToUprightDist, toteBackToBackDist,
         toteQtyPerBay, totesDeep,
         uprightLength_world: uprightLength,
-// ... existingcode ...
+        uprightWidth_world: uprightWidth, // Used by rack detail
+        hookAllowance_world: hookAllowance // Used by rack detail
     };
 
     // ... (Create drawParams - no changes) ...
@@ -373,6 +358,7 @@ export function drawWarehouse(sysLength, sysWidth, sysHeight, config) {
         isDetailView: isDetailView, // NEW
         detailParams: detailParams // NEW
     };
+    
     // ... (Drawing logic - no changes) ...
     warehouseCtx.fillStyle = '#f8fafc'; // slate-50
     warehouseCtx.strokeStyle = '#64748b'; // slate-500
@@ -384,7 +370,6 @@ export function drawWarehouse(sysLength, sysWidth, sysHeight, config) {
     layout.layoutItems.forEach(item => {
         if (item.type === 'rack') {
             // drawRack 'bayDepth' param is rackDepth_world
-            // REQ 3: item.width is now correct (it's single or double rack depth)
             drawRack(item.x, item.width, item.rackType, drawParams);
         }
         // We don't visually draw aisles, they are the empty space
@@ -408,7 +393,6 @@ export function drawWarehouse(sysLength, sysWidth, sysHeight, config) {
         warehouseCtx.strokeRect(drawOffsetX, setbackY_canvas, drawWidth, setbackBottom * contentScale);
         warehouseCtx.setLineDash([]);
     }
-
 
     // Draw dimension lines
     drawDimensions(warehouseCtx, drawOffsetX, drawOffsetY, drawWidth, drawHeight, sysWidth, sysLength, state.scale); // Pass state.scale
@@ -510,6 +494,7 @@ function drawStructure(ctx, offsetX, offsetY, drawWidth, drawHeight, scale, para
         ctx.stroke();
     }
 }
+
 // ... (drawTotes helper - no changes) ...
 function drawTotes(ctx, offsetX, offsetY, scale, params) {
     const {
@@ -541,6 +526,7 @@ function drawTotes(ctx, offsetX, offsetY, scale, params) {
         current_y_canvas += toteWidth_c;
     }
 }
+
 // ... (drawDetailDimensions helper - no changes) ...
 function drawDetailDimensions(ctx, offsetX, offsetY, scale, params) {
     const {
@@ -753,8 +739,6 @@ export function drawElevationView(sysLength, sysWidth, sysHeight, config) {
     // --- REQ 3: Get All Input Values (from config) ---
     if (!config) {
         console.warn("drawElevationView called with no config.");
-        // REQ 3: Remove summary update
-        // summaryMaxLevels.textContent = '0';
         return;
     }
     const inputs = {
@@ -789,8 +773,6 @@ export function drawElevationView(sysLength, sysWidth, sysHeight, config) {
     };
     if (Object.values(coreElevationInputs).some(v => isNaN(v) || v < 0)) {
         showErrorOnCanvas(ctx, "Please enter valid positive numbers.", canvasWidth, canvasHeight);
-        // REQ 3: Remove summary update
-        // summaryMaxLevels.textContent = '0';
         return;
     }
 
@@ -798,8 +780,6 @@ export function drawElevationView(sysLength, sysWidth, sysHeight, config) {
 
     if (WH <= (BaseHeight + BW + TH + OC)) {
         showErrorOnCanvas(ctx, "Height is too small for first level + overhead.", canvasWidth, canvasHeight);
-        // REQ 3: Remove summary update
-        // summaryMaxLevels.textContent = '0';
         return;
     }
 
@@ -809,15 +789,9 @@ export function drawElevationView(sysLength, sysWidth, sysHeight, config) {
     // ... (Error checking - no changes) ...
     if (!layoutResult || layoutResult.N === 0) {
         showErrorOnCanvas(ctx, "Could not calculate layout based on inputs.", canvasWidth, canvasHeight);
-        // REQ 3: Remove summary update
-        // summaryMaxLevels.textContent = '0';
         return;
     }
     const { levels, N, topToteHeight } = layoutResult;
-
-    // --- 4. REQ 3: Update Results Display removed ---
-    // summaryMaxLevels.textContent = N.toLocaleString('en-US');
-    // calculationResults.maxLevels = N; // Update global state
 
     // ... (Drawing logic - no changes) ...
     ctx.strokeStyle = '#cbd5e1'; // slate-300
@@ -1009,11 +983,3 @@ function showErrorOnCanvas(ctx, message, canvasWidth, canvasHeight) {
     ctx.fillText(message, clientWidth / 2, clientHeight / 2);
     ctx.restore();
 }
-
-// --- REMOVED: All duplicate Zoom & Pan logic ---
-// The following code was removed:
-// - const viewStates = new WeakMap();
-// - function getViewState(canvas) { ... }
-// - function applyZoomPan(canvas, drawFunction) { ... }
-// - document.addEventListener('DOMContentLoaded', () => { ... });
-// This logic is now correctly handled by ui.js and viewState.js
