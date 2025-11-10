@@ -5,7 +5,8 @@ import {
     runSolverButton,
     solverStatus, solverResultLength, solverResultWidth,
     solverResultFootprint, solverResultLocations, solverResultPerfDensity,
-    applySolverButton, solverModal, solverModalMessage,
+    exportResultsButton, // MODIFIED: Removed applySolverButton
+    solverModal, solverModalMessage,
     solverModalContinue, solverModalStop, solverModalBackdrop,
     systemLengthInput, systemWidthInput, mainViewTabs,
     solverConfigSelect,
@@ -25,7 +26,8 @@ import {
 
 } from './dom.js';
 import { parseNumber, formatNumber } from './utils.js';
-import { getMetrics } from './calculations.js';
+// MODIFIED: calculateElevationLayout was imported twice, fixed.
+import { getMetrics, calculateLayout, calculateElevationLayout } from './calculations.js';
 import { requestRedraw } from './ui.js';
 import { configurations } from './config.js'; // MODIFIED: Import all configs
 
@@ -68,6 +70,9 @@ function updateSolverResults(results) {
     systemLengthInput.value = formatNumber(solverFinalResults.L);
     systemWidthInput.value = formatNumber(solverFinalResults.W);
 
+    // MODIFIED: Show buttons
+    exportResultsButton.style.display = 'block';
+
     // --- NEW: Enable Comparison Tab ---
     if (comparisonTabButton) {
         comparisonTabButton.disabled = false;
@@ -80,7 +85,8 @@ function updateSolverResults(results) {
 // --- Solver Main Function (Interactive) ---
 async function runSolver(continueForPerformance = false) {
     runSolverButton.disabled = true;
-    applySolverButton.style.display = 'none';
+    exportResultsButton.style.display = 'none'; // MODIFIED: Hide export button
+    
     // Get Solver Inputs
     const storageReq = parseNumber(solverStorageReqInput.value);
     const throughputReq = parseNumber(solverThroughputReqInput.value);
@@ -175,6 +181,229 @@ async function runSolver(continueForPerformance = false) {
     }
     
     requestAnimationFrame(solverLoop);
+}
+
+
+// --- MODIFIED: Export Results to LISP-formatted TXT ---
+function exportResultsToJSON() {
+    if (!solverFinalResults) {
+        console.error("No solver results to export.");
+        return;
+    }
+
+    // 1. Get current config
+    const selectedConfigName = solverConfigSelect.value;
+    const config = configurations[selectedConfigName];
+    if (!config) {
+        console.error("No configuration selected.");
+        return;
+    }
+
+    // 2. Get dimensions from stored results
+    const sysLength = solverFinalResults.L;
+    const sysWidth = solverFinalResults.W;
+    const sysHeight = parseNumber(clearHeightInput.value);
+
+    // 3. Re-run calculations to get detailed layout objects
+    // (This logic is copied from getMetrics and drawWarehouse)
+
+    // --- Config parameters ---
+    const toteWidth = config['tote-width'] || 0;
+    const toteLength = config['tote-length'] || 0;
+    const toteQtyPerBay = config['tote-qty-per-bay'] || 1;
+    const totesDeep = config['totes-deep'] || 1;
+    const toteToToteDist = config['tote-to-tote-dist'] || 0;
+    const toteToUprightDist = config['tote-to-upright-dist'] || 0;
+    const toteBackToBackDist = config['tote-back-to-back-dist'] || 0;
+    const uprightLength = config['upright-length'] || 0;
+    const aisleWidth = config['aisle-width'] || 0;
+    const flueSpace = config['rack-flue-space'] || 0;
+    const hookAllowance = config['hook-allowance'] || 0;
+    const setbackTop = config['top-setback'] || 0;
+    const setbackBottom = config['bottom-setback'] || 0;
+    const setbackLeft = config['setback-left'] || 0;
+    const setbackRight = config['setback-right'] || 0;
+    const layoutMode = config['layout-mode'] || 's-d-s';
+    const considerTunnels = config['considerTunnels'] || false;
+    const considerBackpacks = config['considerBackpacks'] || false;
+
+    // --- Bay Dimensions ---
+    const clearOpening = (toteQtyPerBay * toteLength) +
+        (2 * toteToUprightDist) +
+        (Math.max(0, toteQtyPerBay - 1) * toteToToteDist);
+
+    const bayDepth = (totesDeep * toteWidth) +
+        (Math.max(0, totesDeep - 1) * toteBackToBackDist) +
+        hookAllowance;
+
+    // --- Run Layout Calculation ---
+    const layout = calculateLayout(bayDepth, aisleWidth, sysLength, sysWidth, layoutMode, flueSpace, setbackTop, setbackBottom, setbackLeft, setbackRight, uprightLength, clearOpening, considerTunnels);
+
+    // --- Generate Tunnel/Backpack Sets (from drawWarehouse) ---
+    let tunnelPositions = new Set();
+    if (considerTunnels) {
+        const numTunnelBays = Math.floor(layout.baysPerRack / 9);
+        if (numTunnelBays > 0) {
+            const spacing = (layout.baysPerRack + 1) / (numTunnelBays + 1);
+            for (let k = 1; k <= numTunnelBays; k++) {
+                const tunnelIndex = Math.round(k * spacing) - 1;
+                tunnelPositions.add(tunnelIndex);
+            }
+        }
+    }
+    
+    const backpackPositions = new Set();
+    if (considerBackpacks) {
+        const tunnelIndices = Array.from(tunnelPositions).sort((a, b) => a - b);
+        const boundaries = [0, ...tunnelIndices, layout.baysPerRack];
+        
+        for (let j = 0; j < boundaries.length - 1; j++) {
+            let sectionStart = (j === 0) ? 0 : boundaries[j] + 1;
+            let sectionEnd = boundaries[j+1];
+            let sectionLength = (tunnelPositions.has(sectionEnd)) ? (sectionEnd - sectionStart) : (sectionEnd - sectionStart);
+            if (sectionLength < 1) continue;
+            const numBackpackBays = Math.floor(sectionLength / 5);
+            if (numBackpackBays === 0) continue;
+            const backpackSpacing = (sectionLength + 1) / (numBackpackBays + 1);
+            for (let k = 1; k <= numBackpackBays; k++) {
+                const backpackIndexInSection = Math.round(k * backpackSpacing) - 1;
+                const backpackIndexGlobal = sectionStart + backpackIndexInSection;
+                if (!tunnelPositions.has(backpackIndexGlobal)) {
+                    backpackPositions.add(backpackIndexGlobal);
+                }
+            }
+        }
+    }
+
+    // 4. Create output array (temporary)
+    const outputBays = [];
+
+    // --- Calculate Centering Offsets (from drawWarehouse) ---
+    const usableWidth_world = sysWidth - setbackLeft - setbackRight;
+    const layoutOffsetX_world = (usableWidth_world - layout.totalLayoutWidth) / 2;
+    const layoutOffsetY_world = (layout.usableLength - layout.totalRackLength_world) / 2;
+
+    const repeatingBayUnitWidth = clearOpening + uprightLength;
+
+    // 5. Iterate through layout and create bay objects
+    layout.layoutItems.forEach(item => {
+        if (item.type !== 'rack') return;
+
+        for (let i = 0; i < layout.baysPerRack; i++) {
+            // Determine bay type
+            const isTunnel = tunnelPositions.has(i);
+            const isBackpack = !isTunnel && backpackPositions.has(i);
+            let bayType = 'Standard';
+            if (isTunnel) bayType = 'Tunnel';
+            else if (isBackpack) bayType = 'Backpack';
+
+            // Calculate Y coordinate (center of bay opening)
+            const bay_y_center = layoutOffsetY_world + uprightLength + (i * repeatingBayUnitWidth) + (clearOpening / 2);
+            const final_y = setbackTop + bay_y_center;
+            
+            // Calculate X coordinate for Rack 1
+            const bay_x_center_rack1 = layoutOffsetX_world + item.x + (bayDepth / 2);
+            const final_x_rack1 = setbackLeft + bay_x_center_rack1;
+
+            outputBays.push({
+                x: final_x_rack1, // Store pre-offset X
+                y: final_y, // Store pre-offset Y
+                type: bayType
+            });
+
+            // Calculate X coordinate for Rack 2 if it's a double
+            if (item.rackType === 'double') {
+                const bay_x_center_rack2 = layoutOffsetX_world + item.x + bayDepth + flueSpace + (bayDepth / 2);
+                const final_x_rack2 = setbackLeft + bay_x_center_rack2;
+                
+                outputBays.push({
+                    x: final_x_rack2, // Store pre-offset X
+                    y: final_y, // Store pre-offset Y
+                    type: bayType
+                });
+            }
+        }
+    });
+
+    // 6. NEW: Group bays by type and format for LISP
+    
+    // Get LISP properties from config
+    const lispProps = config.lispExportProps;
+    const dynamicPropName = config.dynamicPropName || "BayType";
+    
+    // Fallback default properties
+    const defaultProps = {
+        standard: { blockName: "BAY_STD_DEFAULT", color: 256, rotation: 0, xOffset: 0, yOffset: 0 },
+        backpack: { blockName: "BAY_BP_DEFAULT", color: 5, rotation: 0, xOffset: 0, yOffset: 0 },
+        tunnel: { blockName: "BAY_TUN_DEFAULT", color: 2, rotation: 90, xOffset: 0, yOffset: 0 }
+    };
+    
+    if (!lispProps) {
+        console.error("lispExportProps not found in configuration. Using defaults.");
+    }
+
+    const bayGroups = new Map();
+
+    // Group bays by their type and apply offsets
+    for (const bay of outputBays) {
+        const bayType = bay.type; // "Standard", "Backpack", or "Tunnel"
+        
+        // Get the correct properties for this bay type
+        let props;
+        if (bayType === 'Standard') {
+            props = (lispProps && lispProps.standard) ? lispProps.standard : defaultProps.standard;
+        } else if (bayType === 'Backpack') {
+            props = (lispProps && lispProps.backpack) ? lispProps.backpack : defaultProps.backpack;
+        } else { // Tunnel
+            props = (lispProps && lispProps.tunnel) ? lispProps.tunnel : defaultProps.tunnel;
+        }
+
+        // Apply offsets
+        const finalX = Math.round(bay.x + (props.xOffset || 0));
+        const finalY = Math.round(bay.y + (props.yOffset || 0));
+        const coordString = `(${finalX},${finalY},0)`; // Format (x,y,z)
+
+        // Group by type. Store the coordinates and the properties used.
+        if (!bayGroups.has(bayType)) {
+            bayGroups.set(bayType, { 
+                coords: [], 
+                props: props // Store the properties for this group
+            });
+        }
+        bayGroups.get(bayType).coords.push(coordString);
+    }
+
+    // Build the final text file content
+    const lispStrings = [];
+    bayGroups.forEach((data, bayType) => {
+        
+        const props = data.props;
+        const coordList = data.coords;
+
+        // Get all properties, with fallbacks
+        const blockName = props.blockName || "BAY_UNKNOWN_DEFAULT";
+        const blockColor = props.color || 256;
+        const blockRotation = props.rotation || 0;
+
+        // {BlockName,Color,Rotation|PropName:Value|Coordinates}
+        const propStr = `{${blockName},${blockColor},${blockRotation}`;
+        const dynPropStr = `|${dynamicPropName}:${bayType}`;
+        const coordStr = `|${coordList.join('')}`; // (x,y,z)(x,y,z)
+        
+        lispStrings.push(propStr + dynPropStr + coordStr + "}");
+    });
+
+    const fileContent = lispStrings.join('\n');
+
+    // 7. Create text file and trigger download
+    const blob = new Blob([fileContent], { type: 'text/plain' }); // Changed to text/plain
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'bay_layout.txt'; // Changed to .txt
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
 }
 
 
@@ -353,6 +582,9 @@ export async function runAllConfigurationsSolver() {
 // --- Main Initialization ---
 export function initializeSolver() {
     runSolverButton.addEventListener('click', () => runSolver(false));
+
+    // NEW: Add listener for export button
+    exportResultsButton.addEventListener('click', exportResultsToJSON);
 
     solverConfigSelect.addEventListener('change', () => {
         requestRedraw(); // Redraw visualization with new config

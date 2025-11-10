@@ -788,6 +788,11 @@ function drawStructure(ctx, offsetX, offsetY, drawWidth, drawHeight, scale, para
 
 
     if (beamGap_c > 1) { // Only draw if visible
+        // *** FIX: Explicitly set stroke style and width before drawing beams ***
+        ctx.strokeStyle = '#64748b'; // slate-500
+        ctx.lineWidth = 1;
+        // *** END FIX ***
+
         ctx.beginPath();
         // Top beam (flush to top edge)
         const top_y1 = offsetY;

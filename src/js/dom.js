@@ -32,7 +32,8 @@ export const solverResultWidth = document.getElementById('solverResultWidth');
 export const solverResultFootprint = document.getElementById('solverResultFootprint');
 export const solverResultLocations = document.getElementById('solverResultLocations');
 export const solverResultPerfDensity = document.getElementById('solverResultPerfDensity');
-export const applySolverButton = document.getElementById('applySolverButton');
+// REMOVED: applySolverButton
+export const exportResultsButton = document.getElementById('exportResultsButton'); // NEW
 export const solverModal = document.getElementById('solverModal');
 export const solverModalMessage = document.getElementById('solverModalMessage');
 export const solverModalContinue = document.getElementById('solverModalContinue');
