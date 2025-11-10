@@ -1,6 +1,6 @@
 // --- Number Formatting Helpers ---
 export function formatNumber(numStr) {
-    if (numStr === '' || numStr === null) return '';
+    if (numStr === '' || numStr === null || typeof numStr === 'undefined') return '';
     // Remove non-numeric characters except decimal point
     let num = parseFloat(numStr.toString().replace(/[^0-9.]/g, ''));
     if (isNaN(num)) return '';
