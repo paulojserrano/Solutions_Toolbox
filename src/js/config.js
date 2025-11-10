@@ -52,7 +52,7 @@ export const configurations = {
         "upright-length": 90,
         "upright-width": 70,
     "hook-allowance": 90,
-    "aisle-width": 1500,
+    "aisle-width": 1160,
     "rack-flue-space": 150,
     "base-beam-height": 430,
     "beam-width": 60,
@@ -78,7 +78,7 @@ export const configurations = {
         "upright-length": 90,
         "upright-width": 70,
     "hook-allowance": 90,
-    "aisle-width": 1500,
+    "aisle-width": 1160,
     "rack-flue-space": 150,
     "base-beam-height": 430,
     "beam-width": 60,
@@ -104,7 +104,7 @@ export const configurations = {
         "upright-length": 100, // Example change
         "upright-width": 80, // Example change
     "hook-allowance": 90,
-    "aisle-width": 1600, // Example change
+    "aisle-width": 1380, // Example change
     "rack-flue-space": 150,
     "base-beam-height": 430,
     "beam-width": 60,
@@ -130,7 +130,7 @@ export const configurations = {
         "upright-length": 100,
         "upright-width": 80,
     "hook-allowance": 90,
-    "aisle-width": 1600,
+    "aisle-width": 1380,
     "rack-flue-space": 150,
     "base-beam-height": 430,
     "beam-width": 60,

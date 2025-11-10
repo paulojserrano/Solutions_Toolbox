@@ -11,14 +11,24 @@ import { calculateLayout, calculateElevationLayout } from './calculations.js';
 import { getViewState } from './viewState.js'; // <-- ADDED IMPORT
 
 // ... (drawRack helper - no changes) ...
+// MODIFIED: drawRack helper function
 function drawRack(x_world, rackDepth_world, rackType, params) {
     const {
         ctx, scale, offsetX, offsetY,
-        bayWidth, bayDepth, // Note: bayDepth is calculated rack depth
+        bayDepth, // Note: bayDepth is calculated rack depth
         flueSpace,
         usableLength_world, setbackTop_world,
-        isDetailView, detailParams // NEW: Get detail params
+        isDetailView, detailParams, // NEW: Get detail params
+        // --- NEW ---
+        baysPerRack,
+        clearOpening_world
+        // bayWidth (C+2U) is removed
     } = params;
+
+    // --- NEW ---
+    const uprightLength_world = detailParams.uprightLength_world;
+    const clearOpening_canvas = clearOpening_world * scale;
+    const uprightLength_canvas = uprightLength_world * scale;
 
     const rackX_canvas = offsetX + (x_world * scale);
     // Calculate Y start and height based on setbacks
@@ -29,15 +39,11 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
 
     // --- NEW: Detail View Logic ---
     if (isDetailView) {
-        const bayWidth_world = bayWidth;
-        const bayWidth_canvas = bayWidth_world * scale;
-
-        const baysPerRack = (bayWidth > 0 && usableLength_world > 0) ? Math.floor(usableLength_world / bayWidth) : 0;
+        // --- MODIFIED: This logic now draws one starter upright, then N bays of (clearOpening + 1 upright) ---
+        
         if (baysPerRack === 0) return; // No bays to draw
 
         // Create the canvas-scaled parameter object for the helper functions
-        // These helpers (drawStructure, drawTotes) expect parameters scaled
-        // to the *current* canvas transform, which is the main warehouse scale.
         const bayDetailHelpersParams = {
             ...detailParams, // totesDeep, toteQtyPerBay, etc. (world values)
             upLength_c: detailParams.uprightLength_world * scale,
@@ -48,77 +54,115 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
             toteToUpright_c: detailParams.toteToUprightDist * scale,
             toteBackToBack_c: detailParams.toteBackToBackDist * scale
         };
+        
+        // This is the repeating unit width (vertical dimension on canvas)
+        const repeatingBayUnit_canvas = clearOpening_canvas + uprightLength_canvas;
+        let currentY_canvas = rackY_canvas_start;
 
         // Loop `baysPerRack` times
         for (let i = 0; i < baysPerRack; i++) {
-            const bayY_canvas = rackY_canvas_start + (i * bayWidth_canvas);
+            const isFirstBay = (i === 0);
+            
+            // The first bay includes the "starter" upright, so it's wider
+            const bay_h_canvas = (isFirstBay) ? (clearOpening_canvas + uprightLength_canvas) : (clearOpening_canvas);
+            
+             // We draw the "starter" upright, then draw N bays.
+             // bayType tells drawStructure/drawTotes how to render
+             // 'full' = 2 uprights (for single bay view)
+             // 'starter' = left upright only
+             // 'repeater' = right upright only, totes start at left edge
+            const bayType = (isFirstBay) ? 'starter' : 'repeater';
+            
+            // For the *first* bay, we draw the starter upright, then the clear opening
+            // For *subsequent* bays, we just draw the clear opening and its upright
+            
+            let bayY_canvas, bayDrawWidth_canvas;
+            
+            if (isFirstBay) {
+                // Draw Starter Upright
+                bayY_canvas = currentY_canvas;
+                bayDrawWidth_canvas = uprightLength_canvas; // The width of the upright
+                
+                if (rackType === 'single') {
+                    const bay_w_canvas = bayDepth * scale; // Horizontal dimension
+                    const centerX = rackX_canvas + bay_w_canvas / 2;
+                    const centerY = bayY_canvas + bayDrawWidth_canvas / 2;
+                    ctx.save();
+                    ctx.translate(centerX, centerY);
+                    ctx.rotate(Math.PI / 2); // 90 degrees
+                    drawStructure(ctx, -bayDrawWidth_canvas / 2, -bay_w_canvas / 2, bayDrawWidth_canvas, bay_w_canvas, scale, bayDetailHelpersParams, 'starter');
+                    ctx.restore();
+                } else if (rackType === 'double') {
+                    // ... (Logic for double rack starter upright) ...
+                    const rack1_w_canvas = bayDepth * scale;
+                    const flue_w_canvas = flueSpace * scale;
+                    const rack2_x_canvas = rackX_canvas + rack1_w_canvas + flue_w_canvas;
+                    const rack2_w_canvas = bayDepth * scale;
+
+                    // Rack 1 Starter
+                    const centerX1 = rackX_canvas + rack1_w_canvas / 2;
+                    const centerY1 = bayY_canvas + bayDrawWidth_canvas / 2;
+                    ctx.save();
+                    ctx.translate(centerX1, centerY1); ctx.rotate(Math.PI / 2);
+                    drawStructure(ctx, -bayDrawWidth_canvas / 2, -rack1_w_canvas / 2, bayDrawWidth_canvas, rack1_w_canvas, scale, bayDetailHelpersParams, 'starter');
+                    ctx.restore();
+                    // Rack 2 Starter
+                    const centerX2 = rack2_x_canvas + rack2_w_canvas / 2;
+                    const centerY2 = bayY_canvas + bayDrawWidth_canvas / 2;
+                    ctx.save();
+                    ctx.translate(centerX2, centerY2); ctx.rotate(Math.PI / 2);
+                    drawStructure(ctx, -bayDrawWidth_canvas / 2, -rack2_w_canvas / 2, bayDrawWidth_canvas, rack2_w_canvas, scale, bayDetailHelpersParams, 'starter');
+                    ctx.restore();
+                }
+                currentY_canvas += bayDrawWidth_canvas; // Move Y past the starter upright
+            }
+            
+            // Now draw the Clear Opening + Right Upright
+            bayY_canvas = currentY_canvas;
+            bayDrawWidth_canvas = clearOpening_canvas + uprightLength_canvas;
             
             if (rackType === 'single') {
-                const bay_x_canvas = rackX_canvas;
                 const bay_w_canvas = bayDepth * scale; // Horizontal dimension
-                const bay_h_canvas = bayWidth_canvas;  // Vertical dimension
-
-                // --- We need to draw the bay rotated 90 degrees ---
-                // The helpers draw (Bay Width = horizontal, Bay Depth = vertical)
-                // Our canvas is (Bay Width = vertical, Bay Depth = horizontal)
-                
-                const drawWidth = bay_h_canvas; // Helper's width = Our height
-                const drawHeight = bay_w_canvas; // Helper's height = Our width
-
-                const centerX = bay_x_canvas + bay_w_canvas / 2;
-                const centerY = bayY_canvas + bay_h_canvas / 2;
+                const centerX = rackX_canvas + bay_w_canvas / 2;
+                const centerY = bayY_canvas + bayDrawWidth_canvas / 2;
 
                 ctx.save();
                 ctx.translate(centerX, centerY);
                 ctx.rotate(Math.PI / 2); // 90 degrees
                 
-                // Calculate offsets for helpers (origin is now center)
-                const helper_offsetX = -drawWidth / 2;
-                const helper_offsetY = -drawHeight / 2;
-                
-                // Call helpers
-                drawStructure(ctx, helper_offsetX, helper_offsetY, drawWidth, drawHeight, scale, bayDetailHelpersParams);
-                drawTotes(ctx, helper_offsetX, helper_offsetY, scale, bayDetailHelpersParams);
+                drawStructure(ctx, -bayDrawWidth_canvas / 2, -bay_w_canvas / 2, bayDrawWidth_canvas, bay_w_canvas, scale, bayDetailHelpersParams, 'repeater');
+                drawTotes(ctx, -bayDrawWidth_canvas / 2, -bay_w_canvas / 2, scale, bayDetailHelpersParams, 'repeater');
                 
                 ctx.restore();
 
             } else if (rackType === 'double') {
-                const rack1_x_canvas = rackX_canvas;
                 const rack1_w_canvas = bayDepth * scale; // bayDepth is single rack depth
-                
                 const flue_w_canvas = flueSpace * scale;
-                
-                const rack2_x_canvas = rack1_x_canvas + rack1_w_canvas + flue_w_canvas;
+                const rack2_x_canvas = rackX_canvas + rack1_w_canvas + flue_w_canvas;
                 const rack2_w_canvas = bayDepth * scale;
 
-                const bay_h_canvas = bayWidth_canvas; // Vertical dimension
-
-                // --- Rack 1 ---
-                const drawWidth1 = bay_h_canvas;
-                const drawHeight1 = rack1_w_canvas;
-                const centerX1 = rack1_x_canvas + rack1_w_canvas / 2;
-                const centerY1 = bayY_canvas + bay_h_canvas / 2;
-
+                // --- Rack 1 (Repeater) ---
+                const centerX1 = rackX_canvas + rack1_w_canvas / 2;
+                const centerY1 = bayY_canvas + bayDrawWidth_canvas / 2;
                 ctx.save();
                 ctx.translate(centerX1, centerY1);
                 ctx.rotate(Math.PI / 2);
-                drawStructure(ctx, -drawWidth1 / 2, -drawHeight1 / 2, drawWidth1, drawHeight1, scale, bayDetailHelpersParams);
-                drawTotes(ctx, -drawWidth1 / 2, -drawHeight1 / 2, scale, bayDetailHelpersParams);
+                drawStructure(ctx, -bayDrawWidth_canvas / 2, -rack1_w_canvas / 2, bayDrawWidth_canvas, rack1_w_canvas, scale, bayDetailHelpersParams, 'repeater');
+                drawTotes(ctx, -bayDrawWidth_canvas / 2, -rack1_w_canvas / 2, scale, bayDetailHelpersParams, 'repeater');
                 ctx.restore();
 
-                // --- Rack 2 ---
-                const drawWidth2 = bay_h_canvas;
-                const drawHeight2 = rack2_w_canvas;
+                // --- Rack 2 (Repeater) ---
                 const centerX2 = rack2_x_canvas + rack2_w_canvas / 2;
-                const centerY2 = bayY_canvas + bay_h_canvas / 2;
-
+                const centerY2 = bayY_canvas + bayDrawWidth_canvas / 2;
                 ctx.save();
                 ctx.translate(centerX2, centerY2);
                 ctx.rotate(Math.PI / 2);
-                drawStructure(ctx, -drawWidth2 / 2, -drawHeight2 / 2, drawWidth2, drawHeight2, scale, bayDetailHelpersParams);
-                drawTotes(ctx, -drawWidth2 / 2, -drawHeight2 / 2, scale, bayDetailHelpersParams);
+                drawStructure(ctx, -bayDrawWidth_canvas / 2, -rack2_w_canvas / 2, bayDrawWidth_canvas, rack2_w_canvas, scale, bayDetailHelpersParams, 'repeater');
+                drawTotes(ctx, -bayDrawWidth_canvas / 2, -rack2_w_canvas / 2, scale, bayDetailHelpersParams, 'repeater');
                 ctx.restore();
             }
+            
+            currentY_canvas += bayDrawWidth_canvas; // Move Y past the bay
         }
     }
     // --- ELSE: Original Simple View ---
@@ -129,16 +173,27 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
             ctx.fillStyle = '#cbd5e1'; // slate-300
             ctx.fillRect(rackX_canvas, rackY_canvas_start, rackWidth_canvas, rackHeight_canvas);
 
-            if (bayWidth > 0) {
+            // --- MODIFIED: Draw bay lines based on shared upright logic ---
+            if (baysPerRack > 0) {
                 ctx.strokeStyle = '#94a3b8'; // slate-400
                 ctx.lineWidth = 0.5;
                 ctx.beginPath();
-                let currentBayY_world_relative = bayWidth;
-                while (currentBayY_world_relative < usableLength_world) {
-                    const bayY_canvas = rackY_canvas_start + (currentBayY_world_relative * scale);
+                
+                // Draw first upright line
+                let currentBayY_world_relative = uprightLength_world;
+                let bayY_canvas = rackY_canvas_start + (currentBayY_world_relative * scale);
+                ctx.moveTo(rackX_canvas, bayY_canvas);
+                ctx.lineTo(rackX_canvas + rackWidth_canvas, bayY_canvas);
+                
+                // Draw repeating bay lines
+                const repeatingBayUnitWidth_world = clearOpening_world + uprightLength_world;
+                for(let i=0; i < baysPerRack; i++) {
+                    currentBayY_world_relative += clearOpening_world + uprightLength_world;
+                     if (currentBayY_world_relative > usableLength_world) break; // Don't draw past end
+                     
+                    bayY_canvas = rackY_canvas_start + (currentBayY_world_relative * scale);
                     ctx.moveTo(rackX_canvas, bayY_canvas);
                     ctx.lineTo(rackX_canvas + rackWidth_canvas, bayY_canvas);
-                    currentBayY_world_relative += bayWidth;
                 }
                 ctx.stroke();
             }
@@ -153,20 +208,29 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
             const flue_width_canvas = flueSpace * scale;
             const rack2_width_canvas = bayDepth * scale;
             const rack2_x_canvas = rackX_canvas + rack1_width_canvas + flue_width_canvas;
+            
+            const repeatingBayUnitWidth_world = clearOpening_world + uprightLength_world;
+
 
             // --- Draw Rack 1 ---
             ctx.fillStyle = '#cbd5e1'; // slate-300
             ctx.fillRect(rackX_canvas, rackY_canvas_start, rack1_width_canvas, rackHeight_canvas);
-            if (bayWidth > 0) {
+            if (baysPerRack > 0) {
                 ctx.strokeStyle = '#94a3b8'; // slate-400
                 ctx.lineWidth = 0.5;
                 ctx.beginPath();
-                let currentBayY_world_relative = bayWidth;
-                while (currentBayY_world_relative < usableLength_world) {
-                    const bayY_canvas = rackY_canvas_start + (currentBayY_world_relative * scale);
+                // Draw first upright line
+                let currentBayY_world_relative = uprightLength_world;
+                let bayY_canvas = rackY_canvas_start + (currentBayY_world_relative * scale);
+                ctx.moveTo(rackX_canvas, bayY_canvas);
+                ctx.lineTo(rackX_canvas + rack1_width_canvas, bayY_canvas);
+                // Draw repeating bay lines
+                for(let i=0; i < baysPerRack; i++) {
+                    currentBayY_world_relative += repeatingBayUnitWidth_world;
+                    if (currentBayY_world_relative > usableLength_world) break;
+                    bayY_canvas = rackY_canvas_start + (currentBayY_world_relative * scale);
                     ctx.moveTo(rackX_canvas, bayY_canvas);
                     ctx.lineTo(rackX_canvas + rack1_width_canvas, bayY_canvas);
-                    currentBayY_world_relative += bayWidth;
                 }
                 ctx.stroke();
             }
@@ -177,16 +241,22 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
             // --- Draw Rack 2 ---
             ctx.fillStyle = '#cbd5e1'; // slate-300
             ctx.fillRect(rack2_x_canvas, rackY_canvas_start, rack2_width_canvas, rackHeight_canvas);
-            if (bayWidth > 0) {
+            if (baysPerRack > 0) {
                 ctx.strokeStyle = '#94a3b8'; // slate-400
                 ctx.lineWidth = 0.5;
                 ctx.beginPath();
-                let currentBayY_world_relative = bayWidth;
-                while (currentBayY_world_relative < usableLength_world) {
-                    const bayY_canvas = rackY_canvas_start + (currentBayY_world_relative * scale);
+                 // Draw first upright line
+                let currentBayY_world_relative = uprightLength_world;
+                let bayY_canvas = rackY_canvas_start + (currentBayY_world_relative * scale);
+                ctx.moveTo(rack2_x_canvas, bayY_canvas);
+                ctx.lineTo(rack2_x_canvas + rack2_width_canvas, bayY_canvas);
+                // Draw repeating bay lines
+                for(let i=0; i < baysPerRack; i++) {
+                    currentBayY_world_relative += repeatingBayUnitWidth_world;
+                     if (currentBayY_world_relative > usableLength_world) break;
+                    bayY_canvas = rackY_canvas_start + (currentBayY_world_relative * scale);
                     ctx.moveTo(rack2_x_canvas, bayY_canvas);
                     ctx.lineTo(rack2_x_canvas + rack2_width_canvas, bayY_canvas);
-                    currentBayY_world_relative += bayWidth;
                 }
                 ctx.stroke();
             }
@@ -298,11 +368,11 @@ export function drawWarehouse(sysLength, sysWidth, sysHeight, config) {
     // Get global values (not part of config)
     const isDetailView = detailViewToggle.checked;
 
-    // --- Bay Width (horizontal) ---
-    const bayWidth = (toteQtyPerBay * toteLength) +
+    // --- MODIFIED: Bay Width (horizontal) ---
+    // This is now the clear opening.
+    const clearOpening = (toteQtyPerBay * toteLength) +
         (2 * toteToUprightDist) +
-        (Math.max(0, toteQtyPerBay - 1) * toteToToteDist) +
-        (uprightLength * 2);
+        (Math.max(0, toteQtyPerBay - 1) * toteToToteDist);
 
     // --- Bay Depth (vertical) for a SINGLE rack ---
     const bayDepth = (totesDeep * toteWidth) +
@@ -310,7 +380,8 @@ export function drawWarehouse(sysLength, sysWidth, sysHeight, config) {
         hookAllowance;
 
     // --- Run Layout Calculation ---
-    const layout = calculateLayout(bayWidth, bayDepth, aisleWidth, sysLength, sysWidth, layoutMode, flueSpace, setbackTop, setbackBottom);
+    // MODIFIED: Call calculateLayout with new params
+    const layout = calculateLayout(bayDepth, aisleWidth, sysLength, sysWidth, layoutMode, flueSpace, setbackTop, setbackBottom, uprightLength, clearOpening);
 
     // --- Calculate Scaling and Centering for the content itself (independent of zoom/pan) ---
     // This scale is for fitting the *world* content into the *initial* canvas view,
@@ -349,14 +420,18 @@ export function drawWarehouse(sysLength, sysWidth, sysHeight, config) {
     };
 
     // ... (Create drawParams - no changes) ...
+    // MODIFIED: Pass new params to drawParams
     const drawParams = {
         ctx: warehouseCtx, scale: contentScale, offsetX, offsetY, // Use contentScale here
-        bayWidth, bayDepth, // Pass calculated values
+        bayDepth, // Pass calculated single rack depth
         flueSpace, sysLength,
         usableLength_world: layout.usableLength,
         setbackTop_world: setbackTop,
         isDetailView: isDetailView, // NEW
-        detailParams: detailParams // NEW
+        detailParams: detailParams, // NEW
+        baysPerRack: layout.baysPerRack, // NEW
+        clearOpening_world: layout.clearOpening // NEW
+        // bayWidth is REMOVED
     };
     
     // ... (Drawing logic - no changes) ...
@@ -399,19 +474,31 @@ export function drawWarehouse(sysLength, sysWidth, sysHeight, config) {
 }
 
 // ... (drawStructure helper - no changes) ...
-function drawStructure(ctx, offsetX, offsetY, drawWidth, drawHeight, scale, params) {
+// MODIFIED: drawStructure helper
+// Takes a bayType: 'full' (2 uprights), 'starter' (left upright), 'repeater' (right upright)
+function drawStructure(ctx, offsetX, offsetY, drawWidth, drawHeight, scale, params, bayType = 'full') {
     const { upLength_c, upWidth_c, uprightLength_world } = params;
 
-    // --- Draw Uprights (4 corners, filled rectangles) ---
     ctx.fillStyle = '#64748b'; // slate-500
-    // Top-left
-    ctx.fillRect(offsetX, offsetY, upLength_c, upWidth_c);
-    // Top-right
-    ctx.fillRect(offsetX + drawWidth - upLength_c, offsetY, upLength_c, upWidth_c);
-    // Bottom-left
-    ctx.fillRect(offsetX, offsetY + drawHeight - upWidth_c, upLength_c, upWidth_c);
-    // Bottom-right
-    ctx.fillRect(offsetX + drawWidth - upLength_c, offsetY + drawHeight - upWidth_c, upLength_c, upWidth_c);
+
+    // --- Draw Uprights (conditionally) ---
+    
+    // Draw LEFT upright if 'full' or 'starter'
+    if (bayType === 'full' || bayType === 'starter') {
+        // Top-left
+        ctx.fillRect(offsetX, offsetY, upLength_c, upWidth_c);
+        // Bottom-left
+        ctx.fillRect(offsetX, offsetY + drawHeight - upWidth_c, upLength_c, upWidth_c);
+    }
+    
+    // Draw RIGHT upright if 'full' or 'repeater'
+    if (bayType === 'full' || bayType === 'repeater') {
+         // Top-right
+        ctx.fillRect(offsetX + drawWidth - upLength_c, offsetY, upLength_c, upWidth_c);
+        // Bottom-right
+        ctx.fillRect(offsetX + drawWidth - upLength_c, offsetY + drawHeight - upWidth_c, upLength_c, upWidth_c);
+    }
+
 
     // --- Draw Upright C-Channels (lines on top of filled uprights) ---
     // Only draw if scale is large enough to see
@@ -427,51 +514,58 @@ function drawStructure(ctx, offsetX, offsetY, drawWidth, drawHeight, scale, para
         const line2_offset_c = (margin_world + lineGap_world) * scale;
 
         // --- Left upright C-Channel ---
-        const leftLine1_x = offsetX + line1_offset_c;
-        const leftLine2_x = offsetX + line2_offset_c;
+        if (bayType === 'full' || bayType === 'starter') {
+            const leftLine1_x = offsetX + line1_offset_c;
+            const leftLine2_x = offsetX + line2_offset_c;
 
-        ctx.beginPath();
-        // Top cap
-        ctx.moveTo(leftLine1_x, offsetY);
-        ctx.lineTo(leftLine2_x, offsetY);
-        // Bottom cap
-        ctx.moveTo(leftLine1_x, offsetY + drawHeight);
-        ctx.lineTo(leftLine2_x, offsetY + drawHeight);
-        // Vertical web 1
-        ctx.moveTo(leftLine1_x, offsetY);
-        ctx.lineTo(leftLine1_x, offsetY + drawHeight);
-        // Vertical web 2
-        ctx.moveTo(leftLine2_x, offsetY);
-        ctx.lineTo(leftLine2_x, offsetY + drawHeight);
-        ctx.stroke();
+            ctx.beginPath();
+            // Top cap
+            ctx.moveTo(leftLine1_x, offsetY);
+            ctx.lineTo(leftLine2_x, offsetY);
+            // Bottom cap
+            ctx.moveTo(leftLine1_x, offsetY + drawHeight);
+            ctx.lineTo(leftLine2_x, offsetY + drawHeight);
+            // Vertical web 1
+            ctx.moveTo(leftLine1_x, offsetY);
+            ctx.lineTo(leftLine1_x, offsetY + drawHeight);
+            // Vertical web 2
+            ctx.moveTo(leftLine2_x, offsetY);
+            ctx.lineTo(leftLine2_x, offsetY + drawHeight);
+            ctx.stroke();
+        }
 
 
         // --- Right upright C-Channel ---
-        const rightUprightX_c = offsetX + drawWidth - upLength_c;
-        const rightLine1_x = rightUprightX_c + line1_offset_c;
-        const rightLine2_x = rightUprightX_c + line2_offset_c;
+        if (bayType === 'full' || bayType === 'repeater') {
+            const rightUprightX_c = offsetX + drawWidth - upLength_c;
+            const rightLine1_x = rightUprightX_c + line1_offset_c;
+            const rightLine2_x = rightUprightX_c + line2_offset_c;
 
-        ctx.beginPath();
-        // Top cap
-        ctx.moveTo(rightLine1_x, offsetY);
-        ctx.lineTo(rightLine2_x, offsetY);
-        // Bottom cap
-        ctx.moveTo(rightLine1_x, offsetY + drawHeight);
-        ctx.lineTo(rightLine2_x, offsetY + drawHeight);
-        // Vertical web 1
-        ctx.moveTo(rightLine1_x, offsetY);
-        ctx.lineTo(rightLine1_x, offsetY + drawHeight);
-        // Vertical web 2
-        ctx.moveTo(rightLine2_x, offsetY);
-        ctx.lineTo(rightLine2_x, offsetY + drawHeight);
-        ctx.stroke();
+            ctx.beginPath();
+            // Top cap
+            ctx.moveTo(rightLine1_x, offsetY);
+            ctx.lineTo(rightLine2_x, offsetY);
+            // Bottom cap
+            ctx.moveTo(rightLine1_x, offsetY + drawHeight);
+            ctx.lineTo(rightLine2_x, offsetY + drawHeight);
+            // Vertical web 1
+            ctx.moveTo(rightLine1_x, offsetY);
+            ctx.lineTo(rightLine1_x, offsetY + drawHeight);
+            // Vertical web 2
+            ctx.moveTo(rightLine2_x, offsetY);
+            ctx.lineTo(rightLine2_x, offsetY + drawHeight);
+            ctx.stroke();
+        }
     }
 
     // --- Draw Horizontal Beams ---
     const beamGap_world = 40;
     const beamGap_c = beamGap_world * scale;
-    const beam_x1 = offsetX + upLength_c; // Inner edge of left upright
-    const beam_x2 = offsetX + drawWidth - upLength_c; // Inner edge of right upright
+    
+    // MODIFIED: beam_x1 depends on bayType
+    const beam_x1 = (bayType === 'full' || bayType === 'starter') ? (offsetX + upLength_c) : offsetX; // Inner edge of left upright (or edge)
+    const beam_x2 = (bayType === 'full' || bayType === 'repeater') ? (offsetX + drawWidth - upLength_c) : (offsetX + drawWidth); // Inner edge of right upright (or edge)
+
 
     if (beamGap_c > 1) { // Only draw if visible
         ctx.beginPath();
@@ -496,7 +590,9 @@ function drawStructure(ctx, offsetX, offsetY, drawWidth, drawHeight, scale, para
 }
 
 // ... (drawTotes helper - no changes) ...
-function drawTotes(ctx, offsetX, offsetY, scale, params) {
+// MODIFIED: drawTotes helper
+// Takes a bayType: 'full' (2 uprights), 'repeater' (no left upright)
+function drawTotes(ctx, offsetX, offsetY, scale, params, bayType = 'full') {
     const {
         totesDeep, toteQtyPerBay,
         toteWidth_c, toteLength_c,
@@ -514,7 +610,14 @@ function drawTotes(ctx, offsetX, offsetY, scale, params) {
         if (j > 0) {
             current_y_canvas += toteBackToBack_c;
         }
-        let current_x_canvas = offsetX + upLength_c + toteToUpright_c; // Offset by upright + toteToUpright
+        
+        // MODIFIED: current_x_canvas depends on bayType
+        // 'full' = offset by left upright
+        // 'repeater' = start from left edge (plus tote-to-upright)
+        let current_x_canvas = (bayType === 'full') 
+            ? (offsetX + upLength_c + toteToUpright_c) // Offset by upright + toteToUpright
+            : (offsetX + toteToUpright_c); // Offset by just toteToUpright
+            
         for (let i = 0; i < toteQtyPerBay; i++) {
             // Draw with (width = toteLength_c, height = toteWidth_c)
             ctx.fillRect(current_x_canvas, current_y_canvas, toteLength_c, toteWidth_c);
@@ -655,6 +758,8 @@ export function drawRackDetail(sysLength, sysWidth, sysHeight, config) {
     const hookAllowance = config['hook-allowance'] || 0;
 
     // ... (Calculate Bay Dimensions - no changes) ...
+    // MODIFIED: This view shows a SINGLE bay, which ALWAYS has 2 uprights.
+    // The shared logic is for the layout, not this detail view.
     const bayWidth = (toteQtyPerBay * toteLength) + (2 * toteToUprightDist) + (Math.max(0, toteQtyPerBay - 1) * toteToToteDist) + (uprightLength * 2);
     const bayDepth_total = (totesDeep * toteWidth) + (Math.max(0, totesDeep - 1) * toteBackToBackDist) + hookAllowance;
 
@@ -678,6 +783,7 @@ export function drawRackDetail(sysLength, sysWidth, sysHeight, config) {
         toteWidth, toteLength, toteToToteDist, toteToUprightDist, toteBackToBackDist,
         toteQtyPerBay, totesDeep,
         uprightLength_world: uprightLength,
+        uprightWidth_world: uprightWidth, // ADDED
 
         // Canvas-scaled values
         upLength_c: uprightLength * contentScale,
@@ -689,10 +795,12 @@ export function drawRackDetail(sysLength, sysWidth, sysHeight, config) {
         toteBackToBack_c: toteBackToBackDist * contentScale
     };
     // ... (Execute Drawing Functions - no changes) ...
-    drawStructure(ctx, offsetX, offsetY, drawWidth, drawHeight, contentScale, params);
+    // MODIFIED: Pass 'full' as bayType
+    drawStructure(ctx, offsetX, offsetY, drawWidth, drawHeight, contentScale, params, 'full');
 
     // Draw totes on top of structure
-    drawTotes(ctx, offsetX, offsetY, contentScale, params);
+    // MODIFIED: Pass 'full' as bayType
+    drawTotes(ctx, offsetX, offsetY, contentScale, params, 'full');
 
     // Draw overall dimensions
     drawDimensions(ctx, offsetX, offsetY, drawWidth, drawHeight, bayWidth, bayDepth_total, state.scale); // Pass state.scale
@@ -809,11 +917,14 @@ export function drawElevationView(sysLength, sysWidth, sysHeight, config) {
     ctx.fillText("Side View", sideViewOffsetX + sideViewWidth / 2, padding - (10 / state.scale)); // Adjust text position for zoom
 
     // --- 7.A. DRAW FRONT ELEVATION (LEFT) ---
+    // MODIFIED: This view shows ONE bay, so it uses the 'full' (2 upright) logic
     {
         const { UW_front, NT_front, TW_front, TTD_front, TUD_front } = inputs;
         const NB = 1; // 1 bay
+        // This is the Clear Opening
         const BCO = (NT_front * TW_front) + (Math.max(0, NT_front - 1) * TTD_front) + (2 * TUD_front);
-        const totalRackWidthMM = (NB * BCO) + ((NB + 1) * UW_front);
+        // Total width for one bay is C + 2U
+        const totalRackWidthMM = BCO + (2 * UW_front);
 
         const contentScaleX = (frontViewWidth - padding * 2) / totalRackWidthMM;
         const contentScaleY = (viewHeight - 2 * padding) / WH;
@@ -844,8 +955,9 @@ export function drawElevationView(sysLength, sysWidth, sysHeight, config) {
             ctx.setLineDash([]);
 
             let currentX = rackStartX;
-            const bayStartX = currentX;
-            const bayWidthPx = bayClearOpeningPx + uprightWidthPx;
+            const bayStartX = currentX; // This is the start of the left upright
+            // const bayWidthPx = bayClearOpeningPx + uprightWidthPx; // This is C + U
+            const totalBayWidthPx = bayClearOpeningPx + 2 * uprightWidthPx; // This is C + 2U
             const toteAreaStartX = currentX + uprightWidthPx + TUD_front * contentScale;
 
             ctx.fillStyle = '#94a3b8'; // Left Upright
@@ -859,8 +971,9 @@ export function drawElevationView(sysLength, sysWidth, sysHeight, config) {
 
                 ctx.fillStyle = '#64748b'; // Beam
                 ctx.strokeStyle = '#334155'; ctx.lineWidth = 0.5 / state.scale; // Adjust line width for zoom
-                ctx.fillRect(bayStartX, beamY, bayWidthPx, beamHeightPx);
-                ctx.strokeRect(bayStartX, beamY, bayWidthPx, beamHeightPx);
+                // Draw beam from inner-left-upright to inner-right-upright
+                ctx.fillRect(bayStartX + uprightWidthPx, beamY, bayClearOpeningPx, beamHeightPx);
+                ctx.strokeRect(bayStartX + uprightWidthPx, beamY, bayClearOpeningPx, beamHeightPx);
 
                 ctx.fillStyle = '#60a5fa'; // Totes
                 ctx.strokeStyle = '#2563eb';

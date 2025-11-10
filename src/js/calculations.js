@@ -4,8 +4,10 @@
 import { roundUpTo50, parseNumber } from './utils.js'; // Added parseNumber
 
 // --- Layout Calculation Function (Top-Down) ---
-// (No changes to this function, it already accepts parameters)
-export function calculateLayout(bayWidth, bayDepth, aisleWidth, sysLength, sysWidth, layoutMode, flueSpace, setbackTop, setbackBottom) {
+// MODIFIED: Signature changed.
+// bayWidth is removed.
+// uprightLength and clearOpening are added.
+export function calculateLayout(bayDepth, aisleWidth, sysLength, sysWidth, layoutMode, flueSpace, setbackTop, setbackBottom, uprightLength, clearOpening) {
     let layoutItems = [];
     let totalBays = 0;
     let currentX_world = 0;
@@ -14,7 +16,16 @@ export function calculateLayout(bayWidth, bayDepth, aisleWidth, sysLength, sysWi
     let usableLength = sysLength - setbackTop - setbackBottom;
     if (usableLength <= 0) usableLength = 0;
 
-    const baysPerRack = (bayWidth > 0 && usableLength > 0) ? Math.floor(usableLength / bayWidth) : 0;
+    // --- MODIFIED: Bay Calculation Logic ---
+    // The total width of N bays is (N * clearOpening) + ((N + 1) * uprightLength)
+    // So, N = floor( (usableLength - uprightLength) / (clearOpening + uprightLength) )
+    const repeatingBayUnitWidth = clearOpening + uprightLength;
+    let baysPerRack = 0;
+
+    if (usableLength > uprightLength && repeatingBayUnitWidth > 0) {
+        baysPerRack = Math.floor((usableLength - uprightLength) / repeatingBayUnitWidth);
+    }
+    // --- END MODIFICATION ---
 
     if (layoutMode === 'all-singles') {
         const rackWidth = bayDepth; // bayDepth is the calculated single rack depth
@@ -28,7 +39,8 @@ export function calculateLayout(bayWidth, bayDepth, aisleWidth, sysLength, sysWi
             currentX_world += rackWidth;
         } else {
             // Not enough room for even one rack
-            return { layoutItems: [], totalBays: 0, totalLayoutWidth: 0, usableLength: 0 };
+            // MODIFIED: Return baysPerRack and clearOpening
+            return { layoutItems: [], totalBays: 0, totalLayoutWidth: 0, usableLength: 0, baysPerRack: 0, clearOpening: 0 };
         }
 
         // 2. Loop, adding [Aisle] + [Rack]
@@ -51,7 +63,8 @@ export function calculateLayout(bayWidth, bayDepth, aisleWidth, sysLength, sysWi
             totalBays += baysPerRack;
             currentX_world += singleRackWidth;
         } else {
-            return { layoutItems: [], totalBays: 0, totalLayoutWidth: 0, usableLength: 0 };
+             // MODIFIED: Return baysPerRack and clearOpening
+            return { layoutItems: [], totalBays: 0, totalLayoutWidth: 0, usableLength: 0, baysPerRack: 0, clearOpening: 0 };
         }
 
         // 2. Loop, adding [Aisle] + [Double Rack]
@@ -78,7 +91,8 @@ export function calculateLayout(bayWidth, bayDepth, aisleWidth, sysLength, sysWi
     const lastItem = layoutItems[layoutItems.length - 1];
     const totalLayoutWidth = lastItem ? lastItem.x + lastItem.width : 0;
 
-    return { layoutItems, totalBays, totalLayoutWidth, usableLength };
+    // MODIFIED: Return baysPerRack and clearOpening
+    return { layoutItems, totalBays, totalLayoutWidth, usableLength, baysPerRack, clearOpening };
 }
 
 /**
@@ -236,17 +250,18 @@ export function getMetrics(sysLength, sysWidth, sysHeight, config) {
 
 
     // --- 3. Calculate Bay Dimensions ---
-    const bayWidth = (toteQtyPerBay * toteLength) +
+    // MODIFIED: Calculate clear opening instead of bayWidth
+    const clearOpening = (toteQtyPerBay * toteLength) +
         (2 * toteToUprightDist) +
-        (Math.max(0, toteQtyPerBay - 1) * toteToToteDist) +
-        (uprightLength * 2);
+        (Math.max(0, toteQtyPerBay - 1) * toteToToteDist);
 
     const bayDepth = (totesDeep * toteWidth) +
         (Math.max(0, totesDeep - 1) * toteBackToBackDist) +
         hookAllowance;
 
     // --- 4. Calculate Layout (Total Bays) ---
-    const layout = calculateLayout(bayWidth, bayDepth, aisleWidth, sysLength, sysWidth, layoutMode, flueSpace, setbackTop, setbackBottom);
+    // MODIFIED: Pass uprightLength and clearOpening to calculateLayout
+    const layout = calculateLayout(bayDepth, aisleWidth, sysLength, sysWidth, layoutMode, flueSpace, setbackTop, setbackBottom, uprightLength, clearOpening);
     const totalBays = layout.totalBays;
 
     // --- 5. Get Vertical Inputs from config ---
