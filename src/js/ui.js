@@ -4,14 +4,26 @@ import {
     
     // --- NEW IMPORTS ---
     // MODIFIED: Renamed
-    solverConfigSelect, warehouseLengthInput, warehouseWidthInput, clearHeightInput,
-    comparisonTabButton // Import new tab button
+    warehouseLengthInput, warehouseWidthInput, clearHeightInput,
+    // MODIFIED: solverConfigSelect, comparisonTabButton REMOVED
+    
+    // MODIFIED: Added new DOM elements
+    solverConfigResultsScroller,
+    solverResultsSection,
+    solverVisualizationsSection
+
 } from './dom.js';
 import { drawWarehouse, drawRackDetail, drawElevationView } from './drawing.js';
 import { parseNumber, formatNumber, formatDecimalNumber } from './utils.js'; // MODIFIED
 import { configurations } from './config.js';
 import { getViewState } from './viewState.js';
-import { runAllConfigurationsSolver, solverFinalResults } from './solver.js'; // MODIFIED: Import solver function AND solverFinalResults
+// MODIFIED: Import new state/functions
+import {
+    selectedSolverResult,
+    setSelectedSolverResult,
+    getSolverResultByKey,
+    updateSolverResults
+} from './solver.js';
 
 let rafId = null; // Single RAF ID for debouncing all draw calls
 
@@ -22,12 +34,12 @@ export function requestRedraw() {
     }
     rafId = requestAnimationFrame(() => {
         // --- Get selected config ---
-        const configKey = solverConfigSelect.value;
+        // MODIFIED: Get config from selected result, or default to first
+        const configKey = selectedSolverResult ? selectedSolverResult.configKey : Object.keys(configurations)[0];
         const config = configurations[configKey] || null;
 
         if (!config) {
-            // This can happen on initial load before config is populated
-            // console.warn("Redraw requested but no config is selected.");
+            console.warn("Redraw requested but no config is available.");
             return;
         }
 
@@ -38,13 +50,11 @@ export function requestRedraw() {
         const sysHeight = parseNumber(clearHeightInput.value);
 
         // --- Pass config to all draw functions ---
-        // MODIFIED: Pass solverFinalResults as the last argument
-        // MODIFIED: Pass warehouse L/W to drawWarehouse
-        drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config, solverFinalResults);
+        // MODIFIED: Pass selectedSolverResult
+        drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config, selectedSolverResult);
         
-        // MODIFIED: These functions only need height and config. L/W are placeholders.
-        drawRackDetail(0, 0, sysHeight, config, solverFinalResults);
-        drawElevationView(0, 0, sysHeight, config, solverFinalResults);
+        drawRackDetail(0, 0, sysHeight, config, selectedSolverResult);
+        drawElevationView(0, 0, sysHeight, config, selectedSolverResult);
 
         rafId = null;
     });
@@ -111,6 +121,40 @@ function applyZoomPan(canvas, drawFunction) {
 
 }
 
+// --- NEW: Click handler for solution cards ---
+function handleConfigCardClick(e) {
+    const card = e.target.closest('.comparison-card');
+    if (!card) return;
+
+    // Remove active state from all siblings
+    const allCards = solverConfigResultsScroller.querySelectorAll('.comparison-card');
+    allCards.forEach(c => c.classList.remove('active'));
+    
+    // Add active state to clicked card
+    card.classList.add('active');
+
+    const key = card.dataset.configKey;
+    const result = getSolverResultByKey(key);
+
+    if (!result) {
+        console.error("Could not find result for key:", key);
+        return;
+    }
+
+    // Set the global selected result
+    setSelectedSolverResult(result);
+    
+    // Populate the "Results" (Box 2)
+    updateSolverResults(result);
+
+    // Show the results and visualization sections
+    solverResultsSection.style.display = 'block';
+    solverVisualizationsSection.style.display = 'flex'; // This is a flex container
+
+    // Redraw everything with the new selection
+    requestRedraw();
+}
+
 
 export function initializeUI(redrawInputs, numberInputs, decimalInputs = []) { // MODIFIED
     // Redraw on input change
@@ -164,15 +208,17 @@ export function initializeUI(redrawInputs, numberInputs, decimalInputs = []) { /
             const tabId = e.target.getAttribute('data-tab');
             document.getElementById(tabId).classList.add('active');
 
-            // NEW: Run comparison solver if that tab was clicked
-            if (tabId === 'comparisonTabContent') {
-                runAllConfigurationsSolver();
-            }
+            // MODIFIED: Comparison tab logic REMOVED
 
             // Request a redraw to ensure the newly visible canvas is drawn
             requestRedraw();
         }
     });
+
+    // --- NEW: Add click listener for config cards ---
+    if (solverConfigResultsScroller) {
+        solverConfigResultsScroller.addEventListener('click', handleConfigCardClick);
+    }
 
     // Initial draw is handled by the ResizeObservers
 }

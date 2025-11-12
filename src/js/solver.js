@@ -1,28 +1,31 @@
 import {
     // Solver Tab
     solverStorageReqInput, solverThroughputReqInput,
-    solverAspectRatioInput,
+    solverToteSizeSelect, solverEquivalentVolumeCheckbox, // NEW
     runSolverButton,
-    solverStatus, solverResultLength, solverResultWidth,
+    solverConfigStatus,
+    solverConfigResultsContainer,
+    solverConfigResultsScroller,
+    solverResultsSection,
+    solverVisualizationsSection,
+    solverResultLength, solverResultWidth,
     solverResultFootprint, solverResultLocations, solverResultPerfDensity,
-    exportResultsButton, // MODIFIED: Removed applySolverButton
-    // MODIFIED: Renamed inputs
+    exportResultsButton,
     warehouseLengthInput, warehouseWidthInput, mainViewTabs,
-    solverConfigSelect,
     clearHeightInput,
-    solverExpandPDCheckbox, // NEW
-    solverReduceLevelsCheckbox, // NEW
-    solverExpandConstraintsCheckbox, // NEW
-    // NEW: Warning icons
+    solverExpandPDCheckbox,
+    solverReduceLevelsCheckbox,
+    solverRespectConstraintsCheckbox,
     solverResultLengthWarning, solverResultWidthWarning,
 
-    // --- NEW: Comparison Tab ---
-    comparisonTabButton,
-    comparisonResultsContainer,
-    // MODIFIED: Removed runAllOptionsButton
-    runAllStatus,
+    // --- NEW SOLVER METHOD IMPORTS ---
+    // MODIFIED: Changed to select
+    solverMethodSelect,
+    solverAspectRatioInput,
+    solverFixedLength,
+    solverFixedWidth,
 
-    // --- NEW: Result Metrics ---
+    // --- Result Metrics ---
     solverResultGrossVolume,
     solverResultTotalBays,
     solverResultCapacityUtil,
@@ -30,29 +33,35 @@ import {
 
 } from './dom.js';
 import { parseNumber, formatNumber } from './utils.js';
-// MODIFIED: calculateElevationLayout was imported twice, fixed.
 import { getMetrics, calculateLayout, calculateElevationLayout } from './calculations.js';
 import { requestRedraw } from './ui.js';
-import { configurations } from './config.js'; // MODIFIED: Import all configs
+import { configurations } from './config.js';
 
-let solverTempResults = null;
-export let solverFinalResults = null; // MODIFIED: Export this
+export let selectedSolverResult = null;
+let allSolverResults = [];
 
-// --- MODIFIED: Solver Modal Controls REMOVED ---
-// function showSolverModal(message) { ... }
-// function hideSolverModal() { ... }
+export function setSelectedSolverResult(result) {
+    selectedSolverResult = result;
+}
 
+export function getSolverResultByKey(key) {
+    return allSolverResults.find(r => r.configKey === key);
+}
 
 // --- Update Results Panel (Main Tab) ---
-function updateSolverResults(results) {
-    // --- Basic Metrics ---
+export function updateSolverResults(results) {
+    if (!results) {
+        solverResultsSection.style.display = 'none';
+        exportResultsButton.style.display = 'none';
+        return;
+    }
+
     solverResultLength.textContent = formatNumber(results.L);
     solverResultWidth.textContent = formatNumber(results.W);
     solverResultFootprint.textContent = results.footprint.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
     solverResultLocations.textContent = formatNumber(results.totalLocations);
     solverResultPerfDensity.textContent = (results.density || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     
-    // --- NEW Metrics ---
     const grossVolume = results.toteVolume_m3 * results.totalLocations;
     const capacityUtil = (results.density > 0 && results.maxPerfDensity > 0) ? (results.density / results.maxPerfDensity) * 100 : 0;
     
@@ -61,238 +70,44 @@ function updateSolverResults(results) {
     solverResultCapacityUtil.textContent = capacityUtil.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %';
     solverResultRowsAndBays.textContent = `${formatNumber(results.numRows)} x ${formatNumber(results.baysPerRack)}`;
 
-    // --- NEW: Check for constraint violations ---
     const warehouseL = parseNumber(warehouseLengthInput.value);
     const warehouseW = parseNumber(warehouseWidthInput.value);
     
-    const lengthBroken = warehouseL > 0 && results.L > warehouseL;
-    const widthBroken = warehouseW > 0 && results.W > warehouseW;
+    // MODIFIED: Only check constraint if the checkbox is checked
+    const respectConstraints = solverRespectConstraintsCheckbox.checked;
+    const lengthBroken = respectConstraints && warehouseL > 0 && results.L > warehouseL;
+    const widthBroken = respectConstraints && warehouseW > 0 && results.W > warehouseW;
 
     solverResultLengthWarning.style.display = lengthBroken ? 'inline' : 'none';
     solverResultWidthWarning.style.display = widthBroken ? 'inline' : 'none';
 
-    // --- Store and Apply ---
-    solverFinalResults = results; // Store for the "Apply" button
-    
-    // MODIFIED: Do NOT update the warehouse L/W inputs
-    // systemLengthInput.value = formatNumber(solverFinalResults.L);
-    // systemWidthInput.value = formatNumber(solverFinalResults.W);
-
-    // MODIFIED: Show buttons
     exportResultsButton.style.display = 'block';
-
-    // --- NEW: Enable Comparison Tab ---
-    if (comparisonTabButton) {
-        comparisonTabButton.disabled = false;
-        comparisonTabButton.classList.remove('disabled');
-    }
-    
-    requestRedraw();
+    solverResultsSection.style.display = 'block';
 }
 
-// --- Solver Main Function (Interactive) ---
-// MODIFIED: continueForPerformance is now set internally
-async function runSolver() {
-    runSolverButton.disabled = true;
-    exportResultsButton.style.display = 'none'; // MODIFIED: Hide export button
-    // NEW: Hide warnings
-    solverResultLengthWarning.style.display = 'none';
-    solverResultWidthWarning.style.display = 'none';
-    
-    // Get Solver Inputs
-    const storageReq = parseNumber(solverStorageReqInput.value);
-    const throughputReq = parseNumber(solverThroughputReqInput.value);
-    const aspectRatio = parseNumber(solverAspectRatioInput.value) || 1.0;
-    const sysHeight = parseNumber(clearHeightInput.value);
-    const expandForPerformance = solverExpandPDCheckbox.checked; // NEW
-    const reduceLevels = solverReduceLevelsCheckbox.checked; // NEW
-    const expandConstraints = solverExpandConstraintsCheckbox.checked; // NEW
-    
-    // Get Warehouse Constraints
-    const warehouseL = parseNumber(warehouseLengthInput.value);
-    const warehouseW = parseNumber(warehouseWidthInput.value);
-
-    // Get Selected Configuration
-    const selectedConfigName = solverConfigSelect.value;
-    const selectedConfig = configurations[selectedConfigName] || null;
-
-    if (!selectedConfig) {
-        solverStatus.textContent = "Error: No valid configuration selected.";
-        runSolverButton.disabled = false;
-        return;
-    }
-    
-    if (storageReq === 0 || throughputReq === 0 || aspectRatio === 0 || sysHeight === 0) {
-        solverStatus.textContent = "Error: Please check solver inputs.";
-        runSolverButton.disabled = false;
-        return;
-    }
-
-    let currentL = 10000; // Start at 10m
-    const step = 1000; // 1m steps
-    let safetyBreak = 1000; // 1000m
-    let storageMetResults = null;
-    let continueForPerformance = false; // Internal state
-
-    solverStatus.textContent = "Solving for storage...";
-
-    function solverLoop() {
-        let metrics;
-        let currentW = currentL / aspectRatio;
-
-        if (!continueForPerformance) {
-            // --- Loop 1: Find Storage ---
-            
-            // --- NEW: Check constraints ---
-            if (!expandConstraints && (currentL > warehouseL || currentW > warehouseW)) {
-                solverStatus.textContent = "Error: No solution found within constraints.";
-                runSolverButton.disabled = false;
-                return;
-            }
-
-            currentL += step; // Increment *after* check, *before* calc
-            currentW = currentL / aspectRatio;
-            metrics = getMetrics(currentL, currentW, sysHeight, selectedConfig); 
-
-            if (metrics.totalLocations >= storageReq) {
-                // Found storage target
-                const density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
-                storageMetResults = { ...metrics, density: density };
-                // solverTempResults = storageMetResults; // No longer need temp results for modal
-
-                if (storageMetResults.density > metrics.maxPerfDensity) {
-                    // Storage met, but density is too high
-                    
-                    // MODIFIED: Check checkbox instead of showing modal
-                    if (expandForPerformance) {
-                        // User wants to continue
-                        continueForPerformance = true;
-                        solverStatus.textContent = "Solving for performance...";
-                        // Continue to next animation frame
-                    } else {
-                        // User does not want to continue, stop here
-                        updateSolverResults(storageMetResults);
-                        solverStatus.textContent = "Complete (Storage target met).";
-                        runSolverButton.disabled = false;
-                        return;
-                    }
-
-                } else {
-                    // Storage and performance met in one go!
-                    updateSolverResults(storageMetResults);
-                    solverStatus.textContent = "Complete.";
-                    runSolverButton.disabled = false;
-                    return;
-                }
-            }
-        } else {
-            // --- Loop 2: Find Performance ---
-
-            // --- NEW: Check constraints ---
-            if (!expandConstraints && (currentL > warehouseL || currentW > warehouseW)) {
-                solverStatus.textContent = "Complete (Storage met, perf. needs expansion).";
-                updateSolverResults(storageMetResults); // Update with last valid result (storageMet)
-                runSolverButton.disabled = false;
-                return;
-            }
-
-            currentL += step; // Increment *after* check, *before* calc
-            currentW = currentL / aspectRatio;
-            metrics = getMetrics(currentL, currentW, sysHeight, selectedConfig);
-            let density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
-
-            if (density <= metrics.maxPerfDensity) {
-                // Performance target met
-                
-                // --- NEW: Reduction Logic ---
-                let finalMetrics = { ...metrics, density: density };
-
-                if (reduceLevels && finalMetrics.totalLocations > storageReq) {
-                    // We met performance, and now we check if we can reduce levels
-                    // We need the L/W from this step
-                    const perfL = finalMetrics.L;
-                    const perfW = finalMetrics.W;
-                    const perfDensity = finalMetrics.density;
-
-                    let bestMetrics = finalMetrics; // Start with the max-level solution
-                    
-                    // Iterate downwards from (maxLevels - 1)
-                    for (let levels = finalMetrics.calculatedMaxLevels - 1; levels > 0; levels--) {
-                        // Recalculate metrics with this specific level count
-                        const reducedMetrics = getMetrics(perfL, perfW, sysHeight, selectedConfig, levels);
-                        
-                        if (reducedMetrics.totalLocations >= storageReq) {
-                            // This level count is still above the storage requirement
-                            // Is it better than the last one? Yes, it's closer.
-                            bestMetrics = { ...reducedMetrics, density: perfDensity }; // Keep the same L/W, so density is the same
-                        } else {
-                            // We went one level too low. The previous one (`bestMetrics`) is the answer.
-                            break; 
-                        }
-                    }
-                    // After the loop, bestMetrics holds the optimal solution
-                    updateSolverResults(bestMetrics);
-
-                } else {
-                    // Just update with the original performance-met solution
-                    updateSolverResults(finalMetrics);
-                }
-                
-                solverStatus.textContent = "Complete.";
-                runSolverButton.disabled = false;
-                return;
-            }
-        }
-
-        // Check safety break
-        if (currentL > (safetyBreak * 1000)) {
-            if (!continueForPerformance) {
-                solverStatus.textContent = `Error: No storage solution found under ${safetyBreak}m.`;
-            } else {
-                solverStatus.textContent = `Error: No performance solution found under ${safetyBreak}m.`;
-                // No solution, but update with the storage-met one
-                updateSolverResults(storageMetResults);
-            }
-            runSolverButton.disabled = false;
-            return;
-        }
-
-        // Continue loop
-        requestAnimationFrame(solverLoop);
-    }
-    
-    requestAnimationFrame(solverLoop);
-}
-
-
-// --- MODIFIED: Renamed function ---
+// --- Export Layout ---
 function exportLayout() {
-    if (!solverFinalResults) {
-        console.error("No solver results to export.");
+    if (!selectedSolverResult) {
+        console.error("No solver result selected to export.");
         return;
     }
 
-    // 1. Get current config
-    const selectedConfigName = solverConfigSelect.value;
+    const selectedConfigName = selectedSolverResult.configKey;
     const config = configurations[selectedConfigName];
     if (!config) {
-        console.error("No configuration selected.");
+        console.error("No configuration found for selected result.");
         return;
     }
 
-    // 2. Get dimensions from stored results
-    const sysLength = solverFinalResults.L;
-    const sysWidth = solverFinalResults.W;
+    const sysLength = selectedSolverResult.L;
+    const sysWidth = selectedSolverResult.W;
     const sysHeight = parseNumber(clearHeightInput.value);
-
-    // 3. Re-run calculations to get detailed layout objects
-    // (This logic is copied from getMetrics and drawWarehouse)
 
     // --- Config parameters ---
     const toteWidth = config['tote-width'] || 0;
     const toteLength = config['tote-length'] || 0;
     const toteQtyPerBay = config['tote-qty-per-bay'] || 1;
-    const totesDeep = config['totes-deep'] || 1; // This is config totes deep
+    const totesDeep = config['totes-deep'] || 1;
     const toteToToteDist = config['tote-to-tote-dist'] || 0;
     const toteToUprightDist = config['tote-to-upright-dist'] || 0;
     const toteBackToBackDist = config['tote-back-to-back-dist'] || 0;
@@ -313,7 +128,6 @@ function exportLayout() {
         (2 * toteToUprightDist) +
         (Math.max(0, toteQtyPerBay - 1) * toteToToteDist);
 
-    // MODIFIED: Calculate both depths
     const configBayDepth = (totesDeep * toteWidth) +
         (Math.max(0, totesDeep - 1) * toteBackToBackDist) +
         hookAllowance;
@@ -322,11 +136,9 @@ function exportLayout() {
         (Math.max(0, 1 - 1) * toteBackToBackDist) +
         hookAllowance;
 
-    // --- Run Layout Calculation ---
-    // MODIFIED: Pass both depths
     const layout = calculateLayout(configBayDepth, singleBayDepth, aisleWidth, sysLength, sysWidth, layoutMode, flueSpace, setbackTop, setbackBottom, setbackLeft, setbackRight, uprightLength, clearOpening, considerTunnels);
 
-    // --- Generate Tunnel/Backpack Sets (from drawWarehouse) ---
+    // --- Generate Tunnel/Backpack Sets ---
     let tunnelPositions = new Set();
     if (considerTunnels) {
         const numTunnelBays = Math.floor(layout.baysPerRack / 9);
@@ -362,65 +174,51 @@ function exportLayout() {
         }
     }
 
-    // 4. Create output array (temporary)
     const outputBays = [];
 
-    // --- Calculate Centering Offsets (from drawWarehouse) ---
     const usableWidth_world = sysWidth - setbackLeft - setbackRight;
     const layoutOffsetX_world = (usableWidth_world - layout.totalLayoutWidth) / 2;
     const layoutOffsetY_world = (layout.usableLength - layout.totalRackLength_world) / 2;
-
     const repeatingBayUnitWidth = clearOpening + uprightLength;
 
-    // 5. Iterate through layout and create bay objects
     layout.layoutItems.forEach(item => {
         if (item.type !== 'rack') return;
 
         for (let i = 0; i < layout.baysPerRack; i++) {
-            // Determine bay type
             const isTunnel = tunnelPositions.has(i);
             const isBackpack = !isTunnel && backpackPositions.has(i);
             let bayType = 'Standard';
             if (isTunnel) bayType = 'Tunnel';
             else if (isBackpack) bayType = 'Backpack';
 
-            // Calculate Y coordinate (center of bay opening)
             const bay_y_center = layoutOffsetY_world + uprightLength + (i * repeatingBayUnitWidth) + (clearOpening / 2);
             const final_y = setbackTop + bay_y_center;
             
-            // Calculate X coordinate for Rack 1
-            // MODIFIED: A single rack's center is based on item.width (which is singleBayDepth or configBayDepth)
             const bay_x_center_rack1 = layoutOffsetX_world + item.x + (item.width / 2);
             const final_x_rack1 = setbackLeft + bay_x_center_rack1;
 
             outputBays.push({
-                x: final_x_rack1, // Store pre-offset X
-                y: final_y, // Store pre-offset Y
+                x: final_x_rack1,
+                y: final_y,
                 type: bayType
             });
 
-            // Calculate X coordinate for Rack 2 if it's a double
             if (item.rackType === 'double') {
-                // MODIFIED: A double rack's components are *always* configBayDepth
                 const bay_x_center_rack2 = layoutOffsetX_world + item.x + configBayDepth + flueSpace + (configBayDepth / 2);
                 const final_x_rack2 = setbackLeft + bay_x_center_rack2;
                 
                 outputBays.push({
-                    x: final_x_rack2, // Store pre-offset X
-                    y: final_y, // Store pre-offset Y
+                    x: final_x_rack2,
+                    y: final_y,
                     type: bayType
                 });
             }
         }
     });
 
-    // 6. NEW: Group bays by type and format for LISP
-    
-    // Get LISP properties from config
     const lispProps = config.lispExportProps;
     const dynamicPropName = config.dynamicPropName || "BayType";
     
-    // Fallback default properties
     const defaultProps = {
         standard: { blockName: "BAY_STD_DEFAULT", color: 256, rotation: 0, xOffset: 0, yOffset: 0 },
         backpack: { blockName: "BAY_BP_DEFAULT", color: 5, rotation: 0, xOffset: 0, yOffset: 0 },
@@ -433,11 +231,8 @@ function exportLayout() {
 
     const bayGroups = new Map();
 
-    // Group bays by their type and apply offsets
     for (const bay of outputBays) {
-        const bayType = bay.type; // "Standard", "Backpack", or "Tunnel"
-        
-        // Get the correct properties for this bay type
+        const bayType = bay.type;
         let props;
         if (bayType === 'Standard') {
             props = (lispProps && lispProps.standard) ? lispProps.standard : defaultProps.standard;
@@ -447,48 +242,37 @@ function exportLayout() {
             props = (lispProps && lispProps.tunnel) ? lispProps.tunnel : defaultProps.tunnel;
         }
 
-        // Apply offsets
         const finalX = Math.round(bay.x + (props.xOffset || 0));
         const finalY = Math.round(bay.y + (props.yOffset || 0));
-        const coordString = `(${finalX},${finalY},0)`; // Format (x,y,z)
+        const coordString = `(${finalX},${finalY},0)`;
 
-        // Group by type. Store the coordinates and the properties used.
         if (!bayGroups.has(bayType)) {
             bayGroups.set(bayType, { 
                 coords: [], 
-                props: props // Store the properties for this group
+                props: props
             });
         }
         bayGroups.get(bayType).coords.push(coordString);
     }
 
-    // Build the final text file content
     const lispStrings = [];
     bayGroups.forEach((data, bayType) => {
-        
         const props = data.props;
         const coordList = data.coords;
-
-        // Get all properties, with fallbacks
         const blockName = props.blockName || "BAY_UNKNOWN_DEFAULT";
         const blockColor = props.color || 256;
         const blockRotation = props.rotation || 0;
-
-        // {BlockName,Color,Rotation|PropName:Value|Coordinates}
         const propStr = `{${blockName},${blockColor},${blockRotation}`;
         const dynPropStr = `|${dynamicPropName}:${bayType}`;
-        const coordStr = `|${coordList.join('')}`; // (x,y,z)(x,y,z)
-        
+        const coordStr = `|${coordList.join('')}`;
         lispStrings.push(propStr + dynPropStr + coordStr + "}");
     });
 
     const fileContent = lispStrings.join('\n');
-
-    // 7. Create text file and trigger download
-    const blob = new Blob([fileContent], { type: 'text/plain' }); // Changed to text/plain
+    const blob = new Blob([fileContent], { type: 'text/plain' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'bay_layout.txt'; // Changed to .txt
+    a.download = 'bay_layout.txt';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -496,97 +280,180 @@ function exportLayout() {
 }
 
 
-// --- NEW: Headless Solver for a Single Config ---
+// --- Headless Solver for a Single Config ---
 /**
  * Runs a non-blocking, promise-based solver for a single configuration.
- * Does not use requestAnimationFrame or interact with the DOM.
- * Automatically continues to solve for performance if storage target is met but density is too high.
  */
-// MODIFIED: Added expandForPerformance, reduceLevels, warehouseL, warehouseW arguments
-function findSolutionForConfig(storageReq, throughputReq, aspectRatio, sysHeight, config, configKey, expandForPerformance, reduceLevels, warehouseL, warehouseW) {
+function findSolutionForConfig(storageReq, throughputReq, sysHeight, config, configKey, expandForPerformance, reduceLevels, warehouseL, warehouseW, respectConstraints, options) {
     return new Promise((resolve) => {
-        // --- MODIFIED: maxDensity comes from metrics ---
-        // const maxDensity = config['max-perf-density'] || 50;
-        let currentL = 10000; // Start at 10m
-        const step = 1000; // 1m steps
-        let safetyBreak = 1000; // 1000m
+        
+        let currentL = 10000;
+        let currentW = 10000;
+        const step = 1000;
+        const safetyBreak = 1000; // 1000m
         let storageMetResults = null;
+        let metrics;
 
-        // --- Loop 1: Find Storage ---
-        while (currentL <= (safetyBreak * 1000)) {
-            let currentW = currentL / aspectRatio;
+        // --- This entire block is now a switch based on solver method ---
+        switch (options.method) {
             
-            // --- NEW: Check constraints ---
-            if (!expandForPerformance && (currentL > warehouseL || currentW > warehouseW)) {
-                break; // Hit constraint
-            }
+            // --- CASE 1: ASPECT RATIO (EXISTING LOGIC) ---
+            case 'aspectRatio':
+                currentL = 10000; // L increments
+                // Loop 1: Find Storage
+                while (currentL <= (safetyBreak * 1000)) {
+                    currentW = currentL / options.value;
+                    
+                    if (respectConstraints && (currentL > warehouseL || currentW > warehouseW)) {
+                        break; // Hit constraint
+                    }
 
-            currentL += step;
-            currentW = currentL / aspectRatio;
-            let metrics = getMetrics(currentL, currentW, sysHeight, config);
+                    currentL += step;
+                    currentW = currentL / options.value;
+                    metrics = getMetrics(currentL, currentW, sysHeight, config);
 
-            if (metrics.totalLocations >= storageReq) {
-                const density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
-                storageMetResults = { ...metrics, density: density };
-                break; // Found storage
-            }
+                    if (metrics.totalLocations >= storageReq) {
+                        const density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
+                        storageMetResults = { ...metrics, density: density };
+                        break; // Found storage
+                    }
+                }
+
+                if (!storageMetResults) {
+                    resolve(null); return;
+                }
+
+                if (storageMetResults.density <= storageMetResults.maxPerfDensity || !expandForPerformance) {
+                    resolve({ ...storageMetResults, configKey, configName: config.name });
+                    return;
+                }
+
+                // Loop 2: Find Performance
+                while (currentL <= (safetyBreak * 1000)) {
+                    currentW = currentL / options.value;
+                    if (respectConstraints && (currentL > warehouseL || currentW > warehouseW)) {
+                        break; // Hit constraint
+                    }
+                    
+                    currentL += step;
+                    currentW = currentL / options.value;
+                    metrics = getMetrics(currentL, currentW, sysHeight, config);
+                    let density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
+
+                    if (density <= metrics.maxPerfDensity) {
+                        storageMetResults = { ...metrics, density: density }; // Update storageMetResults to this new valid solution
+                        break;
+                    }
+                }
+                
+                // After Loop 2, storageMetResults is either the performance-met solution
+                // or (if loop broke) the original storage-met solution. Both are valid to proceed.
+                break; // Exit switch, proceed to reduction logic
+
+            // --- CASE 2: FIXED LENGTH (NEW LOGIC) ---
+            case 'fixedLength':
+                currentL = options.value; // L is fixed
+                currentW = 10000; // W increments
+
+                // Loop 1: Find Storage
+                while (currentW <= (safetyBreak * 1000)) {
+                    if (respectConstraints && (currentW > warehouseW)) {
+                        break; // Hit constraint
+                    }
+
+                    currentW += step;
+                    metrics = getMetrics(currentL, currentW, sysHeight, config);
+
+                    if (metrics.totalLocations >= storageReq) {
+                        const density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
+                        storageMetResults = { ...metrics, density: density };
+                        break; // Found storage
+                    }
+                }
+
+                if (!storageMetResults) {
+                    resolve(null); return;
+                }
+
+                if (storageMetResults.density <= storageMetResults.maxPerfDensity || !expandForPerformance) {
+                    resolve({ ...storageMetResults, configKey, configName: config.name });
+                    return;
+                }
+
+                // Loop 2: Find Performance
+                while (currentW <= (safetyBreak * 1000)) {
+                    if (respectConstraints && (currentW > warehouseW)) {
+                        break; // Hit constraint
+                    }
+                    
+                    currentW += step;
+                    metrics = getMetrics(currentL, currentW, sysHeight, config);
+                    let density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
+
+                    if (density <= metrics.maxPerfDensity) {
+                        storageMetResults = { ...metrics, density: density };
+                        break;
+                    }
+                }
+                break; // Exit switch, proceed to reduction logic
+
+            // --- CASE 3: FIXED WIDTH (NEW LOGIC) ---
+            case 'fixedWidth':
+                currentW = options.value; // W is fixed
+                currentL = 10000; // L increments
+
+                // Loop 1: Find Storage
+                while (currentL <= (safetyBreak * 1000)) {
+                    if (respectConstraints && (currentL > warehouseL)) {
+                        break; // Hit constraint
+                    }
+
+                    currentL += step;
+                    metrics = getMetrics(currentL, currentW, sysHeight, config);
+
+                    if (metrics.totalLocations >= storageReq) {
+                        const density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
+                        storageMetResults = { ...metrics, density: density };
+                        break; // Found storage
+                    }
+                }
+
+                if (!storageMetResults) {
+                    resolve(null); return;
+                }
+
+                if (storageMetResults.density <= storageMetResults.maxPerfDensity || !expandForPerformance) {
+                    resolve({ ...storageMetResults, configKey, configName: config.name });
+                    return;
+                }
+
+                // Loop 2: Find Performance
+                while (currentL <= (safetyBreak * 1000)) {
+                    if (respectConstraints && (currentL > warehouseL)) {
+                        break; // Hit constraint
+                    }
+                    
+                    currentL += step;
+                    metrics = getMetrics(currentL, currentW, sysHeight, config);
+                    let density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
+
+                    if (density <= metrics.maxPerfDensity) {
+                        storageMetResults = { ...metrics, density: density };
+                        break;
+                    }
+                }
+                break; // Exit switch, proceed to reduction logic
         }
 
-        // --- Check results of Loop 1 ---
-        if (!storageMetResults) {
-            resolve(null); // No solution found within safety break or constraints
-            return;
-        }
+        // --- Reduction Logic (Applies to all cases) ---
+        // At this point, storageMetResults is the best solution found (either storage-met or performance-met)
+        if (storageMetResults && reduceLevels && storageMetResults.totalLocations > storageReq) {
+            let bestMetrics = storageMetResults;
+            const perfL = storageMetResults.L;
+            const perfW = storageMetResults.W;
+            const perfDensity = storageMetResults.density;
 
-        // MODIFIED: Check density and expandForPerformance flag
-        if (storageMetResults.density <= storageMetResults.maxPerfDensity || !expandForPerformance) {
-            // Storage and performance met in one go!
-            // OR we were told not to expand.
-            // In either case, we don't expand, so we don't reduce.
-            resolve({ ...storageMetResults, configKey, configName: config.name });
-            return;
-        }
-
-        // --- Loop 2: Find Performance (if needed) ---
-        // Start from the length where storage was met
-        let performanceMetMetrics = null; // NEW
-        while (currentL <= (safetyBreak * 1000)) {
-            let currentW = currentL / aspectRatio;
-
-            // --- NEW: Check constraints ---
-            if (!expandForPerformance && (currentL > warehouseL || currentW > warehouseW)) {
-                break; // Hit constraint
-            }
-            
-            currentL += step;
-            currentW = currentL / aspectRatio;
-            let metrics = getMetrics(currentL, currentW, sysHeight, config);
-            let density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
-
-            if (density <= metrics.maxPerfDensity) {
-                // Performance target met
-                performanceMetMetrics = { ...metrics, density: density }; // NEW
-                break; // NEW
-            }
-        }
-
-        // NEW: Check if Loop 2 found a solution
-        if (!performanceMetMetrics) {
-            // We either hit safety break or constraint
-            // We must return the storage-met result, as that's the best we could do.
-            resolve({ ...storageMetResults, configKey, configName: config.name });
-            return;
-        }
-
-        // --- NEW: Reduction Logic ---
-        if (reduceLevels && performanceMetMetrics.totalLocations > storageReq) {
-            let bestMetrics = performanceMetMetrics;
-            // We need the L/W from the performance-met solution
-            const perfL = performanceMetMetrics.L;
-            const perfW = performanceMetMetrics.W;
-            const perfDensity = performanceMetMetrics.density;
-
-            for (let levels = performanceMetMetrics.calculatedMaxLevels - 1; levels > 0; levels--) {
+            for (let levels = storageMetResults.calculatedMaxLevels - 1; levels > 0; levels--) {
                 const reducedMetrics = getMetrics(perfL, perfW, sysHeight, config, levels);
                 
                 if (reducedMetrics.totalLocations >= storageReq) {
@@ -596,15 +463,17 @@ function findSolutionForConfig(storageReq, throughputReq, aspectRatio, sysHeight
                 }
             }
             resolve({ ...bestMetrics, configKey, configName: config.name });
-
+        } else if (storageMetResults) {
+            // Don't reduce, just return the best solution found
+            resolve({ ...storageMetResults, configKey, configName: config.name });
         } else {
-            // Don't reduce, just return the performance-met solution
-            resolve({ ...performanceMetMetrics, configKey, configName: config.name });
+            // This can happen if the switch completes with no storageMetResults (e.g., initial constraints failed)
+            resolve(null);
         }
     });
 }
 
-// --- NEW: HTML Card Generator ---
+// --- HTML Card Generator ---
 function createResultCard(result) {
     if (!result) return '';
 
@@ -612,14 +481,13 @@ function createResultCard(result) {
     const locations = formatNumber(result.totalLocations);
     const density = result.density.toLocaleString('en-US', { maximumFractionDigits: 2 });
     
-    // NEW Metrics
     const grossVolume = (result.toteVolume_m3 * result.totalLocations).toLocaleString('en-US', { maximumFractionDigits: 1 });
     const capacityUtil = ((result.density > 0 && result.maxPerfDensity > 0) ? (result.density / result.maxPerfDensity) * 100 : 0).toLocaleString('en-US', { maximumFractionDigits: 1 });
     const totalBays = formatNumber(result.totalBays);
     const rowsAndBays = `${formatNumber(result.numRows)} x ${formatNumber(result.baysPerRack)}`;
 
     return `
-        <div class="comparison-card">
+        <div class="comparison-card" data-config-key="${result.configKey}">
             <h3 class="comparison-card-title">${result.configName}</h3>
             
             <div class="comparison-card-metric">
@@ -648,7 +516,7 @@ function createResultCard(result) {
             </div>
             
             <div class="comparison-card-metric">
-                <span class="comparison-card-label">Total Bays</span>
+                <span classs="comparison-card-label">Total Bays</span>
                 <span class="comparison-card-value-small">${totalBays}</span>
             </div>
             
@@ -660,50 +528,151 @@ function createResultCard(result) {
     `;
 }
 
-// --- NEW: Main Function for Comparison Tab ---
-// MODIFIED: Export this function so ui.js can call it
-export async function runAllConfigurationsSolver() {
-    // MODIFIED: Removed button disable
-    // runAllOptionsButton.disabled = true;
-    runAllStatus.textContent = "Running all configurations...";
-    comparisonResultsContainer.innerHTML = ''; // Clear previous results
+// --- Main Solver Function ---
+async function runAllConfigurationsSolver() {
+    runSolverButton.disabled = true;
+    solverConfigStatus.textContent = "Running all configurations...";
+    solverConfigResultsScroller.innerHTML = '';
+    solverConfigResultsContainer.style.display = 'none';
+    solverResultsSection.style.display = 'none';
+    solverVisualizationsSection.style.display = 'none';
+    exportResultsButton.style.display = 'none';
+    allSolverResults = [];
+    setSelectedSolverResult(null);
+    requestRedraw();
 
     // Get Solver Inputs
-    const storageReq = parseNumber(solverStorageReqInput.value);
+    const originalStorageReq = parseNumber(solverStorageReqInput.value); // Renamed
     const throughputReq = parseNumber(solverThroughputReqInput.value);
-    const aspectRatio = parseNumber(solverAspectRatioInput.value) || 1.0;
     const sysHeight = parseNumber(clearHeightInput.value);
-    // NEW: Read checkbox states
     const expandForPerformance = solverExpandPDCheckbox.checked;
     const reduceLevels = solverReduceLevelsCheckbox.checked;
-    const expandConstraints = solverExpandConstraintsCheckbox.checked; // NEW
-    
-    // NEW: Get warehouse constraints
+    const respectConstraints = solverRespectConstraintsCheckbox.checked;
     const warehouseL = parseNumber(warehouseLengthInput.value);
     const warehouseW = parseNumber(warehouseWidthInput.value);
 
+    // --- NEW: Get Solver Method and Value ---
+    let solverOptions = {};
+    // MODIFIED: Read from select
+    const solverMethod = solverMethodSelect.value;
+    
+    if (solverMethod === 'aspectRatio') {
+        solverOptions.method = 'aspectRatio';
+        solverOptions.value = parseNumber(solverAspectRatioInput.value);
+        if (solverOptions.value <= 0) {
+            solverConfigStatus.textContent = "Error: Aspect Ratio must be a positive number.";
+            runSolverButton.disabled = false;
+            return;
+        }
+    } else if (solverMethod === 'fixedLength') {
+        solverOptions.method = 'fixedLength';
+        solverOptions.value = parseNumber(solverFixedLength.value);
+        if (solverOptions.value <= 0) {
+            solverConfigStatus.textContent = "Error: Fixed Length must be a positive number.";
+            runSolverButton.disabled = false;
+            return;
+        }
+    } else if (solverMethod === 'fixedWidth') {
+        solverOptions.method = 'fixedWidth';
+        solverOptions.value = parseNumber(solverFixedWidth.value);
+        if (solverOptions.value <= 0) {
+            solverConfigStatus.textContent = "Error: Fixed Width must be a positive number.";
+            runSolverButton.disabled = false;
+            return;
+        }
+    }
+    // --- END NEW ---
 
-    if (storageReq === 0 || throughputReq === 0 || aspectRatio === 0 || sysHeight === 0) {
-        runAllStatus.textContent = "Error: Please check solver inputs on main tab.";
-        // runAllOptionsButton.disabled = false;
+    if (originalStorageReq === 0 || throughputReq === 0 || sysHeight === 0) {
+        solverConfigStatus.textContent = "Error: Please check solver inputs.";
+        runSolverButton.disabled = false;
         return;
     }
 
+    // --- NEW: Build task list based on tote size and equivalent volume ---
+    const tasksToRun = [];
+    const selectedToteSize = solverToteSizeSelect.value;
+    const isEquivalentVolume = solverEquivalentVolumeCheckbox.checked;
+
+    const vol650 = (650 / 1000) * (450 / 1000) * (300 / 1000); // 0.08775
+    const vol850 = (850 / 1000) * (650 / 1000) * (400 / 1000); // 0.221
+    
+    let selectedKeys = [];
+    let otherKeys = [];
+    let selectedVolume = 0;
+    let otherVolume = 0;
+
+    const size650String = "650x450x300";
+    const size850String = "850x650x400";
+
+    // --- MODIFIED: Filtering logic changed from 'name.includes' to property checking ---
+    const is650Tote = (config) => (
+        config['tote-width'] === 650 &&
+        config['tote-length'] === 450 &&
+        config['tote-height'] === 300
+    );
+
+    const is850Tote = (config) => (
+        config['tote-width'] === 850 &&
+        config['tote-length'] === 650 &&
+        config['tote-height'] === 400
+    );
+
+    if (selectedToteSize === size650String) {
+        selectedKeys = Object.keys(configurations).filter(k => is650Tote(configurations[k]));
+        otherKeys = Object.keys(configurations).filter(k => is850Tote(configurations[k]));
+        selectedVolume = vol650;
+        otherVolume = vol850;
+    } else { // selectedToteSize === size850String
+        selectedKeys = Object.keys(configurations).filter(k => is850Tote(configurations[k]));
+        otherKeys = Object.keys(configurations).filter(k => is650Tote(configurations[k]));
+        selectedVolume = vol850;
+        otherVolume = vol650;
+    }
+    // --- END MODIFICATION ---
+
+    // 1. Add tasks for the selected tote size
+    selectedKeys.forEach(configKey => {
+        tasksToRun.push({
+            configKey: configKey,
+            storageReq: originalStorageReq,
+            isEquivalent: false
+        });
+    });
+
+    // 2. Add tasks for the equivalent volume
+    if (isEquivalentVolume && otherVolume > 0 && selectedVolume > 0) {
+        const equivalentStorageReq = Math.round((originalStorageReq * selectedVolume) / otherVolume);
+        
+        otherKeys.forEach(configKey => {
+            tasksToRun.push({
+                configKey: configKey,
+                storageReq: equivalentStorageReq, // Use the adjusted storage requirement
+                isEquivalent: true
+            });
+        });
+    }
+    // --- END NEW LOGIC ---
+
     const promises = [];
-    for (const configKey in configurations) {
-        const config = configurations[configKey];
-        // MODIFIED: Pass new arguments
+    // MODIFIED: Iterate over tasksToRun instead of configurations object
+    for (const task of tasksToRun) {
+        const config = configurations[task.configKey];
+        if (!config) continue;
+        
+        // Use the storageReq from the task
         promises.push(findSolutionForConfig(
-            storageReq,
+            task.storageReq, // MODIFIED
             throughputReq,
-            aspectRatio,
             sysHeight,
             config,
-            configKey,
-            expandForPerformance, // Pass flag
-            reduceLevels,         // Pass flag
-            warehouseL,           // Pass constraint
-            warehouseW            // Pass constraint
+            task.configKey,
+            expandForPerformance,
+            reduceLevels,
+            warehouseL,
+            warehouseW,
+            respectConstraints,
+            solverOptions
         ));
     }
 
@@ -711,38 +680,28 @@ export async function runAllConfigurationsSolver() {
         const allResults = await Promise.all(promises);
         
         const validResults = allResults.filter(res => res !== null);
-
-        // Sort by footprint, smallest to largest
         validResults.sort((a, b) => a.footprint - b.footprint);
+        allSolverResults = validResults;
 
         if (validResults.length === 0) {
-            comparisonResultsContainer.innerHTML = '<p class="text-slate-500 col-span-full">No valid solutions found for any configuration.</p>';
+            solverConfigResultsScroller.innerHTML = '<p class="text-slate-500 col-span-full">No valid solutions found for any configuration.</p>';
         } else {
-            comparisonResultsContainer.innerHTML = validResults.map(createResultCard).join('');
+            solverConfigResultsScroller.innerHTML = validResults.map(createResultCard).join('');
         }
 
-        runAllStatus.textContent = `Complete. Found ${validResults.length} valid solutions.`;
-        // runAllOptionsButton.disabled = false;
+        solverConfigStatus.textContent = `Complete. Found ${validResults.length} valid solutions. Select one to view details.`;
+        solverConfigResultsContainer.style.display = 'block';
+        runSolverButton.disabled = false;
 
     } catch (error) {
         console.error("Error during comparison solve:", error);
-        runAllStatus.textContent = "An error occurred. Check console for details.";
-        // runAllOptionsButton.disabled = false;
+        solverConfigStatus.textContent = "An error occurred. Check console for details.";
+        runSolverButton.disabled = false;
     }
 }
 
-
 // --- Main Initialization ---
 export function initializeSolver() {
-    runSolverButton.addEventListener('click', () => runSolver());
-
-    // NEW: Add listener for export button
-    // MODIFIED: Call renamed function
+    runSolverButton.addEventListener('click', runAllConfigurationsSolver);
     exportResultsButton.addEventListener('click', exportLayout);
-
-    solverConfigSelect.addEventListener('change', () => {
-        requestRedraw(); // Redraw visualization with new config
-    });
-
-    // MODIFIED: Modal listeners REMOVED
 }

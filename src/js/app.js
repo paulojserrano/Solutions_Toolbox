@@ -1,45 +1,34 @@
 import { initializeUI } from './ui.js';
-import { initializeSolver } from './solver.js'; // MODIFIED
+import { initializeSolver } from './solver.js';
 import { configurations } from './config.js'; // Import configurations
 import {
     // --- MAIN SOLVER TAB INPUTS ---
-    // MODIFIED: Renamed
     warehouseLengthInput, warehouseWidthInput, clearHeightInput,
-    solverConfigSelect, // Import solverConfigSelect
     detailViewToggle,
 
-    // --- CONFIG TAB INPUTS (REMOVED) ---
-    
     // --- SOLVER INPUTS (for number formatting only) ---
     solverStorageReqInput, solverThroughputReqInput, solverAspectRatioInput,
 
     // --- NEW READ-ONLY CONTAINER ---
-    readOnlyConfigContainer
+    readOnlyConfigContainer,
 
-    // --- NEW COMPARISON BUTTON (REMOVED) ---
-    // MODIFIED: Removed the problematic import line that was here
+    // --- CONDITIONAL INPUTS ---
+    solverRespectConstraintsCheckbox,
+    warehouseLengthContainer,
+    warehouseWidthContainer,
+
+    // --- NEW SOLVER METHOD INPUTS ---
+    // MODIFIED: Changed to select
+    solverMethodSelect,
+    aspectRatioInputContainer,
+    fixedLengthInputContainer,
+    fixedWidthInputContainer,
+    solverFixedLength,
+    solverFixedWidth
 
 } from './dom.js';
 
-// --- NEW FUNCTION ---
-// Populates the solver's configuration dropdown
-function populateConfigSelect() {
-    if (!solverConfigSelect) return;
-
-    solverConfigSelect.innerHTML = ''; // Clear existing static options
-
-    // Create an option for each entry in the configurations object
-    for (const key in configurations) {
-        const config = configurations[key];
-        const option = document.createElement('option');
-        option.value = key; // The value is the unique key (e.g., "hps3-e2-650-dd")
-        option.textContent = config.name; // The text is the friendly name
-        solverConfigSelect.appendChild(option);
-    }
-}
-
-// --- NEW FUNCTION ---
-// Creates a display card for a single configuration parameter
+// --- Creates a display card for a single configuration parameter ---
 function createParamHTML(label, value, unit = '') {
     // Format layout mode for readability
     if (label === "Layout Mode") {
@@ -67,8 +56,7 @@ function createParamHTML(label, value, unit = '') {
     `;
 }
 
-// --- NEW FUNCTION ---
-// Builds the read-only configuration page from the config.js object
+// --- Builds the read-only configuration page from the config.js object ---
 function buildReadOnlyConfigPage() {
     if (!readOnlyConfigContainer) return;
 
@@ -150,43 +138,66 @@ function buildReadOnlyConfigPage() {
     readOnlyConfigContainer.innerHTML = allConfigsHTML;
 }
 
+// --- MODIFIED: Combined UI update logic ---
+function updateSolverMethodUI() {
+    const method = solverMethodSelect.value;
+    const respectConstraints = solverRespectConstraintsCheckbox.checked;
+
+    // 1. Toggle method-specific inputs
+    aspectRatioInputContainer.style.display = (method === 'aspectRatio') ? 'block' : 'none';
+    fixedLengthInputContainer.style.display = (method === 'fixedLength') ? 'block' : 'none';
+    fixedWidthInputContainer.style.display = (method === 'fixedWidth') ? 'block' : 'none';
+
+    // 2. Toggle constraint inputs (L/W) based on checkbox AND method
+    if (respectConstraints) {
+        if (method === 'aspectRatio') {
+            warehouseLengthContainer.style.display = 'block';
+            warehouseWidthContainer.style.display = 'block';
+        } else if (method === 'fixedLength') {
+            warehouseLengthContainer.style.display = 'none'; // Fixed by user input, not a constraint
+            warehouseWidthContainer.style.display = 'block'; // This is the only constraint
+        } else if (method === 'fixedWidth') {
+            warehouseLengthContainer.style.display = 'block'; // This is the only constraint
+            warehouseWidthContainer.style.display = 'none'; // Fixed by user input, not a constraint
+        }
+    } else {
+        // If not respecting constraints, hide both
+        warehouseLengthContainer.style.display = 'none';
+        warehouseWidthContainer.style.display = 'none';
+    }
+}
+
 
 document.addEventListener('DOMContentLoaded', () => {
-
-    // --- NEW ---
-    // Populate the dropdown first
-    populateConfigSelect();
     
-    // --- NEW ---
     // Build the read-only config page
     buildReadOnlyConfigPage();
 
     // All inputs that trigger a canvas redraw
     const redrawInputs = [
-        // ONLY inputs from the Solver tab should trigger a redraw
-        // MODIFIED: Renamed
         warehouseLengthInput, warehouseWidthInput, clearHeightInput,
         detailViewToggle,
-        solverConfigSelect // Redraw when the config changes
     ];
 
     // All inputs that should be formatted as numbers
-    // MODIFIED: Drastically simplified list
     const numberInputs = [
-        // Solver tab inputs
-        // MODIFIED: Renamed
         warehouseLengthInput, warehouseWidthInput, clearHeightInput,
-        solverStorageReqInput, solverThroughputReqInput, 
-        // MODIFIED: solverAspectRatioInput REMOVED
+        solverStorageReqInput, solverThroughputReqInput,
+        solverFixedLength,
+        solverFixedWidth
     ];
 
-    // NEW: Inputs that should be formatted as decimals
+    // Inputs that should be formatted as decimals
     const decimalInputs = [
         solverAspectRatioInput,
     ];
 
-    initializeUI(redrawInputs, numberInputs, decimalInputs); // MODIFIED
+    initializeUI(redrawInputs, numberInputs, decimalInputs);
     initializeSolver();
 
-    // --- MODIFIED: Removed listener for Comparison tab button ---
+    // --- MODIFIED: Add listeners for new UI ---
+    solverRespectConstraintsCheckbox.addEventListener('change', updateSolverMethodUI);
+    solverMethodSelect.addEventListener('change', updateSolverMethodUI);
+    // Run once on load to set initial state
+    updateSolverMethodUI();
 });

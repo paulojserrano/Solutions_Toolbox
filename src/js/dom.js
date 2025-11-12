@@ -1,12 +1,10 @@
 // --- Get All Inputs ---
 // Warehouse Constraints (Global)
-// MODIFIED: Renamed
 export const warehouseLengthInput = document.getElementById('warehouseLength');
 export const warehouseWidthInput = document.getElementById('warehouseWidth');
 export const clearHeightInput = document.getElementById('clearHeight');
-
-// --- Config Tab Inputs (ALL REMOVED) ---
-// All inputs from the config tab are gone.
+export const warehouseLengthContainer = document.getElementById('warehouseLengthContainer');
+export const warehouseWidthContainer = document.getElementById('warehouseWidthContainer');
 
 // Get Canvases and Contexts
 export const warehouseCanvas = document.getElementById('warehouseCanvas');
@@ -18,35 +16,42 @@ export const elevationCtx = elevationCanvas.getContext('2d'); // New
 
 // Get Tab elements
 export const mainViewTabs = document.getElementById('mainViewTabs'); // NEW
-// MODIFICATION: Removed viewSubTabs
-// export const viewSubTabs = document.getElementById('viewSubTabs'); // Renamed
 
 // --- NEW: Solver Elements ---
-export const solverConfigSelect = document.getElementById('solverConfigSelect'); // NEW
 export const solverStorageReqInput = document.getElementById('solverStorageReq');
 export const solverThroughputReqInput = document.getElementById('solverThroughputReq');
-export const solverAspectRatioInput = document.getElementById('solverAspectRatio');
-export const solverExpandPDCheckbox = document.getElementById('solverExpandPDCheckbox'); // NEW
-export const solverReduceLevelsCheckbox = document.getElementById('solverReduceLevelsCheckbox'); // NEW
-export const solverExpandConstraintsCheckbox = document.getElementById('solverExpandConstraintsCheckbox'); // NEW
+// NEW: Added tote size selection
+export const solverToteSizeSelect = document.getElementById('solverToteSizeSelect');
+export const solverEquivalentVolumeCheckbox = document.getElementById('solverEquivalentVolumeCheckbox');
+export const solverExpandPDCheckbox = document.getElementById('solverExpandPDCheckbox');
+export const solverReduceLevelsCheckbox = document.getElementById('solverReduceLevelsCheckbox');
+export const solverRespectConstraintsCheckbox = document.getElementById('solverRespectConstraintsCheckbox');
 export const runSolverButton = document.getElementById('runSolverButton');
-export const solverStatus = document.getElementById('solverStatus');
+
+// --- NEW: Solver Method ---
+// MODIFIED: Changed to select
+export const solverMethodSelect = document.getElementById('solverMethodSelect');
+export const aspectRatioInputContainer = document.getElementById('aspectRatioInputContainer');
+export const fixedLengthInputContainer = document.getElementById('fixedLengthInputContainer');
+export const fixedWidthInputContainer = document.getElementById('fixedWidthInputContainer');
+export const solverAspectRatioInput = document.getElementById('solverAspectRatio');
+export const solverFixedLength = document.getElementById('solverFixedLength');
+export const solverFixedWidth = document.getElementById('solverFixedWidth');
+
+export const solverConfigStatus = document.getElementById('solverConfigStatus');
+export const solverParametersSection = document.getElementById('solverParametersSection');
+export const solverResultsSection = document.getElementById('solverResultsSection');
+export const solverVisualizationsSection = document.getElementById('solverVisualizationsSection');
+export const solverConfigResultsContainer = document.getElementById('solverConfigResultsContainer');
+export const solverConfigResultsScroller = document.getElementById('solverConfigResultsScroller');
 export const solverResultLength = document.getElementById('solverResultLength');
 export const solverResultWidth = document.getElementById('solverResultWidth');
 export const solverResultFootprint = document.getElementById('solverResultFootprint');
 export const solverResultLocations = document.getElementById('solverResultLocations');
 export const solverResultPerfDensity = document.getElementById('solverResultPerfDensity');
-// NEW: Warning Icons
 export const solverResultLengthWarning = document.getElementById('solverResultLengthWarning');
 export const solverResultWidthWarning = document.getElementById('solverResultWidthWarning');
-// REMOVED: applySolverButton
-export const exportResultsButton = document.getElementById('exportResultsButton'); // NEW
-// MODIFIED: Removed Modal elements
-// export const solverModal = document.getElementById('solverModal');
-// export const solverModalMessage = document.getElementById('solverModalMessage');
-// export const solverModalContinue = document.getElementById('solverModalContinue');
-// export const solverModalStop = document.getElementById('solverModalStop');
-// export const solverModalBackdrop = document.getElementById('solverModalBackdrop');
+export const exportResultsButton = document.getElementById('exportResultsButton');
 
 // --- NEW: Solver Result Metrics ---
 export const solverResultGrossVolume = document.getElementById('solverResultGrossVolume');
@@ -61,16 +66,7 @@ export const detailViewToggle = document.getElementById('detailViewToggle');
 // --- NEW: Read-Only Config Container ---
 export const readOnlyConfigContainer = document.getElementById('readOnlyConfigContainer');
 
-// --- NEW: Comparison Tab Elements ---
-export const comparisonTabButton = document.getElementById('comparisonTabButton');
-export const comparisonTabContent = document.getElementById('comparisonTabContent');
-// MODIFIED: Removed runAllOptionsContainer and runAllOptionsButton
-// export const runAllOptionsContainer = document.getElementById('runAllOptionsContainer');
-// export const runAllOptionsButton = document.getElementById('runAllOptionsButton');
-export const runAllStatus = document.getElementById('runAllStatus');
-export const comparisonResultsContainer = document.getElementById('comparisonResultsContainer');
-
-// --- NEW: Layout Metrics Table Elements ---
+// --- NEW: Layout Metrics Table Elements (Restored) ---
 // Standard (Config) Row
 export const metricRowStdConfig = document.getElementById('metric-row-std-config');
 export const metricStdConfigLabel = document.getElementById('metric-std-config-label');
@@ -88,6 +84,7 @@ export const metricStdSingleLocsTotal = document.getElementById('metric-std-sing
 // Backpack (Config) Row
 export const metricRowBpConfig = document.getElementById('metric-row-bp-config');
 export const metricBpConfigLabel = document.getElementById('metric-bp-config-label');
+// FIXED: Corrected duplicate declaration
 export const metricBpConfigLocsLvl = document.getElementById('metric-bp-config-locs-lvl');
 export const metricBpConfigLevels = document.getElementById('metric-bp-config-levels');
 export const metricBpConfigBays = document.getElementById('metric-bp-config-bays');

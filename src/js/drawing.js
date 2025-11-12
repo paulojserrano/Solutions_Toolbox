@@ -679,11 +679,7 @@ export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config
     const lengthBroken = layoutL_world > boundaryL_world;
     const widthBroken = layoutW_world > boundaryW_world;
     
-    warehouseCtx.fillStyle = '#f8fafc'; // slate-50
-    warehouseCtx.strokeStyle = (lengthBroken || widthBroken) ? '#ef4444' : '#64748b'; // red-500 or slate-500
-    warehouseCtx.lineWidth = (lengthBroken || widthBroken) ? 4 / state.scale : 2 / state.scale; // Adjust line width
-    warehouseCtx.fillRect(boundaryDrawX, boundaryDrawY, boundaryDrawWidth, boundaryDrawHeight);
-    warehouseCtx.strokeRect(boundaryDrawX, boundaryDrawY, boundaryDrawWidth, boundaryDrawHeight);
+
 
 
     // Draw layout items (racks and aisles)
