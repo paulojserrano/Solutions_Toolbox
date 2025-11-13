@@ -30,6 +30,11 @@ import {
 
 // --- Creates a display card for a single configuration parameter ---
 function createParamHTML(label, value, unit = '') {
+    // Handle empty/null values
+    if (label === null || value === null) {
+        return `<div class="config-param-row is-empty"></div>`; // Return an empty, styled div
+    }
+
     // Format layout mode for readability
     if (label === "Layout Mode") {
         value = value === 's-d-s' ? 'Single-Double-Single' : 'All Singles';
@@ -65,6 +70,59 @@ function buildReadOnlyConfigPage() {
     for (const key in configurations) {
         const config = configurations[key];
 
+        // --- MODIFIED: Create parameter arrays for grid alignment ---
+        const col1Params = [
+            { label: "Tote Width", key: 'tote-width', unit: 'mm' },
+            { label: "Tote Length", key: 'tote-length', unit: 'mm' },
+            { label: "Tote Height", key: 'tote-height', unit: 'mm' },
+            { label: "Totes per Bay", key: 'tote-qty-per-bay', unit: 'qty' },
+            { label: "Totes Deep", key: 'totes-deep', unit: 'qty' },
+            { label: "Tote-to-Tote", key: 'tote-to-tote-dist', unit: 'mm' },
+            { label: "Tote-to-Upright", key: 'tote-to-upright-dist', unit: 'mm' },
+            { label: "Tote Back-to-Back", key: 'tote-back-to-back-dist', unit: 'mm' }
+        ];
+
+        const col2Params = [
+            { label: "Upright Length", key: 'upright-length', unit: 'mm' },
+            { label: "Upright Width", key: 'upright-width', unit: 'mm' },
+            { label: "Hook Allowance", key: 'hook-allowance', unit: 'mm' },
+            { label: "Aisle Width", key: 'aisle-width', unit: 'mm' },
+            { label: "Rack Flue Space", key: 'rack-flue-space', unit: 'mm' },
+            { label: "Top Setback", key: 'top-setback', unit: 'mm' },
+            { label: "Bottom Setback", key: 'bottom-setback', unit: 'mm' },
+            { label: "Left Setback", key: 'setback-left', unit: 'mm' },
+            { label: "Right Setback", key: 'setback-right', unit: 'mm' },
+            { label: "Layout Mode", key: 'layout-mode', unit: '' }
+        ];
+
+        const col3Params = [
+            { label: "Base Beam Height", key: 'base-beam-height', unit: 'mm' },
+            { label: "Beam Width", key: 'beam-width', unit: 'mm' },
+            { label: "Min. Clearance", key: 'min-clearance', unit: 'mm' },
+            { label: "Overhead Clearance", key: 'overhead-clearance', unit: 'mm' },
+            { label: "Sprinkler Threshold", key: 'sprinkler-threshold', unit: 'mm' },
+            { label: "Sprinkler Clearance", key: 'sprinkler-clearance', unit: 'mm' },
+            { label: "Max Perf. Density", key: 'max-perf-density', unit: '' },
+            { label: "Consider Tunnels", key: 'considerTunnels', unit: '' },
+            { label: "Consider Backpacks", key: 'considerBackpacks', unit: '' },
+            { label: "Buffer Layer", key: 'hasBufferLayer', unit: '' }
+        ];
+
+        const maxLength = Math.max(col1Params.length, col2Params.length, col3Params.length);
+        let paramsHTML = '';
+
+        for (let i = 0; i < maxLength; i++) {
+            const p1 = col1Params[i];
+            const p2 = col2Params[i];
+            const p3 = col3Params[i];
+            
+            paramsHTML += createParamHTML(p1 ? p1.label : null, p1 ? config[p1.key] : null, p1 ? p1.unit : '');
+            paramsHTML += createParamHTML(p2 ? p2.label : null, p2 ? config[p2.key] : null, p2 ? p2.unit : '');
+            paramsHTML += createParamHTML(p3 ? p3.label : null, p3 ? config[p3.key] : null, p3 ? p3.unit : '');
+        }
+        // --- END MODIFICATION ---
+
+
         // We'll build the HTML string for one card
         const configCardHTML = `
             <section class="config-card">
@@ -72,63 +130,25 @@ function buildReadOnlyConfigPage() {
                     ${config.name}
                 </h3>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4">
+                <!-- MODIFIED: Re-structured grid -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-2">
                     
-                    <!-- Col 1: Rack Specs (Tote) -->
-                    <div>
-                        <h4 class="text-sm font-black text-black mb-3 uppercase border-b-2 border-black pb-1">
-                            1. Rack Specs (Tote)
-                        </h4>
-                        <div class="space-y-1">
-                            ${createParamHTML("Tote Width", config['tote-width'], 'mm')}
-                            ${createParamHTML("Tote Length", config['tote-length'], 'mm')}
-                            ${createParamHTML("Tote Height", config['tote-height'], 'mm')}
-                            ${createParamHTML("Totes per Bay", config['tote-qty-per-bay'], 'qty')}
-                            ${createParamHTML("Totes Deep", config['totes-deep'], 'qty')}
-                            ${createParamHTML("Tote-to-Tote", config['tote-to-tote-dist'], 'mm')}
-                            ${createParamHTML("Tote-to-Upright", config['tote-to-upright-dist'], 'mm')}
-                            ${createParamHTML("Tote Back-to-Back", config['tote-back-to-back-dist'], 'mm')}
-                        </div>
-                    </div>
-
-                    <!-- Col 2: Rack Specs (Structure) -->
-                    <div>
-                        <h4 class="text-sm font-black text-black mb-3 uppercase border-b-2 border-black pb-1">
-                            2. Rack Specs (Structure)
-                        </h4>
-                        <div class="space-y-1">
-                            ${createParamHTML("Upright Length", config['upright-length'], 'mm')}
-                            ${createParamHTML("Upright Width", config['upright-width'], 'mm')}
-                            ${createParamHTML("Hook Allowance", config['hook-allowance'], 'mm')}
-                            ${createParamHTML("Aisle Width", config['aisle-width'], 'mm')}
-                            ${createParamHTML("Rack Flue Space", config['rack-flue-space'], 'mm')}
-                            ${createParamHTML("Top Setback", config['top-setback'], 'mm')}
-                            ${createParamHTML("Bottom Setback", config['bottom-setback'], 'mm')}
-                            ${createParamHTML("Left Setback", config['setback-left'], 'mm')}
-                            ${createParamHTML("Right Setback", config['setback-right'], 'mm')}
-                            ${createParamHTML("Layout Mode", config['layout-mode'])}
-                        </div>
-                    </div>
-
-                    <!-- Col 3: Vertical & Logic -->
-                    <div>
-                        <h4 class="text-sm font-black text-black mb-3 uppercase border-b-2 border-black pb-1">
-                            3. Vertical & Logic
-                        </h4>
-                        <div class="space-y-1">
-                            ${createParamHTML("Base Beam Height", config['base-beam-height'], 'mm')}
-                            ${createParamHTML("Beam Width", config['beam-width'], 'mm')}
-                            ${createParamHTML("Min. Clearance", config['min-clearance'], 'mm')}
-                            ${createParamHTML("Overhead Clearance", config['overhead-clearance'], 'mm')}
-                            ${createParamHTML("Sprinkler Threshold", config['sprinkler-threshold'], 'mm')}
-                            ${createParamHTML("Sprinkler Clearance", config['sprinkler-clearance'], 'mm')}
-                            ${createParamHTML("Max Perf. Density", config['max-perf-density'])}
-                            ${createParamHTML("Consider Tunnels", config['considerTunnels'])}
-                            ${createParamHTML("Consider Backpacks", config['considerBackpacks'])}
-                            ${createParamHTML("Buffer Layer", config['hasBufferLayer'])}
-                        </div>
-                    </div>
-
+                    <!-- Col 1 Header -->
+                    <h4 class="text-sm font-black text-black mb-3 uppercase border-b-2 border-black pb-1 md:col-span-1">
+                        1. Rack Specs (Tote)
+                    </h4>
+                    <!-- Col 2 Header -->
+                    <h4 class="text-sm font-black text-black mb-3 uppercase border-b-2 border-black pb-1 md:col-span-1">
+                        2. Rack Specs (Structure)
+                    </h4>
+                    <!-- Col 3 Header -->
+                    <h4 class="text-sm font-black text-black mb-3 uppercase border-b-2 border-black pb-1 md:col-span-1">
+                        3. Vertical & Logic
+                    </h4>
+                    
+                    <!-- Generated Parameter Rows -->
+                    ${paramsHTML}
+                    
                 </div>
             </section>
         `;
