@@ -1,47 +1,51 @@
-/* This file now defines all available, hardcoded configurations.
-Each configuration object must contain ALL parameters needed for a full calculation.
-The `defaultConfig` variable is no longer used by the solver but is kept
-as a template for creating new configurations.
+/* CONFIG.JS
+   Defines the static properties of the system (Dimensions, Block Names, Layers)
+   AND the export-specific logic (Rotations, Offsets).
+   Dynamic properties are defined once per rackType.
 */
 
-// This object is a template for creating new configs.
 export const configTemplate = {
-    "name": "TEMPLATE: System - ToteSize - Depth",
-    
-    // NEW: Grouped LISP export properties
+    "name": "TEMPLATE",
     "lispExportProps": {
-        "standard": {
-            "blockName": "BAY_STD_TEMPLATE",
-            "color": 256, // 256 = ByLayer
-            "rotation": 0,
-            "xOffset": 0,
-            "yOffset": 0
+        "singleRack": {
+            "base": { "rotation": 0, "xOffset": 0, "yOffset": 0 },
+            "overrides": {
+                "oddRow": { "rotation": 180, "xOffset": 0, "yOffset": 0 },
+                "lastRow": { "rotation": 180, "xOffset": 0, "yOffset": 0 }
+            },
+            "dynamicProps": [
+                { "name": "Tote width", "configKey": "tote-length" },
+                { "name": "Tote length", "configKey": "tote-width" },
+                { "name": "Tote height", "configKey": "tote-height" }
+            ],
+            "standard": { "blockName": "BAY_STD_S", "color": 256, "layer": "RACK-STD" },
+            "backpack": { "blockName": "BAY_BP_S", "color": 5, "layer": "RACK-BP" },
+            "tunnel": { "blockName": "BAY_TUN_S", "color": 2, "layer": "RACK-TUN" }
         },
-        "backpack": {
-            "blockName": "BAY_BP_TEMPLATE",
-            "color": 5, // Blue
-            "rotation": 0,
-            "xOffset": 0,
-            "yOffset": 0
-        },
-        "tunnel": {
-            "blockName": "BAY_TUN_TEMPLATE",
-            "color": 2, // Yellow
-            "rotation": 90,
-            "xOffset": 0,
-            "yOffset": 0
+        "doubleRack": {
+            "base": { "rotation": 0, "xOffset": 0, "yOffset": 0 },
+            "overrides": {
+                "oddRow": { "rotation": 180, "xOffset": 0, "yOffset": 0 }
+            },
+            "dynamicProps": [
+                { "name": "Tote width", "configKey": "tote-length" },
+                { "name": "Tote length", "configKey": "tote-width" },
+                { "name": "Tote height", "configKey": "tote-height" }
+            ],
+            "standard": { "blockName": "BAY_STD_D", "color": 256, "layer": "RACK-STD" },
+            "backpack": { "blockName": "BAY_BP_D", "color": 5, "layer": "RACK-BP" },
+            "tunnel": { "blockName": "BAY_TUN_D", "color": 2, "layer": "RACK-TUN" }
         }
     },
-    "dynamicPropName": "BayType", // NEW: For LISP export
-    
+    // ... standard dimensions ...
     "layout-mode": "s-d-s",
     "top-setback": 3000,
     "bottom-setback": 3000,
-    "setback-left": 1500, // NEW
-    "setback-right": 1500, // NEW
-    "considerTunnels": true, // NEW
-    "considerBackpacks": true, // NEW
-    "hasBufferLayer": false, // NEW
+    "setback-left": 1500,
+    "setback-right": 1500,
+    "considerTunnels": true,
+    "considerBackpacks": true,
+    "hasBufferLayer": false,
     "tote-width": 400,
     "tote-length": 600,
     "tote-height": 320,
@@ -61,48 +65,50 @@ export const configTemplate = {
     "overhead-clearance": 500,
     "sprinkler-threshold": 7620,
     "sprinkler-clearance": 450,
-    "max-perf-density": 50, // REQ 4: Added
+    "max-perf-density": 50,
 };
 
-// This is the main object that will power the application.
-// The KEY (e.g., "hps3-e2-650-dd") is a unique ID.
-// The "name" property is what the user will see in the dropdown.
 export const configurations = {
     "hps3-e2-650-dd": {
         "name": "HPS3-E2 - 650x450x300 - Double Deep",
-        // NEW: Grouped LISP export properties
         "lispExportProps": {
-            "standard": {
-                "blockName": "Robots-RKKK_1-Double Row Double Deep Rack-4×2",
-                "color": 256, // ByLayer
-                "rotation": 90,
-                "xOffset": 0,
-                "yOffset": 0
+            "singleRack": {
+                "base": { "rotation": 90, "xOffset": 0, "yOffset": 0 },
+                "overrides": {
+                    "oddRow": { "rotation": 90, "xOffset": 0, "yOffset": 0 }
+                },
+                "dynamicProps": [
+                    { "name": "Tote width", "configKey": "tote-length" },
+                    { "name": "Tote length", "configKey": "tote-width" },
+                    { "name": "Tote height", "configKey": "tote-height" }
+                ],
+                "standard": { "blockName": "Robots-RKKK_1-Double Row Double Deep Rack-4x2", "color": 161, "layer": "RACK-STD" },
+                "backpack": { "blockName": "Robots-RK_1-Double Row Double Deep Rack-4x2", "color": 5, "layer": "RACK-BP" },
+                "tunnel": { "blockName": "Robots-RK_1-Double Row Double Deep Rack-4x2", "color": 2, "layer": "RACK-TUN" }
             },
-            "backpack": {
-                "blockName": "Robots-RK_1-Double Row Double Deep Rack-4×2",
-                "color": 5, // Blue
-                "rotation": 90,
-                "xOffset": 0,
-                "yOffset": 0
-            },
-            "tunnel": {
-                "blockName": "Robots-RK_1-Double Row Double Deep Rack-4×2",
-                "color": 2, // Yellow
-                "rotation": 90,
-                "xOffset": 0,
-                "yOffset": 0
+            "doubleRack": {
+                "base": { "rotation": 90, "xOffset": 0, "yOffset": 0 },
+                "overrides": {
+                    "oddRow": { "rotation": 90, "xOffset": 0, "yOffset": 0 }
+                },
+                "dynamicProps": [
+                    { "name": "Tote width", "configKey": "tote-length" },
+                    { "name": "Tote length", "configKey": "tote-width" },
+                    { "name": "Tote height", "configKey": "tote-height" }
+                ],
+                "standard": { "blockName": "Robots-RKKK_1-Double Row Double Deep Rack-4x2", "color": 161, "layer": "RACK-STD" },
+                "backpack": { "blockName": "Robots-RK_1-Double Row Double Deep Rack-4x2", "color": 5, "layer": "RACK-BP" },
+                "tunnel": { "blockName": "Robots-RK_1-Double Row Double Deep Rack-4x2", "color": 2, "layer": "RACK-TUN" }
             }
         },
-        "dynamicPropName": "BayType", // NEW: For LISP export
         "layout-mode": "s-d-s",
         "top-setback": 3000,
         "bottom-setback": 3000,
-        "setback-left": 1500, // NEW
-        "setback-right": 1500, // NEW
-        "considerTunnels": true, // NEW
-        "considerBackpacks": true, // NEW
-        "hasBufferLayer": true, // NEW
+        "setback-left": 1500,
+        "setback-right": 1500,
+        "considerTunnels": true,
+        "considerBackpacks": true,
+        "hasBufferLayer": true,
         "tote-width": 650,
         "tote-length": 450,
         "tote-height": 300,
@@ -122,43 +128,48 @@ export const configurations = {
         "overhead-clearance": 915,
         "sprinkler-threshold": 4572,
         "sprinkler-clearance": 200,
-        "max-perf-density": 1.2, // REQ 4: Added
+        "max-perf-density": 1.2,
     },
     "hps3-e2-650-td": {
         "name": "HPS3-E2 - 650x450x300 - Triple Deep",
-        // NEW: Grouped LISP export properties
-        "lispExportProps": {
-            "standard": {
-                "blockName": "HPS3-E2-650-TD-STD",
-                "color": 256,
-                "rotation": 0,
-                "xOffset": 0,
-                "yOffset": 0
+        "lispExportProps": { 
+            "singleRack": {
+                "base": { "rotation": 90, "xOffset": 0, "yOffset": 0 },
+                "overrides": {
+                    "oddRow": { "rotation": 270, "xOffset": 150, "yOffset": 0 }
+                },
+                "dynamicProps": [
+                    { "name": "Tote width", "configKey": "tote-length" },
+                    { "name": "Tote length", "configKey": "tote-width" },
+                    { "name": "Tote height", "configKey": "tote-height" }
+                ],
+                "standard": { "blockName": "HPS3-E2-650-TD-STD-SINGLE", "color": 256, "layer": "RACK-STD" },
+                "backpack": { "blockName": "HPS3-E2-650-TD-BP-SINGLE", "color": 5, "layer": "RACK-BP" },
+                "tunnel": { "blockName": "HPS3-E2-650-TD-TUN-SINGLE", "color": 2, "layer": "RACK-TUN" }
             },
-            "backpack": {
-                "blockName": "HPS3-E2-650-TD-BP",
-                "color": 5,
-                "rotation": 0,
-                "xOffset": 0,
-                "yOffset": 0
-            },
-            "tunnel": {
-                "blockName": "HPS3-E2-650-TD-TUN",
-                "color": 2,
-                "rotation": 90,
-                "xOffset": 0,
-                "yOffset": 0
+            "doubleRack": {
+                "base": { "rotation": 90, "xOffset": 0, "yOffset": 0 },
+                "overrides": {
+                    "oddRow": { "rotation": 270, "xOffset": 150, "yOffset": 0 }
+                },
+                "dynamicProps": [
+                    { "name": "Tote width", "configKey": "tote-length" },
+                    { "name": "Tote length", "configKey": "tote-width" },
+                    { "name": "Tote height", "configKey": "tote-height" }
+                ],
+                "standard": { "blockName": "HPS3-E2-650-TD-STD-DOUBLE", "color": 256, "layer": "RACK-STD" },
+                "backpack": { "blockName": "HPS3-E2-650-TD-BP-DOUBLE", "color": 5, "layer": "RACK-BP" },
+                "tunnel": { "blockName": "HPS3-E2-650-TD-TUN-DOUBLE", "color": 2, "layer": "RACK-TUN" }
             }
         },
-        "dynamicPropName": "BayType", // NEW: For LISP export
         "layout-mode": "s-d-s",
         "top-setback": 3000,
         "bottom-setback": 3000,
-        "setback-left": 1500, // NEW
-        "setback-right": 1500, // NEW
-        "considerTunnels": true, // NEW
-        "considerBackpacks": true, // NEW
-        "hasBufferLayer": true, // NEW
+        "setback-left": 1500,
+        "setback-right": 1500,
+        "considerTunnels": true,
+        "considerBackpacks": true,
+        "hasBufferLayer": true,
         "tote-width": 650,
         "tote-length": 450,
         "tote-height": 300,
@@ -178,55 +189,60 @@ export const configurations = {
         "overhead-clearance": 915,
         "sprinkler-threshold": 4572,
         "sprinkler-clearance": 200,
-        "max-perf-density": 0.65, // REQ 4: Added
+        "max-perf-density": 0.65,
     },
     "hps3-e2-850-dd": {
         "name": "HPS3-E2 - 850x650x400 - Double Deep",
-        // NEW: Grouped LISP export properties
         "lispExportProps": {
-            "standard": {
-                "blockName": "HPS3-E2-850-DD-STD",
-                "color": 256,
-                "rotation": 0,
-                "xOffset": 0,
-                "yOffset": 0
+            "singleRack": {
+                "base": { "rotation": 90, "xOffset": 0, "yOffset": 0 },
+                "overrides": {
+                    "oddRow": { "rotation": 270, "xOffset": 100, "yOffset": 0 }
+                },
+                "dynamicProps": [
+                    { "name": "Tote width", "configKey": "tote-length" },
+                    { "name": "Tote length", "configKey": "tote-width" },
+                    { "name": "Tote height", "configKey": "tote-height" }
+                ],
+                "standard": { "blockName": "HPS3-E2-850-DD-STD-SINGLE", "color": 256, "layer": "RACK-STD" },
+                "backpack": { "blockName": "HPS3-E2-850-DD-BP-SINGLE", "color": 5, "layer": "RACK-BP" },
+                "tunnel": { "blockName": "HPS3-E2-850-DD-TUN-SINGLE", "color": 2, "layer": "RACK-TUN" }
             },
-            "backpack": {
-                "blockName": "HPS3-E2-850-DD-BP",
-                "color": 5,
-                "rotation": 0,
-                "xOffset": 0,
-                "yOffset": 0
-            },
-            "tunnel": {
-                "blockName": "HPS3-E2-850-DD-TUN",
-                "color": 2,
-                "rotation": 90,
-                "xOffset": 0,
-                "yOffset": 0
+            "doubleRack": {
+                "base": { "rotation": 90, "xOffset": 0, "yOffset": 0 },
+                "overrides": {
+                    "oddRow": { "rotation": 270, "xOffset": 100, "yOffset": 0 }
+                },
+                "dynamicProps": [
+                    { "name": "Tote width", "configKey": "tote-length" },
+                    { "name": "Tote length", "configKey": "tote-width" },
+                    { "name": "Tote height", "configKey": "tote-height" }
+                ],
+                "standard": { "blockName": "HPS3-E2-850-DD-STD-DOUBLE", "color": 256, "layer": "RACK-STD" },
+                "backpack": { "blockName": "HPS3-E2-850-DD-BP-DOUBLE", "color": 5, "layer": "RACK-BP" },
+                "tunnel": { "blockName": "HPS3-E2-850-DD-TUN-DOUBLE", "color": 2, "layer": "RACK-TUN" }
             }
         },
-        "dynamicPropName": "BayType", // NEW: For LISP export
         "layout-mode": "s-d-s",
         "top-setback": 3000,
         "bottom-setback": 3000,
-        "setback-left": 1500, // NEW
-        "setback-right": 1500, // NEW
-        "considerTunnels": true, // NEW
-        "considerBackpacks": true, // NEW
-        "hasBufferLayer": true, // NEW
+        "setback-left": 1500,
+        "setback-right": 1500,
+        "considerTunnels": true,
+        "considerBackpacks": true,
+        "hasBufferLayer": true,
         "tote-width": 850,
         "tote-length": 650,
         "tote-height": 400,
-        "tote-qty-per-bay": 3, // Example change
+        "tote-qty-per-bay": 3,
         "totes-deep": 2,
-        "tote-to-tote-dist": 50, // Example change
-        "tote-to-upright-dist": 75, // Example change
+        "tote-to-tote-dist": 50,
+        "tote-to-upright-dist": 75,
         "tote-back-to-back-dist": 0,
-        "upright-length": 100, // Example change
-        "upright-width": 80, // Example change
+        "upright-length": 100,
+        "upright-width": 80,
         "hook-allowance": 90,
-        "aisle-width": 1380, // Example change
+        "aisle-width": 1380,
         "rack-flue-space": 150,
         "base-beam-height": 370,
         "beam-width": 60,
@@ -234,43 +250,48 @@ export const configurations = {
         "overhead-clearance": 915,
         "sprinkler-threshold": 4572,
         "sprinkler-clearance": 500,
-        "max-perf-density": 1, // REQ 4: Added
+        "max-perf-density": 1,
     },
     "hps3-e2-850-td": {
         "name": "HPS3-E2 - 850x650x400 - Triple Deep",
-        // NEW: Grouped LISP export properties
         "lispExportProps": {
-            "standard": {
-                "blockName": "HPS3-E2-850-TD-STD",
-                "color": 256,
-                "rotation": 0,
-                "xOffset": 0,
-                "yOffset": 0
+            "singleRack": {
+                "base": { "rotation": 90, "xOffset": 0, "yOffset": 0 },
+                "overrides": {
+                    "oddRow": { "rotation": 270, "xOffset": 150, "yOffset": 0 }
+                },
+                "dynamicProps": [
+                    { "name": "Tote width", "configKey": "tote-length" },
+                    { "name": "Tote length", "configKey": "tote-width" },
+                    { "name": "Tote height", "configKey": "tote-height" }
+                ],
+                "standard": { "blockName": "HPS3-E2-850-TD-STD-SINGLE", "color": 256, "layer": "RACK-STD" },
+                "backpack": { "blockName": "HPS3-E2-850-TD-BP-SINGLE", "color": 5, "layer": "RACK-BP" },
+                "tunnel": { "blockName": "HPS3-E2-850-TD-TUN-SINGLE", "color": 2, "layer": "RACK-TUN" }
             },
-            "backpack": {
-                "blockName": "HPS3-E2-850-TD-BP",
-                "color": 5,
-                "rotation": 0,
-                "xOffset": 0,
-                "yOffset": 0
-            },
-            "tunnel": {
-                "blockName": "HPS3-E2-850-TD-TUN",
-                "color": 2,
-                "rotation": 90,
-                "xOffset": 0,
-                "yOffset": 0
+            "doubleRack": {
+                "base": { "rotation": 90, "xOffset": 0, "yOffset": 0 },
+                "overrides": {
+                    "oddRow": { "rotation": 270, "xOffset": 150, "yOffset": 0 }
+                },
+                "dynamicProps": [
+                    { "name": "Tote width", "configKey": "tote-length" },
+                    { "name": "Tote length", "configKey": "tote-width" },
+                    { "name": "Tote height", "configKey": "tote-height" }
+                ],
+                "standard": { "blockName": "HPS3-E2-850-TD-STD-DOUBLE", "color": 256, "layer": "RACK-STD" },
+                "backpack": { "blockName": "HPS3-E2-850-TD-BP-DOUBLE", "color": 5, "layer": "RACK-BP" },
+                "tunnel": { "blockName": "HPS3-E2-850-TD-TUN-DOUBLE", "color": 2, "layer": "RACK-TUN" }
             }
         },
-        "dynamicPropName": "BayType", // NEW: For LISP export
         "layout-mode": "s-d-s",
         "top-setback": 3000,
         "bottom-setback": 3000,
-        "setback-left": 1500, // NEW
-        "setback-right": 1500, // NEW
-        "considerTunnels": true, // NEW
-        "considerBackpacks": true, // NEW
-        "hasBufferLayer": true, // NEW
+        "setback-left": 1500,
+        "setback-right": 1500,
+        "considerTunnels": true,
+        "considerBackpacks": true,
+        "hasBufferLayer": true,
         "tote-width": 850,
         "tote-length": 650,
         "tote-height": 400,
@@ -290,55 +311,64 @@ export const configurations = {
         "overhead-clearance": 915,
         "sprinkler-threshold": 4572,
         "sprinkler-clearance": 200,
-        "max-perf-density": 0.4, // REQ 4: Added
+        "max-perf-density": 0.4,
     },
     "HPC": {
         "name": "HPC - Single Deep",
-        // NEW: Grouped LISP export properties
         "lispExportProps": {
-            "standard": {
-                "blockName": "HPS3-E2-850-DD-STD",
-                "color": 256,
-                "rotation": 0,
-                "xOffset": 0,
-                "yOffset": 0
+            "singleRack": { 
+                "base": { "rotation": 90, "xOffset": 0, "yOffset": 0 },
+                "overrides": {
+                    "lastRow": { "rotation": 270, "xOffset": -460, "yOffset": 1860 }
+                },
+                "dynamicProps": [
+                    { "name": "Tote width", "configKey": "tote-length" },
+                    { "name": "Tote length", "configKey": "tote-width" },
+                    { "name": "Tote height", "configKey": "tote-height" },
+                    { "name": "Tote-to-tote spacing", "configKey": "tote-to-tote-dist" },
+                    { "name": "Tote-to-rack spacing", "configKey": "tote-to-upright-dist" }
+                ],
+                "standard": { "blockName": "Robots-RXLX_1-Single Row Single Deep Rack-3x1", "color": 256, "layer": "RACK-STD-HPC" },
+                "backpack": { "blockName": "BAY_BP_HPC_S", "color": 5, "layer": "RACK-BP-HPC" },
+                "tunnel": { "blockName": "BAY_TUN_HPC_S", "color": 2, "layer": "RACK-TUN-HPC" }
             },
-            "backpack": {
-                "blockName": "HPS3-E2-850-DD-BP",
-                "color": 5,
-                "rotation": 0,
-                "xOffset": 0,
-                "yOffset": 0
-            },
-            "tunnel": {
-                "blockName": "HPS3-E2-850-DD-TUN",
-                "color": 2,
-                "rotation": 90,
-                "xOffset": 0,
-                "yOffset": 0
+            "doubleRack": { 
+                "base": { "rotation": 90, "xOffset": 340, "yOffset": 0 },
+                "overrides": {
+                    // No overrides needed for middle rows
+                },
+                "dynamicProps": [
+                    { "name": "Tote width", "configKey": "tote-length" },
+                    { "name": "Tote length", "configKey": "tote-width" },
+                    { "name": "Tote height", "configKey": "tote-height" },
+                    { "name": "Tote-to-tote spacing", "configKey": "tote-to-tote-dist" },
+                    { "name": "Tote-to-rack spacing", "configKey": "tote-to-upright-dist" }
+                ],
+                "standard": { "blockName": "Robots-RXLX_1-Double Row Single Deep Rack-3x2x1", "color": 161, "layer": "RACK-STD-HPC" },
+                "backpack": { "blockName": "BAY_BP_HPC_D", "color": 5, "layer": "RACK-BP-HPC" },
+                "tunnel": { "blockName": "BAY_TUN_HPC_D", "color": 2, "layer": "RACK-TUN-HPC" }
             }
         },
-        "dynamicPropName": "BayType", // NEW: For LISP export
         "layout-mode": "all-singles",
         "top-setback": 1500,
         "bottom-setback": 3950,
-        "setback-left": 200, // NEW
-        "setback-right": 200, // NEW
-        "considerTunnels": false, // NEW
-        "considerBackpacks": false, // NEW
-        "hasBufferLayer": false, // NEW
+        "setback-left": 200,
+        "setback-right": 200,
+        "considerTunnels": false,
+        "considerBackpacks": false,
+        "hasBufferLayer": false,
         "tote-width": 650,
         "tote-length": 450,
         "tote-height": 300,
-        "tote-qty-per-bay": 3, // Example change
+        "tote-qty-per-bay": 3,
         "totes-deep": 2,
-        "tote-to-tote-dist": 140, // Example change
-        "tote-to-upright-dist": 25, // Example change
+        "tote-to-tote-dist": 140,
+        "tote-to-upright-dist": 25,
         "tote-back-to-back-dist": 30,
-        "upright-length": 90, // Example change
-        "upright-width": 70, // Example change
+        "upright-length": 90,
+        "upright-width": 70,
         "hook-allowance": 0,
-        "aisle-width": 900, // Example change
+        "aisle-width": 900,
         "rack-flue-space": 150,
         "base-beam-height": 840,
         "beam-width": 60,
@@ -346,11 +376,8 @@ export const configurations = {
         "overhead-clearance": 915,
         "sprinkler-threshold": 4572,
         "sprinkler-clearance": 200,
-        "max-perf-density": 2.5, // REQ 4: Added
+        "max-perf-density": 2.5,
     }
-    // Add more configurations here following the same pattern
 };
 
-// This export is no longer needed by the solver, but we keep it
-// in case other files were importing it.
 export const defaultConfig = {};
