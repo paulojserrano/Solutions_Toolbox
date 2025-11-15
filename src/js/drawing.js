@@ -15,51 +15,40 @@ import {
 } from './dom.js';
 import { parseNumber, formatNumber } from './utils.js';
 import { calculateLayout, calculateElevationLayout } from './calculations.js';
-import { getViewState } from './viewState.js'; // <-- ADDED IMPORT
+import { getViewState } from './viewState.js';
 
 // MODIFIED: drawRack helper function
+// This function is now "dumb" and only draws what it's given.
+// It iterates the verticalBayTemplate to draw.
 function drawRack(x_world, rackDepth_world, rackType, params) {
     const {
         ctx, scale, offsetX, offsetY,
         bayDepth, // Note: bayDepth is calculated *config* rack depth
         singleBayDepth, // <<< NEWLY ADDED
         flueSpace,
-        usableLength_world, setbackTop_world,
+        setbackTop_world,
         isDetailView, detailParams, // NEW: Get detail params
         // --- NEW ---
-        baysPerRack,
-        clearOpening_world,
+        verticalBayTemplate, // The pre-calculated vertical template
         totalRackLength_world, // NEW: for layout centering
         layoutOffsetY_world, // NEW: for layout centering
-        // MODIFIED: Pass in the sets, not the flags
-        tunnelPositions,
-        backpackPositions,
         numTunnelLevels // <<< NEWLY ADDED
     } = params;
 
     // --- NEW ---
     const uprightLength_world = detailParams.uprightLength_world;
-    const clearOpening_canvas = clearOpening_world * scale;
-    const uprightLength_canvas = uprightLength_world * scale;
 
     // MODIFIED: Apply layout centering offsets
     const rackX_canvas = offsetX + (x_world * scale);
     const rackY_canvas_start = offsetY + (setbackTop_world * scale) + (layoutOffsetY_world * scale);
     const rackHeight_canvas = totalRackLength_world * scale; // Use total rack length
 
-    if (rackHeight_canvas <= 0) return; // Don't draw if no height
-
-    // --- Tunnel and Backpack Logic is now done in drawWarehouse ---
-    // We just *use* the sets passed in params
+    if (rackHeight_canvas <= 0 || verticalBayTemplate.length === 0) return; // Don't draw if no height or no bays
 
     // --- NEW: Detail View Logic ---
     if (isDetailView) {
-        if (baysPerRack === 0) return; // No bays to draw
-
         // --- FIX: Determine the correct 'totesDeep' for *this* rack ---
-        // Use a small tolerance for floating point comparison
         const isSingleDeepRack = Math.abs(rackDepth_world - singleBayDepth) < 0.01;
-        // Use 1 if it's a single-deep rack, otherwise use the config's totesDeep
         const currentTotesDeep = isSingleDeepRack ? 1 : detailParams.totesDeep;
 
         const bayDetailHelpersParams = {
@@ -76,17 +65,23 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
         // --- END FIX ---
         
         let currentY_canvas = rackY_canvas_start;
+        const uprightLength_canvas = uprightLength_world * scale;
 
-        // Loop `baysPerRack` times
-        for (let i = 0; i < baysPerRack; i++) {
+        // Loop through the verticalBayTemplate
+        for (let i = 0; i < verticalBayTemplate.length; i++) {
+            const bayTpl = verticalBayTemplate[i];
             const isFirstBay = (i === 0);
-            const isTunnel = tunnelPositions.has(i);
-            const isBackpack = !isTunnel && backpackPositions.has(i);
+            const isTunnel = bayTpl.bayType === 'tunnel';
+            const isBackpack = bayTpl.bayType === 'backpack';
             
+            // Calculate bay dimensions from template
+            const clearOpening_world = (i < verticalBayTemplate.length - 1) 
+                ? (verticalBayTemplate[i+1].y_center - bayTpl.y_center) - uprightLength_world
+                : (totalRackLength_world - bayTpl.y_center - uprightLength_world/2); // Estimate last C.O.
+            const clearOpening_canvas = clearOpening_world * scale;
+
             // --- NEW: Exclude tunnel if levels are 0 ---
             if (isTunnel && numTunnelLevels === 0) {
-                // This bay is a tunnel, but tunnels have 0 levels. Skip drawing.
-                // We must still advance the Y-coordinate.
                 if (isFirstBay) {
                     currentY_canvas += uprightLength_canvas;
                 }
@@ -103,7 +98,6 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
                 bayDrawWidth_canvas = uprightLength_canvas; // The width of the upright
                 
                 if (rackType === 'single') {
-                    // MODIFIED: A single rack's width is rackDepth_world
                     const bay_w_canvas = rackDepth_world * scale; // Horizontal dimension
                     const centerX = rackX_canvas + bay_w_canvas / 2;
                     const centerY = bayY_canvas + bayDrawWidth_canvas / 2;
@@ -114,7 +108,6 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
                     drawStructure(ctx, -bayDrawWidth_canvas / 2, -bay_w_canvas / 2, bayDrawWidth_canvas, bay_w_canvas, scale, bayDetailHelpersParams, 'starter');
                     ctx.restore();
                 } else if (rackType === 'double') {
-                    // MODIFIED: A double rack's components are bayDepth (config)
                     const rack1_w_canvas = bayDepth * scale;
                     const flue_w_canvas = flueSpace * scale;
                     const rack2_x_canvas = rackX_canvas + rack1_w_canvas + flue_w_canvas;
@@ -145,7 +138,6 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
             bayDrawWidth_canvas = clearOpening_canvas + uprightLength_canvas;
             
             if (rackType === 'single') {
-                // MODIFIED: A single rack's width is rackDepth_world
                 const bay_w_canvas = rackDepth_world * scale; // Horizontal dimension
                 const centerX = rackX_canvas + bay_w_canvas / 2;
                 const centerY = bayY_canvas + bayDrawWidth_canvas / 2;
@@ -156,13 +148,11 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
                 
                 ctx.fillStyle = '#64748b';
                 drawStructure(ctx, -bayDrawWidth_canvas / 2, -bay_w_canvas / 2, bayDrawWidth_canvas, bay_w_canvas, scale, bayDetailHelpersParams, 'repeater');
-                // MODIFIED: Pass tunnel/backpack flags
                 drawTotes(ctx, -bayDrawWidth_canvas / 2, -bay_w_canvas / 2, scale, bayDetailHelpersParams, 'repeater', isTunnel, isBackpack);
                 
                 ctx.restore();
 
             } else if (rackType === 'double') {
-                // MODIFIED: A double rack's components are bayDepth (config)
                 const rack1_w_canvas = bayDepth * scale; // bayDepth is single rack depth
                 const flue_w_canvas = flueSpace * scale;
                 const rack2_x_canvas = rackX_canvas + rack1_w_canvas + flue_w_canvas;
@@ -176,7 +166,6 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
                 ctx.rotate(Math.PI / 2);
                 ctx.fillStyle = '#64748b';
                 drawStructure(ctx, -bayDrawWidth_canvas / 2, -rack1_w_canvas / 2, bayDrawWidth_canvas, rack1_w_canvas, scale, bayDetailHelpersParams, 'repeater');
-                // MODIFIED: Pass tunnel/backpack flags
                 drawTotes(ctx, -bayDrawWidth_canvas / 2, -rack1_w_canvas / 2, scale, bayDetailHelpersParams, 'repeater', isTunnel, isBackpack);
                 ctx.restore();
 
@@ -188,7 +177,6 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
                 ctx.rotate(Math.PI / 2);
                 ctx.fillStyle = '#64748b';
                 drawStructure(ctx, -bayDrawWidth_canvas / 2, -rack2_w_canvas / 2, bayDrawWidth_canvas, rack2_w_canvas, scale, bayDetailHelpersParams, 'repeater');
-                // MODIFIED: Pass tunnel/backpack flags
                 drawTotes(ctx, -bayDrawWidth_canvas / 2, -rack2_w_canvas / 2, scale, bayDetailHelpersParams, 'repeater', isTunnel, isBackpack);
                 ctx.restore();
             }
@@ -198,10 +186,12 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
     }
     // --- ELSE: Original Simple View ---
     else {
+        const uprightLength_canvas = uprightLength_world * scale;
+
         if (rackType === 'single') {
             const rackWidth_canvas = rackDepth_world * scale;
             
-            if (baysPerRack > 0) {
+            if (verticalBayTemplate.length > 0) {
                 let currentY_canvas = rackY_canvas_start;
                 // Draw first upright
                 ctx.fillStyle = '#64748b'; // slate-500
@@ -209,13 +199,20 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
                 currentY_canvas += uprightLength_canvas;
                 
                 // Draw repeating bays
-                for(let i=0; i < baysPerRack; i++) {
-                    const isTunnel = tunnelPositions.has(i);
-                    const isBackpack = !isTunnel && backpackPositions.has(i);
+                for(let i=0; i < verticalBayTemplate.length; i++) {
+                    const bayTpl = verticalBayTemplate[i];
+                    const isTunnel = bayTpl.bayType === 'tunnel';
+                    const isBackpack = bayTpl.bayType === 'backpack';
                     
                     // --- NEW: Exclude tunnel if levels are 0 ---
                     if (isTunnel && numTunnelLevels === 0) {
                         // This bay is a tunnel, but tunnels have 0 levels. Skip drawing.
+                        // We must still advance the Y-coordinate.
+                        const clearOpening_world = (i < verticalBayTemplate.length - 1) 
+                            ? (verticalBayTemplate[i+1].y_center - bayTpl.y_center) - uprightLength_world
+                            : (totalRackLength_world - bayTpl.y_center - uprightLength_world/2);
+                        const clearOpening_canvas = clearOpening_world * scale;
+                        
                         currentY_canvas += (clearOpening_canvas + uprightLength_canvas);
                         continue; // Skip to the next bay
                     }
@@ -225,6 +222,12 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
                     ctx.fillStyle = isTunnel ? '#fde047' : (isBackpack ? '#a855f7' : '#cbd5e1'); // yellow, purple, or grey
                     ctx.strokeStyle = '#64748b'; // slate-500
                     ctx.lineWidth = 0.5;
+                    
+                    // Calculate bay dimensions from template
+                    const clearOpening_world = (i < verticalBayTemplate.length - 1) 
+                        ? (verticalBayTemplate[i+1].y_center - bayTpl.y_center) - uprightLength_world
+                        : (totalRackLength_world - bayTpl.y_center - uprightLength_world/2); // Estimate last C.O.
+                    const clearOpening_canvas = clearOpening_world * scale;
                     
                     const bayHeight_canvas = (clearOpening_canvas + uprightLength_canvas);
                     ctx.fillRect(rackX_canvas, currentY_canvas, rackWidth_canvas, bayHeight_canvas);
@@ -247,27 +250,30 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
             ctx.strokeRect(rackX_canvas, rackY_canvas_start, rackWidth_canvas, rackHeight_canvas);
 
         } else if (rackType === 'double') {
-            // MODIFIED: A double rack's components are bayDepth (config)
             const rack1_width_canvas = bayDepth * scale;
             const flue_width_canvas = flueSpace * scale;
             const rack2_width_canvas = bayDepth * scale;
             const rack2_x_canvas = rackX_canvas + rack1_width_canvas + flue_width_canvas;
             
-            const repeatingBayUnitWidth_world = clearOpening_world + uprightLength_world;
-
             // --- Draw Rack 1 ---
-            if (baysPerRack > 0) {
+            if (verticalBayTemplate.length > 0) {
                 let currentY_canvas = rackY_canvas_start;
                 ctx.fillStyle = '#64748b'; // slate-500
                 ctx.fillRect(rackX_canvas, currentY_canvas, rack1_width_canvas, uprightLength_canvas);
                 currentY_canvas += uprightLength_canvas;
 
-                for(let i=0; i < baysPerRack; i++) {
-                    const isTunnel = tunnelPositions.has(i);
-                    const isBackpack = !isTunnel && backpackPositions.has(i);
+                for(let i=0; i < verticalBayTemplate.length; i++) {
+                    const bayTpl = verticalBayTemplate[i];
+                    const isTunnel = bayTpl.bayType === 'tunnel';
+                    const isBackpack = bayTpl.bayType === 'backpack';
                     
                     // --- NEW: Exclude tunnel if levels are 0 ---
                     if (isTunnel && numTunnelLevels === 0) {
+                        const clearOpening_world = (i < verticalBayTemplate.length - 1) 
+                            ? (verticalBayTemplate[i+1].y_center - bayTpl.y_center) - uprightLength_world
+                            : (totalRackLength_world - bayTpl.y_center - uprightLength_world/2);
+                        const clearOpening_canvas = clearOpening_world * scale;
+                        
                         currentY_canvas += (clearOpening_canvas + uprightLength_canvas);
                         continue; // Skip to the next bay
                     }
@@ -275,6 +281,11 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
                     
                     ctx.fillStyle = isTunnel ? '#fde047' : (isBackpack ? '#a855f7' : '#cbd5e1'); // yellow, purple, or grey
                     ctx.strokeStyle = '#64748b'; ctx.lineWidth = 0.5;
+
+                    const clearOpening_world = (i < verticalBayTemplate.length - 1) 
+                        ? (verticalBayTemplate[i+1].y_center - bayTpl.y_center) - uprightLength_world
+                        : (totalRackLength_world - bayTpl.y_center - uprightLength_world/2);
+                    const clearOpening_canvas = clearOpening_world * scale;
 
                     const bayHeight_canvas = (clearOpening_canvas + uprightLength_canvas);
                     ctx.fillRect(rackX_canvas, currentY_canvas, rack1_width_canvas, bayHeight_canvas);
@@ -292,18 +303,24 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
             ctx.strokeRect(rackX_canvas, rackY_canvas_start, rack1_width_canvas, rackHeight_canvas);
 
             // --- Draw Rack 2 ---
-            if (baysPerRack > 0) {
+            if (verticalBayTemplate.length > 0) {
                  let currentY_canvas = rackY_canvas_start;
                 ctx.fillStyle = '#64748b'; // slate-500
                 ctx.fillRect(rack2_x_canvas, currentY_canvas, rack2_width_canvas, uprightLength_canvas);
                 currentY_canvas += uprightLength_canvas;
                 
-                for(let i=0; i < baysPerRack; i++) {
-                    const isTunnel = tunnelPositions.has(i);
-                    const isBackpack = !isTunnel && backpackPositions.has(i);
+                for(let i=0; i < verticalBayTemplate.length; i++) {
+                    const bayTpl = verticalBayTemplate[i];
+                    const isTunnel = bayTpl.bayType === 'tunnel';
+                    const isBackpack = bayTpl.bayType === 'backpack';
 
                     // --- NEW: Exclude tunnel if levels are 0 ---
                     if (isTunnel && numTunnelLevels === 0) {
+                        const clearOpening_world = (i < verticalBayTemplate.length - 1) 
+                            ? (verticalBayTemplate[i+1].y_center - bayTpl.y_center) - uprightLength_world
+                            : (totalRackLength_world - bayTpl.y_center - uprightLength_world/2);
+                        const clearOpening_canvas = clearOpening_world * scale;
+                        
                         currentY_canvas += (clearOpening_canvas + uprightLength_canvas);
                         continue; // Skip to the next bay
                     }
@@ -311,6 +328,11 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
 
                     ctx.fillStyle = isTunnel ? '#fde047' : (isBackpack ? '#a855f7' : '#cbd5e1'); // yellow, purple, or grey
                     ctx.strokeStyle = '#64748b'; ctx.lineWidth = 0.5;
+
+                    const clearOpening_world = (i < verticalBayTemplate.length - 1) 
+                        ? (verticalBayTemplate[i+1].y_center - bayTpl.y_center) - uprightLength_world
+                        : (totalRackLength_world - bayTpl.y_center - uprightLength_world/2);
+                    const clearOpening_canvas = clearOpening_world * scale;
 
                     const bayHeight_canvas = (clearOpening_canvas + uprightLength_canvas);
                     ctx.fillRect(rack2_x_canvas, currentY_canvas, rack2_width_canvas, bayHeight_canvas);
@@ -485,7 +507,14 @@ export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config
         showErrorOnCanvas(warehouseCtx, "Invalid dimensions.", canvasWidth, canvasHeight);
         return;
     }
+    
+    // --- REFACTORED: Call calculateLayout ---
+    // All calculation logic is now centralized
+    const layout = calculateLayout(layoutL_world, layoutW_world, config);
+    // --- END REFACTORED SECTION ---
 
+
+    // --- Get other values needed for drawing (not layout) ---
     const toteWidth = config['tote-width'] || 0;
     const toteLength = config['tote-length'] || 0;
     const toteQtyPerBay = config['tote-qty-per-bay'] || 1;
@@ -496,31 +525,9 @@ export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config
     const uprightLength = config['upright-length'] || 0;
     const uprightWidth = config['upright-width'] || 0;
     const hookAllowance = config['hook-allowance'] || 0;
-    const aisleWidth = config['aisle-width'] || 0;
-    const flueSpace = config['rack-flue-space'] || 0; // MODIFIED: Get from config
-
-    // MODIFIED: Get layout values from CONFIG, not global DOM
-    const setbackTop = config['top-setback'] || 0;
-    const setbackBottom = config['bottom-setback'] || 0;
-    // NEW: Get left/right setbacks
-    const setbackLeft = config['setback-left'] || 0;
-    const setbackRight = config['setback-right'] || 0;
-    const layoutMode = config['layout-mode'] || 's-d-s';
-    // NEW: Get tunnel/backpack flags
-    const considerTunnels = config['considerTunnels'] || false;
-    const considerBackpacks = config['considerBackpacks'] || false;
+    const flueSpace = config['rack-flue-space'] || 0;
     
-    // Get global values (not part of config)
-    const isDetailView = detailViewToggle.checked;
-
-    // --- MODIFIED: Bay Width (horizontal) ---
-    // This is now the clear opening.
-    const clearOpening = (toteQtyPerBay * toteLength) +
-        (2 * toteToUprightDist) +
-        (Math.max(0, toteQtyPerBay - 1) * toteToToteDist);
-
     // --- Bay Depth (vertical) for a SINGLE rack ---
-    // MODIFIED: Calculate both depths
     const configBayDepth = (totesDeep * toteWidth) +
         (Math.max(0, totesDeep - 1) * toteBackToBackDist) +
         hookAllowance;
@@ -528,6 +535,13 @@ export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config
     const singleBayDepth = (1 * toteWidth) +
         (Math.max(0, 1 - 1) * toteBackToBackDist) +
         hookAllowance;
+
+    const setbackTop = config['top-setback'] || 0;
+    const setbackBottom = config['bottom-setback'] || 0;
+    const setbackLeft = config['setback-left'] || 0;
+    const setbackRight = config['setback-right'] || 0;
+    
+    const isDetailView = detailViewToggle.checked;
 
     // --- NEW: Calculate numTunnelLevels ---
     // This calculation must happen *before* calculateLayout
@@ -556,18 +570,7 @@ export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config
     }
     // --- END: Calculate numTunnelLevels ---
     
-    // --- NEW: Determine effective considerTunnels flag ---
-    // Pass the original config flag to calculateLayout so positions are created
-    const configConsiderTunnels = config['considerTunnels'] || false;
-    // Use a separate flag for metrics and drawing, which depends on levels
-    const effectiveConsiderTunnels = configConsiderTunnels && numTunnelLevels > 0;
-
-    // --- Run Layout Calculation ---
-    // MODIFIED: Pass layoutL_world and layoutW_world
-    const layout = calculateLayout(configBayDepth, singleBayDepth, aisleWidth, layoutL_world, layoutW_world, layoutMode, flueSpace, setbackTop, setbackBottom, setbackLeft, setbackRight, uprightLength, clearOpening, configConsiderTunnels);
-
     // --- Calculate Scaling and Centering for the content itself (independent of zoom/pan) ---
-    // MODIFIED: Use displayL_world and displayW_world
     const contentPadding = 80; // Generous padding for dimensions
     
     const contentScaleX = (canvasWidth - contentPadding * 2) / displayW_world;
@@ -576,7 +579,6 @@ export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config
 
     if (contentScale <= 0 || !isFinite(contentScale)) return;
 
-    // MODIFIED: drawWidth/Height now based on display dimensions
     const drawWidth = displayW_world * contentScale;
     const drawHeight = displayL_world * contentScale;
 
@@ -594,14 +596,10 @@ export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config
     const layoutDrawX = drawOffsetX + (drawWidth - layoutDrawWidth) / 2; // Center layout in display
     const layoutDrawY = drawOffsetY + (drawHeight - layoutDrawHeight) / 2; // Center layout in display
 
-    // --- NEW: Calculate Centering for the *Layout* (within its own box) ---
-    const usableWidth_world = layoutW_world - setbackLeft - setbackRight;
-    const layoutOffsetX_world = (usableWidth_world - layout.totalLayoutWidth) / 2;
-    // NEW: Vertical centering for layout
-    const layoutOffsetY_world = (layout.usableLength - layout.totalRackLength_world) / 2;
+    // --- NEW: Get Centering for the *Layout* from the layout object ---
+    const { layoutOffsetX_world, layoutOffsetY_world } = layout;
 
     // Final offset for drawing elements (relative to the transformed canvas)
-    // MODIFIED: offsetX/Y are now relative to the *layout* box
     const offsetX = layoutDrawX + (setbackLeft * contentScale) + (layoutOffsetX_world * contentScale);
     const offsetY = layoutDrawY;
     
@@ -614,63 +612,19 @@ export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config
         hookAllowance_world: hookAllowance // Used by rack detail
     };
 
-
-    // --- NEW: Generate Tunnel/Backpack Sets ---
-    // This logic is moved from drawRack to here
-    let tunnelPositions = new Set();
-    // Generate positions based on the CONFIG flag, regardless of levels
-    if (configConsiderTunnels) {
-        const numTunnelBays = Math.floor(layout.baysPerRack / 9);
-        if (numTunnelBays > 0) {
-            const spacing = (layout.baysPerRack + 1) / (numTunnelBays + 1);
-            for (let k = 1; k <= numTunnelBays; k++) {
-                const tunnelIndex = Math.round(k * spacing) - 1;
-                tunnelPositions.add(tunnelIndex);
-            }
-        }
-    }
-    
-    const backpackPositions = new Set();
-    if (considerBackpacks) {
-        const tunnelIndices = Array.from(tunnelPositions).sort((a, b) => a - b);
-        const boundaries = [0, ...tunnelIndices, layout.baysPerRack]; // Use baysPerRack as the end
-        
-        for (let j = 0; j < boundaries.length - 1; j++) {
-            let sectionStart = (j === 0) ? 0 : boundaries[j] + 1;
-            let sectionEnd = boundaries[j+1];
-            let sectionLength = (tunnelPositions.has(sectionEnd)) ? (sectionEnd - sectionStart) : (sectionEnd - sectionStart);
-            if (sectionLength < 1) continue;
-            const numBackpackBays = Math.floor(sectionLength / 5);
-            if (numBackpackBays === 0) continue;
-            const backpackSpacing = (sectionLength + 1) / (numBackpackBays + 1);
-            for (let k = 1; k <= numBackpackBays; k++) {
-                const backpackIndexInSection = Math.round(k * backpackSpacing) - 1;
-                const backpackIndexGlobal = sectionStart + backpackIndexInSection;
-                if (!tunnelPositions.has(backpackIndexGlobal)) {
-                    backpackPositions.add(backpackIndexGlobal);
-                }
-            }
-        }
-    }
-    // --- End Generate Sets ---
-
-
-    // MODIFIED: Pass new params to drawParams
+    // --- MODIFIED: Pass new params to drawParams ---
     const drawParams = {
         ctx: warehouseCtx, scale: contentScale, offsetX, offsetY, // Use contentScale here
         bayDepth: configBayDepth, // Pass calculated *config* rack depth
         singleBayDepth: singleBayDepth, // <<< ADD THIS
-        flueSpace, sysLength: layoutL_world, // MODIFIED: Pass layoutL_world
-        usableLength_world: layout.usableLength,
-        totalRackLength_world: layout.totalRackLength_world, // NEW
-        layoutOffsetY_world: layoutOffsetY_world, // NEW
+        flueSpace, 
         setbackTop_world: setbackTop,
         isDetailView: isDetailView, // NEW
         detailParams: detailParams, // NEW
-        baysPerRack: layout.baysPerRack, // NEW
-        clearOpening_world: layout.clearOpening, // NEW
-        tunnelPositions: tunnelPositions, // NEW
-        backpackPositions: backpackPositions, // NEW
+        // --- NEWLY PASSED FROM LAYOUT OBJECT ---
+        verticalBayTemplate: layout.verticalBayTemplate,
+        totalRackLength_world: layout.totalRackLength_world,
+        layoutOffsetY_world: layoutOffsetY_world,
         numTunnelLevels: numTunnelLevels // <<< NEWLY ADDED
     };
     
@@ -679,10 +633,8 @@ export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config
     const lengthBroken = layoutL_world > boundaryL_world;
     const widthBroken = layoutW_world > boundaryW_world;
     
-
-
-
     // Draw layout items (racks and aisles)
+    // --- MODIFIED: Loop through layout.layoutItems ---
     layout.layoutItems.forEach(item => {
         if (item.type === 'rack') {
             // drawRack 'rackDepth_world' param is item.width
@@ -692,7 +644,6 @@ export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config
     });
 
     // Draw Top and Bottom Setbacks
-    // MODIFIED: Use layoutDrawX/Y and layoutDrawWidth
     if (setbackTop > 0) {
         warehouseCtx.fillStyle = 'rgba(239, 68, 68, 0.1)'; // red-500 with 10% opacity
         warehouseCtx.fillRect(layoutDrawX, layoutDrawY, layoutDrawWidth, setbackTop * contentScale);
@@ -712,7 +663,6 @@ export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config
     }
     
     // NEW: Draw Left/Right Setbacks
-    // MODIFIED: Use layoutDrawX/Y and layoutDrawHeight
     if (setbackLeft > 0) {
         warehouseCtx.fillStyle = 'rgba(239, 68, 68, 0.1)';
         warehouseCtx.fillRect(layoutDrawX, layoutDrawY, setbackLeft * contentScale, layoutDrawHeight);
@@ -776,30 +726,27 @@ export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config
     };
 
     // --- Draw Setback & Usable Dims ---
-    // MODIFIED: Use layoutDrawX/Y
     const dimLineX = layoutDrawX + layoutDrawWidth + (20 / state.scale); // Right side
     
     if (setbackTop > 0) {
         drawVerticalDimLine(warehouseCtx, dimLineX, layoutDrawY, setbackTop * contentScale, `Top Setback: ${formatNumber(setbackTop)}`, state.scale);
     }
     
-    drawVerticalDimLine(warehouseCtx, dimLineX, layoutDrawY + (setbackTop * contentScale), layout.usableLength * contentScale, `Usable Length: ${formatNumber(layout.usableLength)}`, state.scale);
+    drawVerticalDimLine(warehouseCtx, dimLineX, layoutDrawY + (setbackTop * contentScale), layout.usableLength_v * contentScale, `Usable Length: ${formatNumber(layout.usableLength_v)}`, state.scale);
 
     if (setbackBottom > 0) {
-        drawVerticalDimLine(warehouseCtx, dimLineX, layoutDrawY + (setbackTop * contentScale) + (layout.usableLength * contentScale), setbackBottom * contentScale, `Bottom Setback: ${formatNumber(setbackBottom)}`, state.scale);
+        drawVerticalDimLine(warehouseCtx, dimLineX, layoutDrawY + (setbackTop * contentScale) + (layout.usableLength_v * contentScale), setbackBottom * contentScale, `Bottom Setback: ${formatNumber(setbackBottom)}`, state.scale);
     }
     // --- END: Setback Dims ---
 
 
     // Draw (original) dimension lines
-    // MODIFIED: Draw dimensions for the *layout*
     drawDimensions(warehouseCtx, layoutDrawX, layoutDrawY, layoutDrawWidth, layoutDrawHeight, layoutW_world, layoutL_world, state.scale); // Pass state.scale
     
-    // --- NEW: Update Metrics Table ---
+    // --- NEW: Update Metrics Table (using layout data) ---
     try {
         // --- MODIFICATION START: Get numTunnelLevels ---
         let verticalLevels;
-        // We already calculated numTunnelLevels above
         const tunnelThreshold = 6500; // NEW
 
         if (solverResults && solverResults.maxLevels > 0) {
@@ -848,14 +795,7 @@ export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config
         const tunnelLevels = numTunnelLevels; // MODIFIED: Use calculated value
 
         // 4. Calculate total number of bays for each type
-        // MODIFIED: Use the tunnelPositions set which was generated based on config
-        const numTunnelBaysPerRow = tunnelPositions.size;
-        const numBackpackBaysPerRow = backpackPositions.size;
-        // Storage bays per row
-        const numStorageBaysPerRow = layout.baysPerRack - numTunnelBaysPerRow;
-        // Standard bays = storage bays - backpack bays
-        const numStandardBaysPerRow = numStorageBaysPerRow - numBackpackBaysPerRow;
-
+        // MODIFIED: Use pre-calculated counts from the layout object
         let totalStandardBays_Config = 0;
         let totalStandardBays_Single = 0;
         let totalBackpackBays_Config = 0;
@@ -863,35 +803,35 @@ export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config
         let totalTunnelBays_Config = 0;
         let totalTunnelBays_Single = 0; // Likely 0
 
+        const layoutMode = config['layout-mode'] || 's-d-s';
+
         if (layoutMode === 'all-singles') {
             // We need to check the width of each rack row
             for (const item of layout.layoutItems) {
                 if (item.type !== 'rack') continue;
                 
-                // Use a tolerance for float comparison
                 const isSingleDeep = Math.abs(item.width - singleBayDepth) < 0.01;
+                const baysInRow = layout.allBays.filter(b => b.row === item.row);
+                
+                const numStandard = baysInRow.filter(b => b.bayType === 'standard').length;
+                const numBackpack = baysInRow.filter(b => b.bayType === 'backpack').length;
+                const numTunnel = baysInRow.filter(b => b.bayType === 'tunnel').length;
                 
                 if (isSingleDeep) {
-                    totalStandardBays_Single += numStandardBaysPerRow;
-                    totalBackpackBays_Single += numBackpackBaysPerRow; // (unlikely)
-                    totalTunnelBays_Single += numTunnelBaysPerRow;     // (unlikely)
+                    totalStandardBays_Single += numStandard;
+                    totalBackpackBays_Single += numBackpack;
+                    totalTunnelBays_Single += numTunnel;
                 } else {
-                    // It's config-deep
-                    totalStandardBays_Config += numStandardBaysPerRow;
-                    totalBackpackBays_Config += numBackpackBaysPerRow;
-                    totalTunnelBays_Config += numTunnelBaysPerRow;
+                    totalStandardBays_Config += numStandard;
+                    totalBackpackBays_Config += numBackpack;
+                    totalTunnelBays_Config += numTunnel;
                 }
             }
         } else { // s-d-s mode
             // All rows are config-deep (or double-config-deep)
-            const numRows = layout.layoutItems.reduce((acc, item) => {
-                if (item.type !== 'rack') return acc;
-                return acc + (item.rackType === 'double' ? 2 : 1);
-            }, 0);
-            
-            totalStandardBays_Config = numStandardBaysPerRow * numRows;
-            totalBackpackBays_Config = numBackpackBaysPerRow * numRows;
-            totalTunnelBays_Config = numTunnelBaysPerRow * numRows;
+            totalStandardBays_Config = layout.numStandardBays;
+            totalBackpackBays_Config = layout.numBackpackBays;
+            totalTunnelBays_Config = layout.numTunnelBays;
         }
         
         // 5. Calculate total locations for each type
@@ -912,7 +852,6 @@ export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config
         // 7. Update table
         
         // --- Row Labels ---
-        // MODIFIED: These labels now correctly reflect the storage levels
         const stdConfigLabelText = `Standard ${toteQtyPerBay}x${configTotesDeep}x${storageLevels}`;
         const stdSingleLabelText = `Standard ${toteQtyPerBay}x1x${storageLevels}`;
         const bpConfigLabelText = `Backpack ${toteQtyPerBay}x${configTotesDeep}x${storageLevels}`;

@@ -13,7 +13,10 @@ import {
     solverVisualizationsSection
 
 } from './dom.js';
-import { drawWarehouse, drawRackDetail, drawElevationView } from './drawing.js';
+// MODIFIED: Import new drawing files
+import { drawWarehouse } from './drawing/warehouseView.js';
+import { drawRackDetail } from './drawing/rackDetailView.js';
+import { drawElevationView } from './drawing/elevationView.js';
 import { parseNumber, formatNumber, formatDecimalNumber } from './utils.js'; // MODIFIED
 import { configurations } from './config.js';
 import { getViewState } from './viewState.js';

@@ -1,169 +1,343 @@
-// --- REMOVED DOM IMPORTS ---
-// (setbackTopInput, setbackBottomInput, layoutModeSelect are gone)
+import { roundUpTo50 } from './utils.js';
 
-import { roundUpTo50, parseNumber } from './utils.js'; // Added parseNumber
-
-// --- Layout Calculation Function (Top-Down) ---
-// MODIFIED: Signature changed.
-// Changed bayDepth to configBayDepth and added singleBayDepth
-export function calculateLayout(configBayDepth, singleBayDepth, aisleWidth, sysLength, sysWidth, layoutMode, flueSpace, setbackTop, setbackBottom, setbackLeft, setbackRight, uprightLength, clearOpening, considerTunnels = false) {
-    let layoutItems = [];
-    let currentX_world = 0;
-
-    // Calculate usable length based on setbacks
-    let usableLength = sysLength - setbackTop - setbackBottom;
-    if (usableLength <= 0) usableLength = 0;
+// --- NEW HELPER: addBaysToMasterList ---
+/**
+ * Helper function to populate the allBays list for a specific rack row.
+ * This function handles 'single' and 'double' rack types.
+ * @param {Array} allBays - The master list of bays (will be mutated).
+ * @param {object} rowItem - The rack row object from layoutItems.
+ * @param {Array} verticalBayTemplate - The pre-calculated vertical template.
+ * @param {object} config - The full configuration object.
+ * @param {number} layoutOffsetX_world - The horizontal offset for the entire layout.
+ * @param {number} layoutOffsetY_world - The vertical offset for the entire layout.
+ */
+function addBaysToMasterList(allBays, rowItem, verticalBayTemplate, config, layoutOffsetX_world, layoutOffsetY_world) {
+    const setbackLeft = config['setback-left'] || 0;
+    const setbackTop = config['top-setback'] || 0;
+    const flueSpace = config['rack-flue-space'] || 0;
     
-    // NEW: Calculate usable width based on setbacks
-    let usableWidth = sysWidth - setbackLeft - setbackRight;
-    if (usableWidth <= 0) usableWidth = 0;
+    // Calculate the 'config' depth (used for double racks)
+    const configBayDepth = (config['totes-deep'] * config['tote-width']) + 
+                           (Math.max(0, config['totes-deep'] - 1) * config['tote-back-to-back-dist']) + 
+                           config['hook-allowance'];
 
-    // --- MODIFIED: Bay Calculation Logic ---
+    // Iterate through the vertical template
+    for (const bayTpl of verticalBayTemplate) {
+        
+        const final_y = setbackTop + layoutOffsetY_world + bayTpl.y_center;
+
+        // --- Rack 1 (or Single Rack) ---
+        // X-center is the row's X + offset + half its width
+        // For double racks, 'item.width' is the total width, so we use configBayDepth
+        const rack1_width = (rowItem.rackType === 'single') ? rowItem.width : configBayDepth;
+        const bay_x_center_rack1 = layoutOffsetX_world + rowItem.x + (rack1_width / 2);
+        const final_x_rack1 = setbackLeft + bay_x_center_rack1;
+        
+        allBays.push({
+            id: `R${rowItem.row}-B${bayTpl.bayColumn}-1`,
+            row: rowItem.row,
+            bay: bayTpl.bayColumn,
+            rackSubId: 1, // First rack in the row
+            x: final_x_rack1,
+            y: final_y,
+            bayType: bayTpl.bayType,
+            rackType: rowItem.rackType,
+            rowWidth: rowItem.width,
+            rackWidth: rack1_width
+        });
+
+        // --- Rack 2 (If Double Rack) ---
+        if (rowItem.rackType === 'double') {
+            const rack2_width = configBayDepth; // Second part of a double is always configBayDepth
+            const bay_x_center_rack2 = layoutOffsetX_world + rowItem.x + configBayDepth + flueSpace + (rack2_width / 2);
+            const final_x_rack2 = setbackLeft + bay_x_center_rack2;
+
+             allBays.push({
+                id: `R${rowItem.row}-B${bayTpl.bayColumn}-2`,
+                row: rowItem.row,
+                bay: bayTpl.bayColumn,
+                rackSubId: 2, // Second rack in the row
+                x: final_x_rack2,
+                y: final_y,
+                bayType: bayTpl.bayType,
+                rackType: rowItem.rackType,
+                rowWidth: rowItem.width,
+                rackWidth: rack2_width
+            });
+        }
+    }
+}
+
+
+// --- REFACTORED: Layout Calculation Function (Top-Down) ---
+/**
+ * Performs all layout calculations and generates a complete data object.
+ * This is the single source of truth for the layout.
+ * @param {number} sysLength - The warehouse length.
+ * @param {number} sysWidth - The warehouse width.
+ * @param {object} config - The full configuration object.
+ * @returns {object} A comprehensive layout data object.
+ */
+export function calculateLayout(sysLength, sysWidth, config) {
+    // --- 1. Extract parameters from config ---
+    const setbackTop = config['top-setback'] || 0;
+    const setbackBottom = config['bottom-setback'] || 0;
+    const setbackLeft = config['setback-left'] || 0;
+    const setbackRight = config['setback-right'] || 0;
+    const uprightLength = config['upright-length'] || 0;
+    const toteLength = config['tote-length'] || 0;
+    const toteQtyPerBay = config['tote-qty-per-bay'] || 1;
+    const toteToToteDist = config['tote-to-tote-dist'] || 0;
+    const toteToUprightDist = config['tote-to-upright-dist'] || 0;
+    const toteWidth = config['tote-width'] || 0;
+    const totesDeep = config['totes-deep'] || 1;
+    const toteBackToBackDist = config['tote-back-to-back-dist'] || 0;
+    const hookAllowance = config['hook-allowance'] || 0;
+    const aisleWidth = config['aisle-width'] || 0;
+    const flueSpace = config['rack-flue-space'] || 0;
+    const layoutMode = config['layout-mode'] || 's-d-s';
+    const considerTunnels = config['considerTunnels'] || false;
+    const considerBackpacks = config['considerBackpacks'] || false;
+
+    // --- 2. Calculate core dimensions ---
+    const clearOpening = (toteQtyPerBay * toteLength) +
+        (2 * toteToUprightDist) +
+        (Math.max(0, toteQtyPerBay - 1) * toteToToteDist);
+    
+    const configBayDepth = (totesDeep * toteWidth) +
+        (Math.max(0, totesDeep - 1) * toteBackToBackDist) +
+        hookAllowance;
+        
+    const singleBayDepth = (1 * toteWidth) +
+        (Math.max(0, 1 - 1) * toteBackToBackDist) +
+        hookAllowance;
+
+    // --- 3. Generate Vertical Template (Step 2.1) ---
+    const verticalBayTemplate = [];
+    const usableLength_v_calc = sysLength - setbackTop - setbackBottom - uprightLength;
     const repeatingBayUnitWidth = clearOpening + uprightLength;
+    
     let totalBayPositions = 0; // This is the total number of physical bay *slots*
-
-    if (usableLength > uprightLength && repeatingBayUnitWidth > 0) {
-        totalBayPositions = Math.floor((usableLength - uprightLength) / repeatingBayUnitWidth);
+    if (usableLength_v_calc > 0 && repeatingBayUnitWidth > 0) {
+        totalBayPositions = Math.floor(usableLength_v_calc / repeatingBayUnitWidth);
     }
-    
-    // NEW: Conditionally calculate tunnel/storage bays
-    let numTunnelBays = 0;
+
+    // --- Generate Tunnel/Backpack Sets ---
+    let tunnelPositions = new Set();
     if (considerTunnels) {
-        numTunnelBays = Math.floor(totalBayPositions / 9);
+        const numTunnelBays = Math.floor(totalBayPositions / 9);
+        if (numTunnelBays > 0) {
+            const spacing = (totalBayPositions + 1) / (numTunnelBays + 1);
+            for (let k = 1; k <= numTunnelBays; k++) {
+                tunnelPositions.add(Math.round(k * spacing) - 1);
+            }
+        }
     }
-    // numStorageBays is the number of bays *per row* that can store totes
-    const numStorageBays = totalBayPositions - numTunnelBays;
     
-    // NEW: Calculate total rack length for centering
-    const totalRackLength_world = (totalBayPositions > 0) ? (totalBayPositions * repeatingBayUnitWidth) + uprightLength : 0;
-    // --- END MODIFICATION ---
+    let backpackPositions = new Set();
+    if (considerBackpacks) {
+        const tunnelIndices = Array.from(tunnelPositions).sort((a, b) => a - b);
+        const boundaries = [0, ...tunnelIndices, totalBayPositions];
+        for (let j = 0; j < boundaries.length - 1; j++) {
+            let sectionStart = (j === 0) ? 0 : boundaries[j] + 1;
+            let sectionEnd = boundaries[j+1];
+            let sectionLength = (tunnelPositions.has(sectionEnd)) ? (sectionEnd - sectionStart) : (sectionEnd - sectionStart);
+            if (sectionLength < 1) continue;
+            const numBackpackBays = Math.floor(sectionLength / 5);
+            if (numBackpackBays === 0) continue;
+            const backpackSpacing = (sectionLength + 1) / (numBackpackBays + 1);
+            for (let k = 1; k <= numBackpackBays; k++) {
+                const backpackIndexInSection = Math.round(k * backpackSpacing) - 1;
+                const backpackIndexGlobal = sectionStart + backpackIndexInSection;
+                if (!tunnelPositions.has(backpackIndexGlobal)) {
+                    backpackPositions.add(backpackIndexGlobal);
+                }
+            }
+        }
+    }
 
+    // --- Populate the Template ---
+    for (let i = 0; i < totalBayPositions; i++) {
+        const isTunnel = tunnelPositions.has(i);
+        const isBackpack = !isTunnel && backpackPositions.has(i);
+        
+        let bayType = 'standard';
+        if (isTunnel) bayType = 'tunnel';
+        else if (isBackpack) bayType = 'backpack';
+
+        // Calculate y_center for this bay
+        // Center = (Starter Upright) + (i * Repeating Unit) + (Half Clear Opening)
+        const y_center = uprightLength + (i * repeatingBayUnitWidth) + (clearOpening / 2);
+        
+        verticalBayTemplate.push({
+            bayColumn: i,
+            y_center: y_center,
+            bayType: bayType
+        });
+    }
+    
+    // Total vertical length of the rack structure itself
+    const totalRackLength_world = (totalBayPositions > 0) ? (totalBayPositions * repeatingBayUnitWidth) + uprightLength : 0;
+    // Usable length (for vertical centering)
+    const usableLength_v = sysLength - setbackTop - setbackBottom;
+    // Vertical centering offset
+    const layoutOffsetY_world = (usableLength_v - totalRackLength_world) / 2;
+
+
+    // --- 4. Generate Horizontal Rows & Master Bay List (Step 2.2) ---
+    const allBays = [];
+    const layoutItems = [];
+    let currentX_world = 0;
+    let rowCounter = 0;
+
+    const usableWidth_h = sysWidth - setbackLeft - setbackRight;
+    if (usableWidth_h <= 0) {
+        // No room for anything
+        return { 
+            layoutItems: [], allBays: [], verticalBayTemplate: [],
+            totalLayoutWidth: 0, totalRackLength_world: 0,
+            usableLength_v: usableLength_v, usableWidth_h: usableWidth_h,
+            layoutOffsetX_world: 0, layoutOffsetY_world: layoutOffsetY_world,
+            baysPerRack: totalBayPositions, // This is the vertical count
+            clearOpening,
+            numStorageBays: 0,
+            numTunnelBays: 0,
+            numBackpackBays: 0
+        };
+    }
+    
+    // --- Horizontal Layout Logic (from old function) ---
     if (layoutMode === 'all-singles') {
-        // NEW LOGIC: First and last racks are singleBayDepth, middle are configBayDepth
         const singleRackWidth = singleBayDepth;
         const configRackWidth = configBayDepth;
 
-        // 1. Try to add first [Single Rack]
-        if (usableWidth < singleRackWidth) {
-            // Not enough room for even one rack
-            return { layoutItems: [], totalBays: 0, totalLayoutWidth: 0, usableLength: 0, baysPerRack: 0, clearOpening: 0, totalRackLength_world: 0 };
-        }
-        
-        layoutItems.push({ type: 'rack', x: 0, width: singleRackWidth, rackType: 'single' });
-        currentX_world += singleRackWidth;
+        if (usableWidth_h >= singleRackWidth) {
+            rowCounter++;
+            const rowItem = { type: 'rack', x: 0, width: singleRackWidth, rackType: 'single', row: rowCounter };
+            layoutItems.push(rowItem);
+            currentX_world += singleRackWidth;
 
-        // 2. Loop, adding [Aisle] + [Config Rack]s in the middle
-        while (true) {
-            // Check if we have space for a final [Aisle] + [Single Rack]
-            if (currentX_world + aisleWidth + singleRackWidth <= usableWidth) {
-                // We have space for at least one more rack.
-                
-                // Check if we have space to add an [Aisle] + [Config Rack] AND still fit the final [Aisle] + [Single Rack]
-                if (currentX_world + aisleWidth + configRackWidth + aisleWidth + singleRackWidth <= usableWidth) {
-                    // Yes, add the [Aisle] + [Config Rack]
-                    layoutItems.push({ type: 'aisle', x: currentX_world, width: aisleWidth });
-                    currentX_world += aisleWidth;
-                    layoutItems.push({ type: 'rack', x: currentX_world, width: configRackWidth, rackType: 'single' });
-                    currentX_world += configRackWidth;
-                    // ... and continue the loop
+            while (true) {
+                if (currentX_world + aisleWidth + singleRackWidth <= usableWidth_h) {
+                    if (currentX_world + aisleWidth + configRackWidth + aisleWidth + singleRackWidth <= usableWidth_h) {
+                        layoutItems.push({ type: 'aisle', x: currentX_world, width: aisleWidth, row: -1 });
+                        currentX_world += aisleWidth;
+                        
+                        rowCounter++;
+                        const midRowItem = { type: 'rack', x: currentX_world, width: configRackWidth, rackType: 'single', row: rowCounter };
+                        layoutItems.push(midRowItem);
+                        currentX_world += configRackWidth;
+                    } else {
+                        layoutItems.push({ type: 'aisle', x: currentX_world, width: aisleWidth, row: -1 });
+                        currentX_world += aisleWidth;
+
+                        rowCounter++;
+                        const lastRowItem = { type: 'rack', x: currentX_world, width: singleRackWidth, rackType: 'single', row: rowCounter };
+                        layoutItems.push(lastRowItem);
+                        currentX_world += singleRackWidth;
+                        break;
+                    }
                 } else {
-                    // We can't fit a config rack. We must just add the final [Aisle] + [Single Rack] and break.
-                    layoutItems.push({ type: 'aisle', x: currentX_world, width: aisleWidth });
-                    currentX_world += aisleWidth;
-                    layoutItems.push({ type: 'rack', x: currentX_world, width: singleRackWidth, rackType: 'single' });
-                    currentX_world += singleRackWidth;
-                    break; // This is the last rack
+                    break;
                 }
-            } else {
-                // We can't even fit the final [Aisle] + [Single Rack].
-                // This means the first rack we added is the *only* rack.
-                // We are done.
-                break;
             }
         }
     }
     else if (layoutMode === 's-d-s') {
-        // REVERTED: 'single' racks in s-d-s now use the configBayDepth, not singleBayDepth
-        const singleRackWidth = configBayDepth;
+        const singleRackWidth = configBayDepth; // s-d-s uses config depth for singles
         const doubleRackWidth = (configBayDepth * 2) + flueSpace;
 
-        // 1. Try to add first [Single Rack]
-        // MODIFIED: Check against usableWidth
-        if (currentX_world + singleRackWidth <= usableWidth) {
-            layoutItems.push({ type: 'rack', x: 0, width: singleRackWidth, rackType: 'single' });
-            // totalBays += numStorageBays;
+        if (currentX_world + singleRackWidth <= usableWidth_h) {
+            rowCounter++;
+            const rowItem = { type: 'rack', x: 0, width: singleRackWidth, rackType: 'single', row: rowCounter };
+            layoutItems.push(rowItem);
             currentX_world += singleRackWidth;
         } else {
-            return { layoutItems: [], totalBays: 0, totalLayoutWidth: 0, usableLength: 0, baysPerRack: 0, clearOpening: 0, totalRackLength_world: 0 };
+             // No room
+             return { 
+                layoutItems: [], allBays: [], verticalBayTemplate: [],
+                totalLayoutWidth: 0, totalRackLength_world: 0,
+                usableLength_v: usableLength_v, usableWidth_h: usableWidth_h,
+                layoutOffsetX_world: 0, layoutOffsetY_world: layoutOffsetY_world,
+                baysPerRack: totalBayPositions,
+                clearOpening,
+                numStorageBays: 0, numTunnelBays: 0, numBackpackBays: 0
+            };
         }
 
-        // 2. Loop, adding [Aisle] + [Double Rack]
-        // --- MODIFICATION START ---
-        // This loop now checks if adding an [A][D] unit will *prevent*
-        // the final [A][S] unit from fitting.
         while (true) {
-            // Check if we can fit the next unit [A][D]
             const nextUnitEndX = currentX_world + aisleWidth + doubleRackWidth;
+            if (nextUnitEndX > usableWidth_h) break;
+            if (nextUnitEndX + aisleWidth + singleRackWidth > usableWidth_h) break;
             
-            if (nextUnitEndX > usableWidth) {
-                break; // Can't even fit the next [A][D], so stop
-            }
-
-            // Now, check if, *after* adding this unit, we can *still* fit the final [A][S]
-            if (nextUnitEndX + aisleWidth + singleRackWidth > usableWidth) {
-                // This [A][D] fits, but it's the last one. It would prevent the final [A][S].
-                // So, don't add it. Just break and let the final [A][S] be added later.
-                break; 
-            }
-            
-            // If we get here, [A][D] fits AND there's room for the final [A][S] after it.
-            // So, add the [A][D].
-            layoutItems.push({ type: 'aisle', x: currentX_world, width: aisleWidth });
+            layoutItems.push({ type: 'aisle', x: currentX_world, width: aisleWidth, row: -1 });
             currentX_world += aisleWidth;
 
-            layoutItems.push({ type: 'rack', x: currentX_world, width: doubleRackWidth, rackType: 'double' });
+            rowCounter++; // Increment for the double rack row
+            const doubleRowItem = { type: 'rack', x: currentX_world, width: doubleRackWidth, rackType: 'double', row: rowCounter };
+            layoutItems.push(doubleRowItem);
             currentX_world += doubleRackWidth;
         }
-        // --- MODIFICATION END ---
 
-        // 3. Try to add final [Aisle] + [Single Rack]
-        // MODIFIED: Check against usableWidth
-        if (currentX_world + aisleWidth + singleRackWidth <= usableWidth) {
-             // Check if the *last* item added was already a single (can happen if loop is skipped)
+        if (currentX_world + aisleWidth + singleRackWidth <= usableWidth_h) {
             if (layoutItems.length > 0 && layoutItems[layoutItems.length - 1].rackType !== 'single') {
-                layoutItems.push({ type: 'aisle', x: currentX_world, width: aisleWidth });
+                layoutItems.push({ type: 'aisle', x: currentX_world, width: aisleWidth, row: -1 });
                 currentX_world += aisleWidth;
 
-                layoutItems.push({ type: 'rack', x: currentX_world, width: singleRackWidth, rackType: 'single' });
-                // totalBays += numStorageBays;
+                rowCounter++; // Increment for the final single rack
+                const finalRowItem = { type: 'rack', x: currentX_world, width: singleRackWidth, rackType: 'single', row: rowCounter };
+                layoutItems.push(finalRowItem);
                 currentX_world += singleRackWidth;
-            }
-        }
-    }
-
-    // NEW: Calculate totalBays (total storage bays) at the end
-    // MODIFICATION: This logic is now complex because rack widths vary.
-    // We need to pass the tote-deep value for *each* rack.
-    // FOR NOW: This calculation is slightly incorrect if a mix of depths is used,
-    // as totalStorageBays assumes all racks have the same numStorageBays.
-    // This is a limitation of the current structure.
-    let totalStorageBays = 0;
-    for (const item of layoutItems) {
-        if (item.type === 'rack') {
-            if (item.rackType === 'single') {
-                totalStorageBays += numStorageBays;
-            } else if (item.rackType === 'double') {
-                totalStorageBays += (numStorageBays * 2);
             }
         }
     }
 
     const lastItem = layoutItems[layoutItems.length - 1];
     const totalLayoutWidth = lastItem ? lastItem.x + lastItem.width : 0;
+    
+    // Horizontal centering offset
+    const layoutOffsetX_world = (usableWidth_h - totalLayoutWidth) / 2;
 
-    // MODIFIED: Return totalStorageBays, totalBayPositions (as baysPerRack), and totalRackLength_world
-    return { layoutItems, totalBays: totalStorageBays, totalLayoutWidth, usableLength, baysPerRack: totalBayPositions, clearOpening, totalRackLength_world };
+    // --- 5. Populate Master Bay List (Step 2.3) ---
+    // Now that we have the horizontal centering offset, populate allBays
+    for (const item of layoutItems) {
+        if (item.type === 'rack') {
+            addBaysToMasterList(allBays, item, verticalBayTemplate, config, layoutOffsetX_world, layoutOffsetY_world);
+        }
+    }
+
+    // --- 6. Calculate Final Metrics ---
+    const numStorageBays = allBays.filter(b => b.bayType !== 'tunnel').length;
+    const numTunnelBays = allBays.filter(b => b.bayType === 'tunnel').length;
+    const numBackpackBays = allBays.filter(b => b.bayType === 'backpack').length;
+    const numStandardBays = allBays.filter(b => b.bayType === 'standard').length;
+
+    // --- 7. Return Value (Step 2.4) ---
+    return {
+        // Data lists
+        layoutItems,          // List of rack rows and aisles (for drawing)
+        allBays,              // Master list of every single bay
+        verticalBayTemplate,  // Template for vertical layout
+        
+        // Core dimensions
+        totalLayoutWidth,     // Total width of the rack/aisle layout (pixels)
+        totalRackLength_world, // Total length of a rack (pixels)
+        usableLength_v,       // Usable vertical space
+        usableWidth_h,        // Usable horizontal space
+        layoutOffsetX_world,  // Horizontal centering offset
+        layoutOffsetY_world,  // Vertical centering offset
+        
+        // Bay stats
+        baysPerRack: totalBayPositions, // Vertical bay positions per row
+        clearOpening,
+        numStorageBays,       // Total storage bays in system
+        numTunnelBays,        // Total tunnel bays in system
+        numBackpackBays,      // Total backpack bays in system
+        numStandardBays,      // Total standard bays in system
+        numRows: rowCounter   // Total number of rack rows
+    };
 }
+
 
 /**
  * Calculates the layout of rack levels.
@@ -313,55 +487,16 @@ export function getMetrics(sysLength, sysWidth, sysHeight, config, levelOverride
     // --- 1. Get all parameters from the config object ---
     const toteWidth = config['tote-width'] || 0;
     const toteLength = config['tote-length'] || 0;
-    const toteHeight = config['tote-height'] || 0; // NEW
+    const toteHeight = config['tote-height'] || 0;
     const toteQtyPerBay = config['tote-qty-per-bay'] || 1;
     const totesDeep = config['totes-deep'] || 1; // This is the "config" totes deep
-    const toteToToteDist = config['tote-to-tote-dist'] || 0;
-    const toteToUprightDist = config['tote-to-upright-dist'] || 0;
-    const toteBackToBackDist = config['tote-back-to-back-dist'] || 0;
-    const uprightLength = config['upright-length'] || 0;
-    const hookAllowance = config['hook-allowance'] || 0;
-    const aisleWidth = config['aisle-width'] || 0;
-    const flueSpace = config['rack-flue-space'] || 0; // MODIFIED: Get from config
-
-    // --- 2. Get layout parameters from CONFIG ---
-    // MODIFIED: These are now read from the config object
-    const setbackTop = config['top-setback'] || 0;
-    const setbackBottom = config['bottom-setback'] || 0;
-    // NEW: Read left/right setbacks
-    const setbackLeft = config['setback-left'] || 0;
-    const setbackRight = config['setback-right'] || 0;
-    const layoutMode = config['layout-mode'] || 's-d-s';
-    // NEW: Read tunnel flag
-    const considerTunnels = config['considerTunnels'] || false;
-    // NEW: Read buffer layer flag
     const hasBufferLayer = config['hasBufferLayer'] || false;
-
-
-    // --- 3. Calculate Bay Dimensions ---
-    // MODIFIED: Calculate clear opening instead of bayWidth
-    const clearOpening = (toteQtyPerBay * toteLength) +
-        (2 * toteToUprightDist) +
-        (Math.max(0, toteQtyPerBay - 1) * toteToToteDist);
-
-    // MODIFIED: This is the "config" bay depth
-    const configBayDepth = (totesDeep * toteWidth) +
-        (Math.max(0, totesDeep - 1) * toteBackToBackDist) +
-        hookAllowance;
-        
-    // NEW: Calculate single-deep bay depth (based on 1 tote deep)
-    const singleBayDepth = (1 * toteWidth) +
-        (Math.max(0, 1 - 1) * toteBackToBackDist) +
-        hookAllowance;
-
-    // --- 4. Calculate Layout (Total Bays) ---
-    // MODIFIED: Pass configBayDepth and singleBayDepth
-    const layout = calculateLayout(configBayDepth, singleBayDepth, aisleWidth, sysLength, sysWidth, layoutMode, flueSpace, setbackTop, setbackBottom, setbackLeft, setbackRight, uprightLength, clearOpening, considerTunnels);
     
-    // --- NEW: Calculate number of rows ---
-    const numRows = (layout.baysPerRack > 0 && layout.totalBays > 0) ? (layout.totalBays / (layout.baysPerRack - (considerTunnels ? Math.floor(layout.baysPerRack / 9) : 0))) : 0;
+    // --- 2. Calculate Layout (Total Bays) ---
+    // MODIFIED: Call new calculateLayout
+    const layout = calculateLayout(sysLength, sysWidth, config);
 
-    // --- 5. Get Vertical Inputs from config ---
+    // --- 3. Get Vertical Inputs from config ---
     const coreElevationInputs = {
         WH: sysHeight, // Use passed-in height
         BaseHeight: config['base-beam-height'] || 0,
@@ -377,7 +512,7 @@ export function getMetrics(sysLength, sysWidth, sysHeight, config, levelOverride
         UW_side: 0, TotesDeep: 0, ToteDepth: 0, ToteDepthGap: 0, HookAllowance: 0,
     };
 
-    // --- 6. Calculate Elevation (Max Levels) ---
+    // --- 4. Calculate Elevation (Max Levels) ---
     // MODIFIED: Pass hasBufferLayer flag
     const layoutResult = calculateElevationLayout(coreElevationInputs, false, hasBufferLayer); // false = don't need even distribution
     // MODIFIED: Use levelOverride if provided and valid
@@ -385,13 +520,7 @@ export function getMetrics(sysLength, sysWidth, sysHeight, config, levelOverride
     const maxLevels = (levelOverride !== null && levelOverride > 0 && levelOverride <= calculatedMaxLevels) ? levelOverride : calculatedMaxLevels;
     const allLevels = layoutResult ? layoutResult.levels : []; // NEW: Get all level data
 
-    // --- 7. Calculate Total Locations ---
-    // MODIFIED: This is now more complex.
-    // layout.totalBays = total *storage* bays (all rows)
-    // We need to calculate tunnel bays separately.
-    const numTunnelBaysPerRow = considerTunnels ? Math.floor(layout.baysPerRack / 9) : 0;
-    const totalTunnelBays = numTunnelBaysPerRow * numRows;
-    
+    // --- 5. Calculate Total Locations ---
     // NEW: Adjust maxLevels for buffer layer when calculating locations
     let storageLevels = maxLevels;
     if (hasBufferLayer && maxLevels > 0) {
@@ -406,15 +535,16 @@ export function getMetrics(sysLength, sysWidth, sysHeight, config, levelOverride
     const numTunnelLevels = allLevels.filter(level => level.beamBottom >= tunnelThreshold).length;
     const locationsPerTunnelBay = numTunnelLevels * toteQtyPerBay * totesDeep; // MODIFIED
 
-    const totalLocations = (layout.totalBays * locationsPerStandardBay) + (totalTunnelBays * locationsPerTunnelBay);
+    // Use pre-calculated bay counts from the layout object
+    const totalLocations = (layout.numStorageBays * locationsPerStandardBay) + (layout.numTunnelBays * locationsPerTunnelBay);
 
-    // --- 8. Calculate Footprint ---
+    // --- 6. Calculate Footprint ---
     const footprint = (sysLength / 1000) * (sysWidth / 1000); // in m²
     
-    // --- NEW: Calculate Tote Volume ---
+    // --- 7. Calculate Tote Volume ---
     const toteVolume_m3 = (toteWidth / 1000) * (toteLength / 1000) * (toteHeight / 1000);
     
-    // --- NEW: Get Max Perf Density ---
+    // --- 8. Get Max Perf Density ---
     const maxPerfDensity = config['max-perf-density'] || 50;
 
     // --- 9. Return metrics object ---
@@ -426,10 +556,9 @@ export function getMetrics(sysLength, sysWidth, sysHeight, config, levelOverride
         W: sysWidth,
         
         // Detailed metrics for display
-        // MODIFIED: totalBays is now *all* bays (storage + tunnel)
-        totalBays: layout.totalBays + totalTunnelBays,
-        baysPerRack: layout.baysPerRack,
-        numRows: numRows,
+        totalBays: layout.allBays.length, // Total number of bay *instances*
+        baysPerRack: layout.baysPerRack,  // Vertical positions
+        numRows: layout.numRows,
         maxLevels: maxLevels, // This is the *used* levels
         calculatedMaxLevels: calculatedMaxLevels, // This is the *physical* max
         toteVolume_m3: toteVolume_m3,
