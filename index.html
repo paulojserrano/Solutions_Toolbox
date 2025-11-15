@@ -259,7 +259,60 @@
                     </div>
                 </div>
                 
-                <!-- MODIFIED: Layout Metrics section removed from here -->
+                <!-- MODIFIED: Layout Metrics section moved back here -->
+                <h2 class="nb-title text-xl text-black mt-8 mb-4">
+                    Layout Metrics
+                </h2>
+                <div class="space-y-4">
+                    <table class="metric-table">
+                        <thead>
+                            <tr>
+                                <th>Bay Type</th>
+                                <th>Locs / Level</th>
+                                <th>Levels</th>
+                                <th>Num. Bays</th>
+                                <th class="total-col">Total Locs</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr id="metric-row-std-config" style="display: none;">
+                                <td id="metric-std-config-label">Standard (Config)</td>
+                                <td><span id="metric-std-config-locs-lvl">0</span></td>
+                                <td><span id="metric-std-config-levels">0</span></td>
+                                <td><span id="metric-std-config-bays">0</span></td>
+                                <td class="total-col"><span id="metric-std-config-locs-total">0</span></td>
+                            </tr>
+                            <tr id="metric-row-std-single" style="display: none;">
+                                <td id="metric-std-single-label">Standard (Single)</td>
+                                <td><span id="metric-std-single-locs-lvl">0</span></td>
+                                <td><span id="metric-std-single-levels">0</span></td>
+                                <td><span id="metric-std-single-bays">0</span></td>
+                                <td class="total-col"><span id="metric-std-single-locs-total">0</span></td>
+                            </tr>
+                            <tr id="metric-row-bp-config" style="display: none;">
+                                <td id="metric-bp-config-label">Backpack (Config)</td>
+                                <td><span id="metric-bp-config-locs-lvl">0</span></td>
+                                <td><span id="metric-bp-config-levels">0</span></td>
+                                <td><span id="metric-bp-config-bays">0</span></td>
+                                <td class="total-col"><span id="metric-bp-config-locs-total">0</span></td>
+                            </tr>
+                            <tr id="metric-row-tun-config" style="display: none;">
+                                <td id="metric-tun-config-label">Tunnel (Config)</td>
+                                <td><span id="metric-tun-config-locs-lvl">0</span></td>
+                                <td><span id="metric-tun-config-levels">0</span></td>
+                                <td><span id="metric-tun-config-bays">0</span></td>
+                                <td class="total-col"><span id="metric-tun-config-locs-total">0</span></td>
+                            </tr>
+                             <tr class="total-row">
+                                <td>Total</td>
+                                <td>—</td>
+                                <td>—</td>
+                                <td><span id="metric-tot-bays">0</span></td>
+                                <td><span id="metric-tot-locs-total">0</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
 
                 <div class="mt-8">
                      <button id="exportResultsButton" class="w-full nb-btn nb-btn-secondary text-lg" style="display: none;">
@@ -287,59 +340,23 @@
         </div>
         
         <!-- 4. Main Tab Content: Debug -->
-        <!-- MODIFIED: Added this new tab content -->
+        <!-- MODIFIED: Replaced metric-table with new debug-bay-list table -->
         <div id="debugTabContent" class="main-tab-content space-y-8">
             <h2 class="nb-title text-xl text-black mt-8 mb-4">
-                Layout Metrics
+                Master Bay List
             </h2>
-            <div class="space-y-4">
+            <div class="space-y-4 h-[600px] overflow-auto nb-box p-2">
                 <table class="metric-table">
                     <thead>
                         <tr>
+                            <th>Bay ID</th>
+                            <th>X Coord (Center)</th>
+                            <th>Y Coord (Center)</th>
                             <th>Bay Type</th>
-                            <th>Locs / Level</th>
-                            <th>Levels</th>
-                            <th>Num. Bays</th>
-                            <th class="total-col">Total Locs</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <tr id="metric-row-std-config" style="display: none;">
-                            <td id="metric-std-config-label">Standard (Config)</td>
-                            <td><span id="metric-std-config-locs-lvl">0</span></td>
-                            <td><span id="metric-std-config-levels">0</span></td>
-                            <td><span id="metric-std-config-bays">0</span></td>
-                            <td class="total-col"><span id="metric-std-config-locs-total">0</span></td>
-                        </tr>
-                        <tr id="metric-row-std-single" style="display: none;">
-                            <td id="metric-std-single-label">Standard (Single)</td>
-                            <!-- FIXED: Removed stray 'T' -->
-                            <td><span id="metric-std-single-locs-lvl">0</span></td>
-                            <td><span id="metric-std-single-levels">0</span></td>
-                            <td><span id="metric-std-single-bays">0</span></td>
-                            <td class="total-col"><span id="metric-std-single-locs-total">0</span></td>
-                        </tr>
-                        <tr id="metric-row-bp-config" style="display: none;">
-                            <td id="metric-bp-config-label">Backpack (Config)</td>
-                            <td><span id="metric-bp-config-locs-lvl">0</span></td>
-                            <td><span id="metric-bp-config-levels">0</span></td>
-                            <td><span id="metric-bp-config-bays">0</span></td>
-                            <td class="total-col"><span id="metric-bp-config-locs-total">0</span></td>
-                        </tr>
-                        <tr id="metric-row-tun-config" style="display: none;">
-                            <td id="metric-tun-config-label">Tunnel (Config)</td>
-                            <td><span id="metric-tun-config-locs-lvl">0</span></td>
-                            <td><span id="metric-tun-config-levels">0</span></td>
-                            <td><span id="metric-tun-config-bays">0</span></td>
-                            <td class="total-col"><span id="metric-tun-config-locs-total">0</span></td>
-                        </tr>
-                         <tr class="total-row">
-                            <td>Total</td>
-                            <td>—</td>
-                            <td>—</td>
-                            <td><span id="metric-tot-bays">0</span></td>
-                            <td><span id="metric-tot-locs-total">0</span></td>
-                        </tr>
+                    <tbody id="debugBayListBody">
+                        <!-- Bay data will be injected here -->
                     </tbody>
                 </table>
             </div>

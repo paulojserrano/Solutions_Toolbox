@@ -99,3 +99,6 @@ export const metricTunConfigLocsTotal = document.getElementById('metric-tun-conf
 // Total Row
 export const metricTotBays = document.getElementById('metric-tot-bays');
 export const metricTotLocsTotal = document.getElementById('metric-tot-locs-total');
+
+// --- NEW: Debug Tab ---
+export const debugBayListBody = document.getElementById('debugBayListBody');

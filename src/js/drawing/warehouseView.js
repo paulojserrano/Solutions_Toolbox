@@ -6,7 +6,9 @@ import {
     metricRowStdSingle, metricStdSingleLabel, metricStdSingleLocsLvl, metricStdSingleLevels, metricStdSingleBays, metricStdSingleLocsTotal,
     metricRowBpConfig, metricBpConfigLabel, metricBpConfigLocsLvl, metricBpConfigLevels, metricBpConfigBays, metricBpConfigLocsTotal,
     metricRowTunConfig, metricTunConfigLabel, metricTunConfigLocsLvl, metricTunConfigLevels, metricTunConfigBays, metricTunConfigLocsTotal,
-    metricTotBays, metricTotLocsTotal
+    metricTotBays, metricTotLocsTotal,
+    // --- NEW ---
+    debugBayListBody
 } from '../dom.js';
 import { formatNumber } from '../utils.js';
 import { calculateLayout, calculateElevationLayout } from '../calculations.js';
@@ -400,6 +402,11 @@ export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config
         metricRowStdSingle.style.display = 'none';
         metricRowBpConfig.style.display = 'none';
         metricRowTunConfig.style.display = 'none';
+        
+        // --- NEW: Clear Debug Table ---
+        if (debugBayListBody) {
+            debugBayListBody.innerHTML = '<tr><td colspan="4">No data.</td></tr>';
+        }
         return;
     }
     
@@ -567,6 +574,7 @@ export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config
 
     drawDimensions(warehouseCtx, layoutDrawX, layoutDrawY, layoutDrawWidth, layoutDrawHeight, layoutW_world, layoutL_world, state.scale);
     
+    // --- NEW: Update Metrics Table (using layout data) ---
     try {
         let verticalLevels;
         if (solverResults && solverResults.maxLevels > 0) {
@@ -728,5 +736,33 @@ export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config
         metricRowStdSingle.style.display = 'none';
         metricRowBpConfig.style.display = 'none';
         metricRowTunConfig.style.display = 'none';
+    }
+
+    // --- NEW: Update Debug Bay List Table ---
+    try {
+        if (debugBayListBody) {
+            let bayHtml = '';
+            // Use layout.allBays which is the master list
+            if (layout.allBays.length > 0) {
+                for (const bay of layout.allBays) {
+                    bayHtml += `
+                        <tr>
+                            <td>${bay.id}</td>
+                            <td>${bay.x.toFixed(0)}</td>
+                            <td>${bay.y.toFixed(0)}</td>
+                            <td>${bay.bayType}</td>
+                        </tr>
+                    `;
+                }
+            } else {
+                bayHtml = '<tr><td colspan="4">No bays generated.</td></tr>';
+            }
+            debugBayListBody.innerHTML = bayHtml;
+        }
+    } catch (e) {
+        console.error("Error updating debug bay list:", e);
+        if (debugBayListBody) {
+            debugBayListBody.innerHTML = '<tr><td colspan="4">Error loading bay data.</td></tr>';
+        }
     }
 }
