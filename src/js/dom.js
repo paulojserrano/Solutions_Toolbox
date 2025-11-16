@@ -102,3 +102,6 @@ export const metricTotLocsTotal = document.getElementById('metric-tot-locs-total
 
 // --- NEW: Debug Tab ---
 export const debugBayListBody = document.getElementById('debugBayListBody');
+
+// --- NEW: Theme Switcher ---
+export const themeSwitcher = document.getElementById('themeSwitcher');

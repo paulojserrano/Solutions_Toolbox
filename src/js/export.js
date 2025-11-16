@@ -5,7 +5,6 @@ import { clearHeightInput } from './dom.js';
 import { calculateLayout } from './calculations.js';
 
 // --- Helper: Generate Bay Table (Intermediate Representation) ---
-// MODIFIED: This function now accepts the new layoutData object
 function generateExportEntities(layoutData, config, numTunnelLevels) {
     const entities = [];
     const lispProps = config.lispExportProps;
@@ -14,6 +13,24 @@ function generateExportEntities(layoutData, config, numTunnelLevels) {
     const rackItems = layoutData.layoutItems.filter(item => item.type === 'rack');
     const totalRackRows = rackItems.length;
 
+    // --- NEW: Physical Row Mapping ---
+    // This map will store the true physical row index for each layout row and sub-rack.
+    // Key: layoutItem.row (e.g., 1, 2, 3...)
+    // Value: { baseIndex: physicalRowCounter, numRacks: 1 or 2 }
+    const physicalRowMap = new Map();
+    let physicalRowCounter = 0;
+    for (const item of rackItems) {
+        if (item.rackType === 'single') {
+            physicalRowMap.set(item.row, { baseIndex: physicalRowCounter, numRacks: 1 });
+            physicalRowCounter += 1;
+        } else if (item.rackType === 'double') {
+            physicalRowMap.set(item.row, { baseIndex: physicalRowCounter, numRacks: 2 });
+            physicalRowCounter += 2;
+        }
+    }
+    // --- END Physical Row Mapping ---
+
+
     // 2. Iterate through the master bay list
     for (const bay of layoutData.allBays) {
         
@@ -21,10 +38,15 @@ function generateExportEntities(layoutData, config, numTunnelLevels) {
         const rowData = rackItems.find(item => item.row === bay.row);
         if (!rowData) continue; // Should not happen
 
-        const rowIndex = rackItems.indexOf(rowData);
-        const isFirst = rowIndex === 0;
-        const isLast = rowIndex === totalRackRows - 1;
-        const isEven = rowIndex % 2 === 0;
+        // --- MODIFIED: Physical Row Index Calculation ---
+        const rowMapInfo = physicalRowMap.get(bay.row);
+        if (!rowMapInfo) continue; // Should not happen
+        
+        // Calculate the true physical row index (0, 1, 2, 3...)
+        const physicalRowIndex = rowMapInfo.baseIndex + (bay.rackSubId - 1);
+        // Check if this physical row's index is ODD (e.g., 1, 3, 5...)
+        const isPhysicalOddRow = physicalRowIndex % 2 !== 0;
+        // --- END MODIFICATION ---
         
         // 4. Determine Logic Mode
         const layoutMode = config['layout-mode']; // 'all-singles' or 's-d-s'
@@ -33,7 +55,7 @@ function generateExportEntities(layoutData, config, numTunnelLevels) {
         let rackTypeKey = 'doubleRack'; // Default
         if (layoutMode === 'all-singles') {
              // 'all-singles': First and Last are single, Middle are double
-             if (isFirst || isLast) rackTypeKey = 'singleRack';
+             if (rowData.rackType === 'single') rackTypeKey = 'singleRack';
              else rackTypeKey = 'doubleRack';
         } else {
             // 's-d-s': rely on what the layout calculator decided
@@ -47,29 +69,31 @@ function generateExportEntities(layoutData, config, numTunnelLevels) {
         }
 
         // 6. Determine Business Logic (Rotation & Offsets)
-        const baseLogic = lispProps[rackTypeKey].base || { rotation: 0, xOffset: 0, yOffset: 0 };
+        const baseLogic = lispProps[rackTypeKey].base || { rotation: 0, "xOffset": 0, "yOffset": 0 };
         let finalLogic = { ...baseLogic }; // Start with base
 
         // Check for overrides
         const overrides = lispProps[rackTypeKey].overrides || {};
         
-        if (layoutMode === 'all-singles') {
+        // --- MODIFIED: Apply override based on new physical row logic ---
+        if (isPhysicalOddRow && overrides.physicalOddRow) {
+            finalLogic = { ...finalLogic, ...overrides.physicalOddRow };
+        } else if (layoutMode === 'all-singles') {
+            // Handle 'all-singles' specific overrides if they don't depend on the odd/even pattern
+            const rowIndex = rackItems.indexOf(rowData);
+            const isFirst = rowIndex === 0;
+            const isLast = rowIndex === totalRackRows - 1;
+
             if (isLast && overrides.lastRow) {
                 finalLogic = { ...finalLogic, ...overrides.lastRow };
             } else if (isFirst && overrides.firstRow) {
-                finalLogic = { ...finalLogic, ...overrides.firstRow };
+                 finalLogic = { ...finalLogic, ...overrides.firstRow };
             }
-            // If neither, 'base' logic (for firstRow or middleRow) is used
         }
-        else if (layoutMode === 's-d-s') {
-            if (!isEven && overrides.oddRow) { // Odd row
-                finalLogic = { ...finalLogic, ...overrides.oddRow };
-            } else if (isEven && overrides.evenRow) { // Even row (if override exists)
-                 finalLogic = { ...finalLogic, ...overrides.evenRow };
-            }
-            // If no specific override, 'base' (for evenRow) is used
-        }
+        // --- END MODIFICATION ---
 
+
+        // Get config offsets
         const { rotation, xOffset, yOffset } = finalLogic;
         
         // 7. Get Dynamic Props for this rack type
@@ -97,11 +121,79 @@ function generateExportEntities(layoutData, config, numTunnelLevels) {
 
         if (!props) continue;
 
-        // 10. Add Entity
-        // The x and y are pre-calculated centers from the layoutData.allBays
+        // 10. Geometric Offsets with Calculation
+        let finalXOffset = 0;
+        let finalYOffset = 0;
+
+        // --- Helper function to resolve offset value ---
+        // MODIFIED: This function now calculates a baseValue from the 'type',
+        // then checks 'add' for a number OR a calculation object.
+        const getOffsetValue = (offsetConfig) => {
+            if (typeof offsetConfig === 'number') {
+                return offsetConfig;
+            }
+            
+            if (typeof offsetConfig === 'object' && offsetConfig.type) {
+                let baseValue = 0;
+
+                switch (offsetConfig.type) {
+                    case 'calculatedRackDepthNegative': {
+                        const totesDeep = config['totes-deep'] || 1;
+                        const toteWidth = config['tote-width'] || 0;
+                        const toteBackToBackDist = config['tote-back-to-back-dist'] || 0;
+                        const hookAllowance = config['hook-allowance'] || 0;
+                        const val = (totesDeep * toteWidth) + (Math.max(0, totesDeep - 1) * toteBackToBackDist) + hookAllowance;
+                        baseValue = -val; // Return negative value
+                        break;
+                    }
+                    case 'calculatedBayLength': {
+                        const toteLength = config['tote-length'] || 0;
+                        const toteQtyPerBay = config['tote-qty-per-bay'] || 1;
+                        const toteToToteDist = config['tote-to-tote-dist'] || 0;
+                        const toteToUprightDist = config['tote-to-upright-dist'] || 0;
+                        const uprightLength = config['upright-length'] || 0;
+                        const clearOpening = (toteQtyPerBay * toteLength) + (2 * toteToUprightDist) + (Math.max(0, toteQtyPerBay - 1) * toteToToteDist);
+                        const val = clearOpening + uprightLength;
+                        baseValue = val;
+                        break;
+                    }
+                    // Add other calculated types here if needed
+                    default:
+                        baseValue = 0;
+                }
+
+                // Check for an additional offset
+                if (typeof offsetConfig.add === 'number') {
+                    baseValue += offsetConfig.add;
+                }
+                // NEW: Check if 'add' is a calculation object
+                else if (typeof offsetConfig.add === 'object' && offsetConfig.add.type) {
+                    switch (offsetConfig.add.type) {
+                        case 'toteToUprightMinus': {
+                            const toteToUpright = config['tote-to-upright-dist'] || 0;
+                            const minusValue = offsetConfig.add.value || 0;
+                            baseValue += (toteToUpright - minusValue);
+                            break;
+                        }
+                        // Add other 'add' types here if needed
+                        default:
+                            break; // Do nothing if type is unknown
+                    }
+                }
+                
+                return baseValue;
+            }
+            return 0;
+        };
+        
+        finalXOffset = getOffsetValue(xOffset);
+        finalYOffset = getOffsetValue(yOffset);
+        // --- END OFFSET CALCULATION ---
+
+        // 11. Add Entity
         entities.push({
-            x: bay.x + xOffset,
-            y: bay.y + yOffset,
+            x: bay.x + finalXOffset,
+            y: bay.y + finalYOffset,
             rotation: rotation, // Use calculated rotation
             blockName: props.blockName,
             color: props.color,
@@ -130,27 +222,25 @@ export function exportLayout() {
     // const sysHeight = parseNumber(clearHeightInput.value); // Not needed for 2D export
 
     // 1. Re-calculate Layout (visuals)
-    // MODIFIED: Call new calculateLayout function
     const layoutData = calculateLayout(sysLength, sysWidth, config);
-    // --- END MODIFICATION ---
 
     // 2. Calculate Num Tunnel Levels (for feasibility check)
-    // We need this to pass to the generator so it doesn't generate tunnels if they aren't feasible
     let numTunnelLevels = 0;
     if (selectedSolverResult && selectedSolverResult.maxLevels > 0) {
         numTunnelLevels = selectedSolverResult.numTunnelLevels;
     }
 
     // 3. Generate Bay Table
-    // MODIFIED: Pass layoutData
     const entities = generateExportEntities(layoutData, config, numTunnelLevels);
 
     // 4. Format for LISP
-    // Group entities by identical props to minimize file size (LISP command efficiency)
     const bayGroups = new Map();
 
     entities.forEach(ent => {
-        const coordString = `(${Math.round(ent.x)},${Math.round(ent.y)},0)`;
+        // --- MODIFIED: Removed Math.round() ---
+        const coordString = `(${ent.x},${ent.y},0)`;
+        // --- END MODIFICATION ---
+        
         const groupKey = `${ent.blockName}|${ent.color}|${ent.rotation}|${ent.layer}|${ent.bayTypeLabel}`;
         
         if (!bayGroups.has(groupKey)) {
@@ -188,11 +278,21 @@ export function exportLayout() {
             data.dynamicProps.forEach(dynProp => {
                 let propValue = "";
                 if (dynProp.value !== undefined) {
-                     // REMOVED: Special check for "BayType"
                      propValue = dynProp.value;
                 } else if (dynProp.configKey) {
                     propValue = config[dynProp.configKey];
+                } else if (dynProp.type === 'calculatedRackWidth') {
+                    // This is the new logic to calculate rack width
+                    const totesDeep = config['totes-deep'] || 1;
+                    const toteWidth = config['tote-width'] || 0;
+                    const toteBackToBackDist = config['tote-back-to-back-dist'] || 0;
+                    const hookAllowance = config['hook-allowance'] || 0;
+                    
+                    propValue = (totesDeep * toteWidth) + 
+                                (Math.max(0, totesDeep - 1) * toteBackToBackDist) + 
+                                hookAllowance;
                 }
+
                 if (propValue !== undefined && propValue !== "") {
                      dynPropList.push(`${dynProp.name}:${propValue}`);
                 }

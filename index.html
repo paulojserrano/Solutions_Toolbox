@@ -12,7 +12,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 </head>
-<body class="min-h-screen flex flex-col">
+<!-- MODIFIED: Added data-theme="engineering" -->
+<body class="min-h-screen flex flex-col" data-theme="engineering">
 
     <header class="bg-white border-b-[3px] border-black z-10">
         <div class="w-full max-w-screen-2xl mx-auto p-4 flex items-center gap-4">
@@ -24,6 +25,16 @@
             <h1 class="text-2xl md:text-3xl font-black uppercase tracking-tight text-black drop-shadow-[2px_2px_0_#fff]">
                 Layout Builder
             </h1>
+
+            <!-- NEW: Theme Switcher -->
+            <div class="ml-auto">
+                <label for="themeSwitcher" class="sr-only">Theme</label>
+                <select id="themeSwitcher">
+                    <option value="engineering">Engineering</option>
+                    <option value="neo-brutalist">Neo-Brutalist</option>
+                </select>
+            </div>
+
         </div>
     </header>
 

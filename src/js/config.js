@@ -75,30 +75,37 @@ export const configurations = {
             "singleRack": {
                 "base": { "rotation": 90, "xOffset": 0, "yOffset": 0 },
                 "overrides": {
-                    "oddRow": { "rotation": 90, "xOffset": 0, "yOffset": 0 }
+                    "physicalOddRow": { "rotation": 270, "xOffset": { "type": "calculatedRackDepthNegative" }, "yOffset": { "type": "calculatedBayLength", "add": { "type": "toteToUprightMinus", "value": 40 } } }
                 },
                 "dynamicProps": [
+
                     { "name": "Tote width", "configKey": "tote-length" },
                     { "name": "Tote length", "configKey": "tote-width" },
-                    { "name": "Tote height", "configKey": "tote-height" }
+                    { "name": "Back-to-back Spacing", "configKey": "tote-back-to-back-dist" },
+                    { "name": "Tote-to-rack Spacing1", "configKey": "tote-to-upright-dist" },
+                    { "name": "Tote-to-rack Spacing2", "configKey": "tote-to-upright-dist" },
+                    { "name": "Rack width", "type": "calculatedRackWidth" }
                 ],
                 "standard": { "blockName": "Robots-RKKK_1-Double Row Double Deep Rack-4x2", "color": 161, "layer": "RACK-STD" },
-                "backpack": { "blockName": "Robots-RK_1-Double Row Double Deep Rack-4x2", "color": 5, "layer": "RACK-BP" },
-                "tunnel": { "blockName": "Robots-RK_1-Double Row Double Deep Rack-4x2", "color": 2, "layer": "RACK-TUN" }
+                "backpack": { "blockName": "Robots-RK_1-Double Row Double Deep Rack-4x2", "color": 4, "layer": "RACK-BP" },
+                "tunnel": { "blockName": "Robots-RK_1-Double Row Double Deep Rack-4x2", "color": 6, "layer": "RACK-TUN" }
             },
             "doubleRack": {
                 "base": { "rotation": 90, "xOffset": 0, "yOffset": 0 },
                 "overrides": {
-                    "oddRow": { "rotation": 90, "xOffset": 0, "yOffset": 0 }
+                    "physicalOddRow": { "rotation": 270, "xOffset": { "type": "calculatedRackDepthNegative" }, "yOffset": { "type": "calculatedBayLength", "add": { "type": "toteToUprightMinus", "value": 40 } } }
                 },
                 "dynamicProps": [
                     { "name": "Tote width", "configKey": "tote-length" },
                     { "name": "Tote length", "configKey": "tote-width" },
-                    { "name": "Tote height", "configKey": "tote-height" }
+                    { "name": "Back-to-back Spacing", "configKey": "tote-back-to-back-dist" },
+                    { "name": "Tote-to-rack Spacing1", "configKey": "tote-to-upright-dist" },
+                    { "name": "Tote-to-rack Spacing2", "configKey": "tote-to-upright-dist" },
+                    { "name": "Rack width", "type": "calculatedRackWidth" }
                 ],
                 "standard": { "blockName": "Robots-RKKK_1-Double Row Double Deep Rack-4x2", "color": 161, "layer": "RACK-STD" },
-                "backpack": { "blockName": "Robots-RK_1-Double Row Double Deep Rack-4x2", "color": 5, "layer": "RACK-BP" },
-                "tunnel": { "blockName": "Robots-RK_1-Double Row Double Deep Rack-4x2", "color": 2, "layer": "RACK-TUN" }
+                "backpack": { "blockName": "Robots-RK_1-Double Row Double Deep Rack-4x2", "color": 4, "layer": "RACK-BP" },
+                "tunnel": { "blockName": "Robots-RK_1-Double Row Double Deep Rack-4x2", "color": 6, "layer": "RACK-TUN" }
             }
         },
         "layout-mode": "s-d-s",
@@ -121,7 +128,7 @@ export const configurations = {
         "upright-width": 70,
         "hook-allowance": 90,
         "aisle-width": 1160,
-        "rack-flue-space": 150,
+        "rack-flue-space": 152.4,
         "base-beam-height": 370,
         "beam-width": 60,
         "min-clearance": 40,
@@ -136,7 +143,7 @@ export const configurations = {
             "singleRack": {
                 "base": { "rotation": 90, "xOffset": 0, "yOffset": 0 },
                 "overrides": {
-                    "oddRow": { "rotation": 270, "xOffset": 150, "yOffset": 0 }
+                    "oddRow": { "rotation": 270, "xOffset": 0, "yOffset": 0 }
                 },
                 "dynamicProps": [
                     { "name": "Tote width", "configKey": "tote-length" },
@@ -150,7 +157,7 @@ export const configurations = {
             "doubleRack": {
                 "base": { "rotation": 90, "xOffset": 0, "yOffset": 0 },
                 "overrides": {
-                    "oddRow": { "rotation": 270, "xOffset": 150, "yOffset": 0 }
+                    "oddRow": { "rotation": 270, "xOffset": 0, "yOffset": 0 }
                 },
                 "dynamicProps": [
                     { "name": "Tote width", "configKey": "tote-length" },

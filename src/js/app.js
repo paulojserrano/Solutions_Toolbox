@@ -24,7 +24,10 @@ import {
     fixedLengthInputContainer,
     fixedWidthInputContainer,
     solverFixedLength,
-    solverFixedWidth
+    solverFixedWidth,
+
+    // --- NEW: THEME SWITCHER ---
+    themeSwitcher
 
 } from './dom.js';
 
@@ -220,4 +223,19 @@ document.addEventListener('DOMContentLoaded', () => {
     solverMethodSelect.addEventListener('change', updateSolverMethodUI);
     // Run once on load to set initial state
     updateSolverMethodUI();
+
+    // --- NEW: Theme-switching logic ---
+    if (themeSwitcher) {
+        // 1. On load, check localStorage for a saved theme
+        const savedTheme = localStorage.getItem('layout-theme') || 'engineering';
+        themeSwitcher.value = savedTheme;
+        document.body.setAttribute('data-theme', savedTheme);
+
+        // 2. Add listener for changes
+        themeSwitcher.addEventListener('change', (e) => {
+            const newTheme = e.target.value;
+            document.body.setAttribute('data-theme', newTheme);
+            localStorage.setItem('layout-theme', newTheme);
+        });
+    }
 });
