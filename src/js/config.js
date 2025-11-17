@@ -265,30 +265,40 @@ export const configurations = {
             "singleRack": {
                 "base": { "rotation": 90, "xOffset": 0, "yOffset": 0 },
                 "overrides": {
-                    "oddRow": { "rotation": 270, "xOffset": 150, "yOffset": 0 }
+                    "physicalOddRow": { "rotation": 270, "xOffset": { "type": "calculatedRackDepthNegative" }, "yOffset": { "type": "calculatedBayLength", "add": { "type": "toteToUprightMinus", "value": 20 } } }
                 },
                 "dynamicProps": [
+
                     { "name": "Tote width", "configKey": "tote-length" },
                     { "name": "Tote length", "configKey": "tote-width" },
-                    { "name": "Tote height", "configKey": "tote-height" }
+                    { "name": "Tote-to-tote Spacing", "configKey": "tote-to-tote-dist" },
+                    { "name": "Back-to-back Spacing", "configKey": "tote-back-to-back-dist" },
+                    { "name": "Tote-to-rack Spacing1", "configKey": "tote-to-upright-dist" },
+                    { "name": "Tote-to-rack Spacing2", "configKey": "tote-to-upright-dist" },
+                    { "name": "Rack width", "type": "calculatedRackWidth" }
+
                 ],
-                "standard": { "blockName": "HPS3-E2-850-TD-STD-SINGLE", "color": 256, "layer": "RACK-STD" },
-                "backpack": { "blockName": "HPS3-E2-850-TD-BP-SINGLE", "color": 5, "layer": "RACK-BP" },
-                "tunnel": { "blockName": "HPS3-E2-850-TD-TUN-SINGLE", "color": 2, "layer": "RACK-TUN" }
+                "standard": { "blockName": "Robots-RKKK_1-Triple Row Triple Deep Rack-3x3", "color": 161, "layer": "RACK-STD" },
+                "backpack": { "blockName": "Robots-RK_1-Triple Row Triple Deep Rack-3x3", "color": 4, "layer": "RACK-BP" },
+                "tunnel": { "blockName": "Robots-RK_1-Triple Row Triple Deep Rack-3x3", "color": 6, "layer": "RACK-TUN" }
             },
             "doubleRack": {
                 "base": { "rotation": 90, "xOffset": 0, "yOffset": 0 },
                 "overrides": {
-                    "oddRow": { "rotation": 270, "xOffset": 150, "yOffset": 0 }
+                    "physicalOddRow": { "rotation": 270, "xOffset": { "type": "calculatedRackDepthNegative" }, "yOffset": { "type": "calculatedBayLength", "add": { "type": "toteToUprightMinus", "value": 20 } } }
                 },
                 "dynamicProps": [
                     { "name": "Tote width", "configKey": "tote-length" },
                     { "name": "Tote length", "configKey": "tote-width" },
-                    { "name": "Tote height", "configKey": "tote-height" }
+                    { "name": "Tote-to-tote Spacing", "configKey": "tote-to-tote-dist" },
+                    { "name": "Back-to-back Spacing", "configKey": "tote-back-to-back-dist" },
+                    { "name": "Tote-to-rack Spacing1", "configKey": "tote-to-upright-dist" },
+                    { "name": "Tote-to-rack Spacing2", "configKey": "tote-to-upright-dist" },
+                    { "name": "Rack width", "type": "calculatedRackWidth" }
                 ],
-                "standard": { "blockName": "HPS3-E2-850-TD-STD-DOUBLE", "color": 256, "layer": "RACK-STD" },
-                "backpack": { "blockName": "HPS3-E2-850-TD-BP-DOUBLE", "color": 5, "layer": "RACK-BP" },
-                "tunnel": { "blockName": "HPS3-E2-850-TD-TUN-DOUBLE", "color": 2, "layer": "RACK-TUN" }
+                "standard": { "blockName": "Robots-RKKK_1-Triple Row Triple Deep Rack-3x3", "color": 161, "layer": "RACK-STD" },
+                "backpack": { "blockName": "Robots-RK_1-Triple Row Triple Deep Rack-3x3", "color": 4, "layer": "RACK-BP" },
+                "tunnel": { "blockName": "Robots-RK_1-Triple Row Triple Deep Rack-3x3", "color": 6, "layer": "RACK-TUN" }
             }
         },
         "layout-mode": "s-d-s",
@@ -305,13 +315,13 @@ export const configurations = {
         "tote-qty-per-bay": 3,
         "totes-deep": 3,
         "tote-to-tote-dist": 50,
-        "tote-to-upright-dist": 75,
+        "tote-to-upright-dist": 70,
         "tote-back-to-back-dist": 0,
-        "upright-length": 100,
-        "upright-width": 80,
+        "upright-length": 90,
+        "upright-width": 70,
         "hook-allowance": 90,
         "aisle-width": 1380,
-        "rack-flue-space": 150,
+        "rack-flue-space": 152.4,
         "base-beam-height": 370,
         "beam-width": 60,
         "min-clearance": 40,
@@ -331,13 +341,11 @@ export const configurations = {
                 "dynamicProps": [
                     { "name": "Tote width", "configKey": "tote-length" },
                     { "name": "Tote length", "configKey": "tote-width" },
-                    { "name": "Tote height", "configKey": "tote-height" },
                     { "name": "Tote-to-tote spacing", "configKey": "tote-to-tote-dist" },
-                    { "name": "Tote-to-rack spacing", "configKey": "tote-to-upright-dist" }
+                    { "name": "Tote-to-rack spacing", "configKey": "tote-to-upright-dist" },
+                    { "name": "Visibility1", "value": "Single Guide Rail" }
                 ],
-                "standard": { "blockName": "Robots-RXLX_1-Single Row Single Deep Rack-3x1", "color": 256, "layer": "RACK-STD-HPC" },
-                "backpack": { "blockName": "BAY_BP_HPC_S", "color": 5, "layer": "RACK-BP-HPC" },
-                "tunnel": { "blockName": "BAY_TUN_HPC_S", "color": 2, "layer": "RACK-TUN-HPC" }
+                "standard": { "blockName": "Robots-RXLX_1-Single Row Single Deep Rack-3x1", "color": 161, "layer": "RACK-STD-HPC" }
             },
             "doubleRack": { 
                 "base": { "rotation": 90, "xOffset": 340, "yOffset": 0 },
@@ -347,13 +355,11 @@ export const configurations = {
                 "dynamicProps": [
                     { "name": "Tote width", "configKey": "tote-length" },
                     { "name": "Tote length", "configKey": "tote-width" },
-                    { "name": "Tote height", "configKey": "tote-height" },
                     { "name": "Tote-to-tote spacing", "configKey": "tote-to-tote-dist" },
-                    { "name": "Tote-to-rack spacing", "configKey": "tote-to-upright-dist" }
+                    { "name": "Tote-to-rack spacing", "configKey": "tote-to-upright-dist" },
+                    { "name": "Visibility1", "value": "Single Guide Rail" }
                 ],
-                "standard": { "blockName": "Robots-RXLX_1-Double Row Single Deep Rack-3x2x1", "color": 161, "layer": "RACK-STD-HPC" },
-                "backpack": { "blockName": "BAY_BP_HPC_D", "color": 5, "layer": "RACK-BP-HPC" },
-                "tunnel": { "blockName": "BAY_TUN_HPC_D", "color": 2, "layer": "RACK-TUN-HPC" }
+                "standard": { "blockName": "Robots-RXLX_1-Double Row Single Deep Rack-3x2x1", "color": 161, "layer": "RACK-STD-HPC" }
             }
         },
         "layout-mode": "all-singles",

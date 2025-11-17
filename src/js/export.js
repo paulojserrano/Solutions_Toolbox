@@ -31,6 +31,22 @@ function generateExportEntities(layoutData, config, numTunnelLevels) {
     // --- END Physical Row Mapping ---
 
 
+    // --- FIX: Calculate bay depths here for 'all-singles' check ---
+    const totesDeep = config['totes-deep'] || 1;
+    const toteWidth = config['tote-width'] || 0;
+    const toteBackToBackDist = config['tote-back-to-back-dist'] || 0;
+    const hookAllowance = config['hook-allowance'] || 0;
+    
+    const configBayDepth = (totesDeep * toteWidth) +
+        (Math.max(0, totesDeep - 1) * toteBackToBackDist) +
+        hookAllowance;
+        
+    const singleBayDepth = (1 * toteWidth) +
+        (Math.max(0, 1 - 1) * toteBackToBackDist) +
+        hookAllowance;
+    // --- END FIX ---
+
+
     // 2. Iterate through the master bay list
     for (const bay of layoutData.allBays) {
         
@@ -54,9 +70,18 @@ function generateExportEntities(layoutData, config, numTunnelLevels) {
         // 5. Determine Base Properties (Block Names)
         let rackTypeKey = 'doubleRack'; // Default
         if (layoutMode === 'all-singles') {
-             // 'all-singles': First and Last are single, Middle are double
-             if (rowData.rackType === 'single') rackTypeKey = 'singleRack';
-             else rackTypeKey = 'doubleRack';
+             // --- THIS IS THE FIX ---
+             // For 'all-singles', determine block by width, not rackType
+             // Use a small tolerance for float comparison.
+             if (Math.abs(rowData.width - singleBayDepth) < 1) {
+                rackTypeKey = 'singleRack';
+             } else if (Math.abs(rowData.width - configBayDepth) < 1) {
+                rackTypeKey = 'doubleRack';
+             } else {
+                // Fallback, but prefer single
+                rackTypeKey = 'singleRack';
+             }
+             // --- END FIX ---
         } else {
             // 's-d-s': rely on what the layout calculator decided
             rackTypeKey = rowData.rackType === 'single' ? 'singleRack' : 'doubleRack';
@@ -138,10 +163,6 @@ function generateExportEntities(layoutData, config, numTunnelLevels) {
 
                 switch (offsetConfig.type) {
                     case 'calculatedRackDepthNegative': {
-                        const totesDeep = config['totes-deep'] || 1;
-                        const toteWidth = config['tote-width'] || 0;
-                        const toteBackToBackDist = config['tote-back-to-back-dist'] || 0;
-                        const hookAllowance = config['hook-allowance'] || 0;
                         const val = (totesDeep * toteWidth) + (Math.max(0, totesDeep - 1) * toteBackToBackDist) + hookAllowance;
                         baseValue = -val; // Return negative value
                         break;
