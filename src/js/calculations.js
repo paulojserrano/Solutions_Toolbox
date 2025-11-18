@@ -102,7 +102,7 @@ export function calculateLayout(sysLength, sysWidth, config, pathSettings = null
 
     // Path parameters
     const robotPathFirstOffset = config['robot-path-first-offset'] || 500;
-    const robotPathGap = config['robot-path-gap'] || 600;
+    const robotPathGap = config['robot-path-gap'] || 600; // Can be number OR array
     const acrPathOffsetTop = config['acr-path-offset-top'] || 1000;
     const acrPathOffsetBottom = config['acr-path-offset-bottom'] || 1000;
     const amrPathOffset = config['amr-path-offset'] || 850;
@@ -328,7 +328,8 @@ export function calculateLayout(sysLength, sysWidth, config, pathSettings = null
     const paths = [];
     // Only generate paths if pathSettings are provided (even empty is fine)
     // Note: This logic applies only to HPS3 configs where path offsets are defined
-    if (pathSettings && robotPathGap > 0) {
+    // Use a basic check: if firstOffset > 0, assume we want paths
+    if (pathSettings && robotPathFirstOffset > 0) {
         
         const rackStructureTopY = setbackTop + layoutOffsetY_world;
         const rackStructureBottomY = rackStructureTopY + totalRackLength_world;
@@ -358,9 +359,28 @@ export function calculateLayout(sysLength, sysWidth, config, pathSettings = null
             const bayPathStartY = rackStructureTopY - maxAmrOffsetTop;
             const bayPathEndY = rackStructureBottomY + maxAmrOffsetBottom;
 
+            let currentDistance = robotPathFirstOffset;
+
             for(let i=0; i<count; i++) {
-                const totalOffset = robotPathFirstOffset + (i * robotPathGap);
-                const x = startX + (direction * totalOffset);
+                if (i > 0) {
+                    let gap = 0;
+                    if (Array.isArray(robotPathGap)) {
+                        // Determine which gap to use. 
+                        // Gap between index 0 and 1 is at index 0 of array
+                        const gapIndex = i - 1; 
+                        if (gapIndex < robotPathGap.length) {
+                            gap = robotPathGap[gapIndex];
+                        } else {
+                            gap = robotPathGap[robotPathGap.length - 1]; // Use last available if array runs out
+                        }
+                    } else {
+                        gap = robotPathGap;
+                    }
+                    currentDistance += gap;
+                }
+
+                // Calculate absolute X based on start + direction * distance
+                const x = startX + (direction * currentDistance);
 
                 if (x < minBayPathX) minBayPathX = x;
                 if (x > maxBayPathX) maxBayPathX = x;

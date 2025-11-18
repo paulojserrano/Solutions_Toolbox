@@ -284,8 +284,8 @@ export const configurations = {
         "sprinkler-threshold": 4572,
         "sprinkler-clearance": 200,
         "max-perf-density": 1,
-        "robot-path-first-offset": 500,
-        "robot-path-gap": 600,
+        "robot-path-first-offset": 465,
+        "robot-path-gap": 810,
         "acr-path-offset-top": 1000,
         "acr-path-offset-bottom": 1000,
         "amr-path-offset": 850
@@ -360,8 +360,8 @@ export const configurations = {
         "sprinkler-threshold": 4572,
         "sprinkler-clearance": 200,
         "max-perf-density": 0.4,
-        "robot-path-first-offset": 500,
-        "robot-path-gap": 600,
+        "robot-path-first-offset": 465,
+        "robot-path-gap": [810, 850],
         "acr-path-offset-top": 1000,
         "acr-path-offset-bottom": 1000,
         "amr-path-offset": 850
