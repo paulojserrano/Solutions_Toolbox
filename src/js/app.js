@@ -26,6 +26,17 @@ import {
     solverFixedLength,
     solverFixedWidth,
 
+    // --- NEW: Manual Mode ---
+    manualInputContainer,
+    solverManualLength,
+    solverManualWidth,
+    solverStorageReqContainer,
+    solverEquivalentVolumeContainer,
+    solverOptionsContainer,
+    
+    // --- NEW: Import tote size select ---
+    solverToteSizeSelect,
+
     // --- NEW: THEME SWITCHER ---
     themeSwitcher
 
@@ -170,9 +181,34 @@ function updateSolverMethodUI() {
     aspectRatioInputContainer.style.display = (method === 'aspectRatio') ? 'block' : 'none';
     fixedLengthInputContainer.style.display = (method === 'fixedLength') ? 'block' : 'none';
     fixedWidthInputContainer.style.display = (method === 'fixedWidth') ? 'block' : 'none';
+    manualInputContainer.style.display = (method === 'manual') ? 'block' : 'none';
 
-    // 2. Toggle constraint inputs (L/W) based on checkbox AND method
-    if (respectConstraints) {
+    // 2. Toggle Requirement/Options inputs based on manual mode
+    solverStorageReqContainer.style.display = (method === 'manual') ? 'none' : 'block';
+    solverEquivalentVolumeContainer.style.display = (method === 'manual') ? 'none' : 'block';
+    solverOptionsContainer.style.display = (method === 'manual') ? 'none' : 'block';
+    
+    // --- NEW: Show/Hide "All Types" in Tote Size Select ---
+    const allTypesOption = solverToteSizeSelect.querySelector('option[value="all"]');
+    if (allTypesOption) {
+        if (method === 'manual') {
+            allTypesOption.style.display = 'block'; // Show it
+        } else {
+            allTypesOption.style.display = 'none'; // Hide it
+            // If "All Types" was selected, reset to the first non-all option
+            if (solverToteSizeSelect.value === 'all') {
+                solverToteSizeSelect.value = "650x450x300"; // Default to first size
+            }
+        }
+    }
+    
+    // 3. Toggle constraint inputs (L/W) based on checkbox AND method
+    // Hide constraints if in manual mode OR if "respect constraints" is unchecked
+    if (method === 'manual' || !respectConstraints) {
+        warehouseLengthContainer.style.display = 'none';
+        warehouseWidthContainer.style.display = 'none';
+    } else {
+        // We are in a non-manual mode AND respectConstraints is checked
         if (method === 'aspectRatio') {
             warehouseLengthContainer.style.display = 'block';
             warehouseWidthContainer.style.display = 'block';
@@ -183,10 +219,6 @@ function updateSolverMethodUI() {
             warehouseLengthContainer.style.display = 'block'; // This is the only constraint
             warehouseWidthContainer.style.display = 'none'; // Fixed by user input, not a constraint
         }
-    } else {
-        // If not respecting constraints, hide both
-        warehouseLengthContainer.style.display = 'none';
-        warehouseWidthContainer.style.display = 'none';
     }
 }
 
@@ -207,7 +239,9 @@ document.addEventListener('DOMContentLoaded', () => {
         warehouseLengthInput, warehouseWidthInput, clearHeightInput,
         solverStorageReqInput, solverThroughputReqInput,
         solverFixedLength,
-        solverFixedWidth
+        solverFixedWidth,
+        solverManualLength, // NEW
+        solverManualWidth   // NEW
     ];
 
     // Inputs that should be formatted as decimals

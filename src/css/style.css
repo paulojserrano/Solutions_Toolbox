@@ -144,7 +144,9 @@ header h1 {
     /* This drop-shadow provides contrast against dark *or* light backgrounds */
     text-shadow: 2px 2px 0 #888; 
 }
-header div div { /* Logo box */
+
+/* MODIFIED: Changed selector from 'header div div' to specific class '.logo-box' */
+.logo-box { 
     background-color: var(--nb-border-color);
     color: var(--nb-bg);
     border: 2px solid var(--nb-border-color);

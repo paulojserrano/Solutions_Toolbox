@@ -17,7 +17,8 @@
 
     <header class="bg-white border-b-[3px] border-black z-10">
         <div class="w-full max-w-screen-2xl mx-auto p-4 flex items-center gap-4">
-            <div class="bg-black text-white p-2 border-2 border-black shadow-[4px_4px_0px_0px_#a3e635]">
+            <!-- MODIFIED: Added 'logo-box' class here -->
+            <div class="logo-box bg-black text-white p-2 border-2 border-black shadow-[4px_4px_0px_0px_#a3e635]">
                 <svg class="h-8 w-8" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                     <path stroke-linecap="square" stroke-linejoin="miter" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25L3 7.5m18 0v9l-9 5.25L3 16.5v-9m9 5.25v9l-9-5.25m9 5.25v-9l9-5.25" />
                 </svg>
@@ -72,6 +73,7 @@
                                     <option value="aspectRatio" selected>Aspect Ratio</option>
                                     <option value="fixedLength">Fixed Length</option>
                                     <option value="fixedWidth">Fixed Width</option>
+                                    <option value="manual">Manual Mode</option> <!-- NEW OPTION -->
                                 </select>
                             </div>
                             
@@ -89,10 +91,24 @@
                                     <label for="solverFixedWidth" class="block text-sm font-bold text-black mb-1 uppercase">Fixed Width (mm)</label>
                                     <input type="text" id="solverFixedWidth" value="30,000" class="w-full">
                                 </div>
+                                <!-- NEW: Manual Inputs -->
+                                <div id="manualInputContainer" style="display: none;">
+                                    <div class="space-y-4">
+                                        <div>
+                                            <label for="solverManualLength" class="block text-sm font-bold text-black mb-1 uppercase">Manual Length (mm)</label>
+                                            <input type="text" id="solverManualLength" value="50,000" class="w-full">
+                                        </div>
+                                        <div>
+                                            <label for="solverManualWidth" class="block text-sm font-bold text-black mb-1 uppercase">Manual Width (mm)</label>
+                                            <input type="text" id="solverManualWidth" value="30,000" class="w-full">
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="pt-2 space-y-2">
+                        <!-- NEW: Added ID -->
+                        <div class="pt-2 space-y-2" id="solverOptionsContainer">
                             <div class="flex items-center">
                                 <input type="checkbox" id="solverRespectConstraintsCheckbox">
                                 <label for="solverRespectConstraintsCheckbox" class="ml-1 block text-sm font-bold text-black">Respect footprint constraints</label>
@@ -111,20 +127,24 @@
                     </div>
 
                     <!-- Col 2: Requirements -->
-                    <div class="space-y-5">
+                    <!-- NEW: Added ID -->
+                    <div class="space-y-5" id="solverRequirementsContainer">
                         <h3 class="font-black text-lg border-l-4 border-black pl-2 bg-blue-300 inline-block pr-2">Requirements</h3>
-                        <div>
+                        <!-- NEW: Added ID -->
+                        <div id="solverStorageReqContainer">
                             <label for="solverStorageReq" class="block text-sm font-bold text-black mb-1 uppercase">Storage Requirement</label>
                             <input type="text" id="solverStorageReq" value="30,000" class="w-full">
                         </div>
                         <div>
                             <label for="solverToteSizeSelect" class="block text-sm font-bold text-black mb-1 uppercase">Tote Size (WxLxH)</label>
                             <select id="solverToteSizeSelect" class="w-full">
-                                <option value="650x450x300" selected>650 x 450 x 300 mm</option>
+                                <option value="all" selected>All Types</option>
+                                <option value="650x450x300">650 x 450 x 300 mm</option>
                                 <option value="850x650x400">850 x 650 x 400 mm</option>
                             </select>
                         </div>
-                        <div class="pt-2">
+                        <!-- NEW: Added ID -->
+                        <div class="pt-2" id="solverEquivalentVolumeContainer">
                             <div class="flex items-center">
                                 <input type="checkbox" id="solverEquivalentVolumeCheckbox">
                                 <label for="solverEquivalentVolumeCheckbox" class="ml-1 block text-sm font-bold text-black">Consider equivalent gross volume</label>

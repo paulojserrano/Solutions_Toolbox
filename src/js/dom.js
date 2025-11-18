@@ -38,6 +38,18 @@ export const solverAspectRatioInput = document.getElementById('solverAspectRatio
 export const solverFixedLength = document.getElementById('solverFixedLength');
 export const solverFixedWidth = document.getElementById('solverFixedWidth');
 
+// --- NEW: Manual Mode Inputs ---
+export const manualInputContainer = document.getElementById('manualInputContainer');
+export const solverManualLength = document.getElementById('solverManualLength');
+export const solverManualWidth = document.getElementById('solverManualWidth');
+
+// --- NEW: Solver Input Containers (for show/hide) ---
+export const solverRequirementsContainer = document.getElementById('solverRequirementsContainer');
+export const solverStorageReqContainer = document.getElementById('solverStorageReqContainer');
+export const solverEquivalentVolumeContainer = document.getElementById('solverEquivalentVolumeContainer');
+export const solverOptionsContainer = document.getElementById('solverOptionsContainer');
+
+
 export const solverConfigStatus = document.getElementById('solverConfigStatus');
 export const solverParametersSection = document.getElementById('solverParametersSection');
 export const solverResultsSection = document.getElementById('solverResultsSection');

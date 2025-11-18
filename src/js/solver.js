@@ -25,6 +25,10 @@ import {
     solverFixedLength,
     solverFixedWidth,
 
+    // --- NEW: Manual Mode ---
+    solverManualLength,
+    solverManualWidth,
+
     // --- Result Metrics ---
     solverResultGrossVolume,
     solverResultTotalBays,
@@ -75,9 +79,11 @@ export function updateSolverResults(results) {
     const warehouseW = parseNumber(warehouseWidthInput.value);
     
     // MODIFIED: Only check constraint if the checkbox is checked
+    // MODIFIED: Do not check in manual mode
+    const solverMethod = solverMethodSelect.value;
     const respectConstraints = solverRespectConstraintsCheckbox.checked;
-    const lengthBroken = respectConstraints && warehouseL > 0 && results.L > warehouseL;
-    const widthBroken = respectConstraints && warehouseW > 0 && results.W > warehouseW;
+    const lengthBroken = (solverMethod !== 'manual') && respectConstraints && warehouseL > 0 && results.L > warehouseL;
+    const widthBroken = (solverMethod !== 'manual') && respectConstraints && warehouseW > 0 && results.W > warehouseW;
 
     solverResultLengthWarning.style.display = lengthBroken ? 'inline' : 'none';
     solverResultWidthWarning.style.display = widthBroken ? 'inline' : 'none';
@@ -249,6 +255,12 @@ function findSolutionForConfig(storageReq, throughputReq, sysHeight, config, con
                     }
                 }
                 break; // Exit switch, proceed to reduction logic
+            
+            // --- CASE 4: MANUAL (This function shouldn't be called, but as a safeguard) ---
+            case 'manual':
+                // This mode bypasses findSolutionForConfig
+                resolve(null);
+                return;
         }
 
         // --- Reduction Logic (Applies to all cases) ---
@@ -336,6 +348,7 @@ function createResultCard(result) {
 
 // --- Main Solver Function ---
 async function runAllConfigurationsSolver() {
+    // --- 1. Common Setup ---
     runSolverButton.disabled = true;
     solverConfigStatus.textContent = "Running all configurations...";
     solverConfigResultsScroller.innerHTML = '';
@@ -347,55 +360,12 @@ async function runAllConfigurationsSolver() {
     setSelectedSolverResult(null);
     requestRedraw();
 
-    // Get Solver Inputs
-    const originalStorageReq = parseNumber(solverStorageReqInput.value); // Renamed
+    // --- 2. Get Common Inputs ---
+    const solverMethod = solverMethodSelect.value;
     const throughputReq = parseNumber(solverThroughputReqInput.value);
     const sysHeight = parseNumber(clearHeightInput.value);
-    const expandForPerformance = solverExpandPDCheckbox.checked;
-    const reduceLevels = solverReduceLevelsCheckbox.checked;
-    const respectConstraints = solverRespectConstraintsCheckbox.checked;
-    const warehouseL = parseNumber(warehouseLengthInput.value);
-    const warehouseW = parseNumber(warehouseWidthInput.value);
 
-    // --- NEW: Get Solver Method and Value ---
-    let solverOptions = {};
-    // MODIFIED: Read from select
-    const solverMethod = solverMethodSelect.value;
-    
-    if (solverMethod === 'aspectRatio') {
-        solverOptions.method = 'aspectRatio';
-        solverOptions.value = parseNumber(solverAspectRatioInput.value);
-        if (solverOptions.value <= 0) {
-            solverConfigStatus.textContent = "Error: Aspect Ratio must be a positive number.";
-            runSolverButton.disabled = false;
-            return;
-        }
-    } else if (solverMethod === 'fixedLength') {
-        solverOptions.method = 'fixedLength';
-        solverOptions.value = parseNumber(solverFixedLength.value);
-        if (solverOptions.value <= 0) {
-            solverConfigStatus.textContent = "Error: Fixed Length must be a positive number.";
-            runSolverButton.disabled = false;
-            return;
-        }
-    } else if (solverMethod === 'fixedWidth') {
-        solverOptions.method = 'fixedWidth';
-        solverOptions.value = parseNumber(solverFixedWidth.value);
-        if (solverOptions.value <= 0) {
-            solverConfigStatus.textContent = "Error: Fixed Width must be a positive number.";
-            runSolverButton.disabled = false;
-            return;
-        }
-    }
-    // --- END NEW ---
-
-    if (originalStorageReq === 0 || throughputReq === 0 || sysHeight === 0) {
-        solverConfigStatus.textContent = "Error: Please check solver inputs.";
-        runSolverButton.disabled = false;
-        return;
-    }
-
-    // --- NEW: Build task list based on tote size and equivalent volume ---
+    // --- 3. Get Selected Configurations (Common) ---
     const tasksToRun = [];
     const selectedToteSize = solverToteSizeSelect.value;
     const isEquivalentVolume = solverEquivalentVolumeCheckbox.checked;
@@ -411,7 +381,6 @@ async function runAllConfigurationsSolver() {
     const size650String = "650x450x300";
     const size850String = "850x650x400";
 
-    // --- MODIFIED: Filtering logic changed from 'name.includes' to property checking ---
     const is650Tote = (config) => (
         config['tote-width'] === 650 &&
         config['tote-length'] === 450 &&
@@ -429,59 +398,138 @@ async function runAllConfigurationsSolver() {
         otherKeys = Object.keys(configurations).filter(k => is850Tote(configurations[k]));
         selectedVolume = vol650;
         otherVolume = vol850;
-    } else { // selectedToteSize === size850String
+    } else if (selectedToteSize === size850String) { // <-- MODIFIED to else if
         selectedKeys = Object.keys(configurations).filter(k => is850Tote(configurations[k]));
         otherKeys = Object.keys(configurations).filter(k => is650Tote(configurations[k]));
         selectedVolume = vol850;
         otherVolume = vol650;
+    } else { // --- NEW: Handle 'all' ---
+        selectedKeys = Object.keys(configurations);
+        otherKeys = [];
+        selectedVolume = 0; // Not applicable
+        otherVolume = 0; // Not applicable
     }
-    // --- END MODIFICATION ---
+    
+    // --- 4. Build Promise List (MODIFIED) ---
+    const promises = [];
+    
+    if (solverMethod === 'manual') {
+        // --- MANUAL MODE ---
+        const manualL = parseNumber(solverManualLength.value);
+        const manualW = parseNumber(solverManualWidth.value);
 
-    // 1. Add tasks for the selected tote size
-    selectedKeys.forEach(configKey => {
-        tasksToRun.push({
-            configKey: configKey,
-            storageReq: originalStorageReq,
-            isEquivalent: false
+        if (manualL === 0 || manualW === 0 || sysHeight === 0) {
+            solverConfigStatus.textContent = "Error: Please check manual L/W and height inputs.";
+            runSolverButton.disabled = false;
+            return;
+        }
+
+        // Add tasks for the selected tote size
+        selectedKeys.forEach(configKey => {
+            tasksToRun.push({ configKey: configKey });
         });
-    });
+        // (Equivalent volume is ignored in manual mode)
 
-    // 2. Add tasks for the equivalent volume
-    if (isEquivalentVolume && otherVolume > 0 && selectedVolume > 0) {
-        const equivalentStorageReq = Math.round((originalStorageReq * selectedVolume) / otherVolume);
+        for (const task of tasksToRun) {
+            const config = configurations[task.configKey];
+            if (!config) continue;
+            
+            // Create a self-resolving promise that just runs getMetrics
+            promises.push(Promise.resolve().then(() => {
+                const metrics = getMetrics(manualL, manualW, sysHeight, config);
+                const density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
+                return { ...metrics, density, configKey: task.configKey, configName: config.name };
+            }));
+        }
+
+    } else {
+        // --- ITERATIVE SOLVER MODES (Existing Logic) ---
+        const originalStorageReq = parseNumber(solverStorageReqInput.value);
+        const expandForPerformance = solverExpandPDCheckbox.checked;
+        const reduceLevels = solverReduceLevelsCheckbox.checked;
+        const respectConstraints = solverRespectConstraintsCheckbox.checked;
+        const warehouseL = parseNumber(warehouseLengthInput.value);
+        const warehouseW = parseNumber(warehouseWidthInput.value);
+
+        let solverOptions = {};
+        if (solverMethod === 'aspectRatio') {
+            solverOptions.method = 'aspectRatio';
+            solverOptions.value = parseNumber(solverAspectRatioInput.value);
+            if (solverOptions.value <= 0) {
+                solverConfigStatus.textContent = "Error: Aspect Ratio must be a positive number.";
+                runSolverButton.disabled = false;
+                return;
+            }
+        } else if (solverMethod === 'fixedLength') {
+            solverOptions.method = 'fixedLength';
+            solverOptions.value = parseNumber(solverFixedLength.value);
+            if (solverOptions.value <= 0) {
+                solverConfigStatus.textContent = "Error: Fixed Length must be a positive number.";
+                runSolverButton.disabled = false;
+                return;
+            }
+        } else if (solverMethod === 'fixedWidth') {
+            solverOptions.method = 'fixedWidth';
+            solverOptions.value = parseNumber(solverFixedWidth.value);
+            if (solverOptions.value <= 0) {
+                solverConfigStatus.textContent = "Error: Fixed Width must be a positive number.";
+                runSolverButton.disabled = false;
+                return;
+            }
+        }
+
+        if (originalStorageReq === 0 || throughputReq === 0 || sysHeight === 0) {
+            solverConfigStatus.textContent = "Error: Please check solver inputs.";
+            runSolverButton.disabled = false;
+            return;
+        }
         
-        otherKeys.forEach(configKey => {
+        // 1. Add tasks for the selected tote size
+        selectedKeys.forEach(configKey => {
             tasksToRun.push({
                 configKey: configKey,
-                storageReq: equivalentStorageReq, // Use the adjusted storage requirement
-                isEquivalent: true
+                storageReq: originalStorageReq,
+                isEquivalent: false
             });
         });
-    }
-    // --- END NEW LOGIC ---
 
-    const promises = [];
-    // MODIFIED: Iterate over tasksToRun instead of configurations object
-    for (const task of tasksToRun) {
-        const config = configurations[task.configKey];
-        if (!config) continue;
+        // 2. Add tasks for the equivalent volume
+        // --- MODIFIED: Check for 'all' ---
+        if (isEquivalentVolume && selectedToteSize !== 'all' && otherVolume > 0 && selectedVolume > 0) {
+            const equivalentStorageReq = Math.round((originalStorageReq * selectedVolume) / otherVolume);
+            
+            otherKeys.forEach(configKey => {
+                tasksToRun.push({
+                    configKey: configKey,
+                    storageReq: equivalentStorageReq, // Use the adjusted storage requirement
+                    isEquivalent: true
+                });
+            });
+        }
         
-        // Use the storageReq from the task
-        promises.push(findSolutionForConfig(
-            task.storageReq, // MODIFIED
-            throughputReq,
-            sysHeight,
-            config,
-            task.configKey,
-            expandForPerformance,
-            reduceLevels,
-            warehouseL,
-            warehouseW,
-            respectConstraints,
-            solverOptions
-        ));
+        // Build promises
+        for (const task of tasksToRun) {
+            const config = configurations[task.configKey];
+            if (!config) continue;
+            
+            promises.push(findSolutionForConfig(
+                task.storageReq, // MODIFIED
+                throughputReq,
+                sysHeight,
+                config,
+                task.configKey,
+                expandForPerformance,
+                reduceLevels,
+                warehouseL,
+                warehouseW,
+                respectConstraints,
+                solverOptions
+            ));
+        }
     }
 
+
+    // --- 5. Process Results (Common) ---
     try {
         const allResults = await Promise.all(promises);
         
