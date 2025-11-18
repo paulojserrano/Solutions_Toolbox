@@ -12,22 +12,21 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 </head>
-<!-- MODIFIED: Added data-theme="engineering" -->
+<!-- Default theme set to engineering -->
 <body class="min-h-screen flex flex-col" data-theme="engineering">
 
-    <header class="bg-white border-b-[3px] border-black z-10">
+    <header class="z-10">
         <div class="w-full max-w-screen-2xl mx-auto p-4 flex items-center gap-4">
-            <!-- MODIFIED: Added 'logo-box' class here -->
-            <div class="logo-box bg-black text-white p-2 border-2 border-black shadow-[4px_4px_0px_0px_#a3e635]">
+            <div class="logo-box p-2">
                 <svg class="h-8 w-8" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                     <path stroke-linecap="square" stroke-linejoin="miter" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25L3 7.5m18 0v9l-9 5.25L3 16.5v-9m9 5.25v9l-9-5.25m9 5.25v-9l9-5.25" />
                 </svg>
             </div>
-            <h1 class="text-2xl md:text-3xl font-black uppercase tracking-tight text-black drop-shadow-[2px_2px_0_#fff]">
+            <h1 class="text-2xl md:text-3xl font-black uppercase tracking-tight">
                 Layout Builder
             </h1>
 
-            <!-- NEW: Theme Switcher -->
+            <!-- Theme Switcher -->
             <div class="ml-auto">
                 <label for="themeSwitcher" class="sr-only">Theme</label>
                 <select id="themeSwitcher">
@@ -43,12 +42,13 @@
     <main class="flex-1 w-full max-w-screen-2xl mx-auto p-4 md:p-8 flex flex-col gap-0">
 
         <!-- 1. Main Tab Navigation -->
-        <nav class="pl-2 -mb-[3px] z-20 relative">
+        <nav class="pl-2 -mb-[2px] z-20 relative">
             <div class="flex items-end" id="mainViewTabs">
                 <button class="main-tab-button active" data-tab="solverTabContent">Solver</button>
                 <button class="main-tab-button" data-tab="configTabContent">Configuration</button>
-                <!-- MODIFIED: Added Debug tab -->
                 <button class="main-tab-button" data-tab="debugTabContent">Debug</button>
+                <!-- NEW: Roadmap Tab Button -->
+                <button class="main-tab-button" data-tab="roadmapTabContent">Roadmap</button>
             </div>
         </nav>
 
@@ -56,50 +56,49 @@
         <div id="solverTabContent" class="main-tab-content active space-y-8">
             
             <!-- Box 1: Inputs -->
-            <section id="solverParametersSection" class="nb-box p-6 bg-white">
-                <h2 class="nb-title text-xl text-black">
+            <section id="solverParametersSection" class="nb-box p-6">
+                <h2 class="nb-title text-xl">
                     Solver Parameters
                 </h2>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6">
                     
                     <!-- Col 1: Solver Settings -->
                     <div class="space-y-5">
-                        <h3 class="font-black text-lg border-l-4 border-black pl-2 bg-yellow-300 inline-block pr-2">Solver Settings</h3>
+                        <h3 class="font-bold text-lg border-l-4 border-black pl-2 bg-yellow-300 text-black inline-block pr-2">Solver Settings</h3>
                         
                         <div>
-                            <label for="solverMethodSelect" class="block text-sm font-bold text-black mb-1 uppercase">Solver Method</label>
+                            <label for="solverMethodSelect" class="block text-sm font-bold mb-1 uppercase">Solver Method</label>
                             <div>
                                 <select id="solverMethodSelect" class="w-full">
                                     <option value="aspectRatio" selected>Aspect Ratio</option>
                                     <option value="fixedLength">Fixed Length</option>
                                     <option value="fixedWidth">Fixed Width</option>
-                                    <option value="manual">Manual Mode</option> <!-- NEW OPTION -->
+                                    <option value="manual">Manual Mode</option>
                                 </select>
                             </div>
                             
                             <div class="mt-4">
                                 <div id="aspectRatioInputContainer">
-                                    <label for="solverAspectRatio" class="block text-sm font-bold text-black mb-1 uppercase">Aspect Ratio (L / W)</label>
+                                    <label for="solverAspectRatio" class="block text-sm font-bold mb-1 uppercase">Aspect Ratio (L / W)</label>
                                     <input type="text" id="solverAspectRatio" value="1.0" class="w-full">
                                     <p class="helper-text">L = 1.0 * W</p>
                                 </div>
                                 <div id="fixedLengthInputContainer" style="display: none;">
-                                    <label for="solverFixedLength" class="block text-sm font-bold text-black mb-1 uppercase">Fixed Length (mm)</label>
+                                    <label for="solverFixedLength" class="block text-sm font-bold mb-1 uppercase">Fixed Length (mm)</label>
                                     <input type="text" id="solverFixedLength" value="50,000" class="w-full">
                                 </div>
                                 <div id="fixedWidthInputContainer" style="display: none;">
-                                    <label for="solverFixedWidth" class="block text-sm font-bold text-black mb-1 uppercase">Fixed Width (mm)</label>
+                                    <label for="solverFixedWidth" class="block text-sm font-bold mb-1 uppercase">Fixed Width (mm)</label>
                                     <input type="text" id="solverFixedWidth" value="30,000" class="w-full">
                                 </div>
-                                <!-- NEW: Manual Inputs -->
                                 <div id="manualInputContainer" style="display: none;">
                                     <div class="space-y-4">
                                         <div>
-                                            <label for="solverManualLength" class="block text-sm font-bold text-black mb-1 uppercase">Manual Length (mm)</label>
+                                            <label for="solverManualLength" class="block text-sm font-bold mb-1 uppercase">Manual Length (mm)</label>
                                             <input type="text" id="solverManualLength" value="50,000" class="w-full">
                                         </div>
                                         <div>
-                                            <label for="solverManualWidth" class="block text-sm font-bold text-black mb-1 uppercase">Manual Width (mm)</label>
+                                            <label for="solverManualWidth" class="block text-sm font-bold mb-1 uppercase">Manual Width (mm)</label>
                                             <input type="text" id="solverManualWidth" value="30,000" class="w-full">
                                         </div>
                                     </div>
@@ -107,68 +106,64 @@
                             </div>
                         </div>
 
-                        <!-- NEW: Added ID -->
                         <div class="pt-2 space-y-2" id="solverOptionsContainer">
                             <div class="flex items-center">
                                 <input type="checkbox" id="solverRespectConstraintsCheckbox">
-                                <label for="solverRespectConstraintsCheckbox" class="ml-1 block text-sm font-bold text-black">Respect footprint constraints</label>
+                                <label for="solverRespectConstraintsCheckbox" class="ml-1 block text-sm font-bold">Respect footprint constraints</label>
                             </div>
 
                             <div class="flex items-center">
                                 <input type="checkbox" id="solverExpandPDCheckbox" checked>
-                                <label for="solverExpandPDCheckbox" class="ml-1 block text-sm font-bold text-black">Expand system if PD > Limit</label>
+                                <label for="solverExpandPDCheckbox" class="ml-1 block text-sm font-bold">Expand system if PD > Limit</label>
                             </div>
                             
                             <div class="flex items-center">
                                 <input type="checkbox" id="solverReduceLevelsCheckbox" checked>
-                                <label for="solverReduceLevelsCheckbox" class="ml-1 block text-sm font-bold text-black">Reduce levels if expanded</label>
+                                <label for="solverReduceLevelsCheckbox" class="ml-1 block text-sm font-bold">Reduce levels if expanded</label>
                             </div>
                         </div>
                     </div>
 
                     <!-- Col 2: Requirements -->
-                    <!-- NEW: Added ID -->
                     <div class="space-y-5" id="solverRequirementsContainer">
-                        <h3 class="font-black text-lg border-l-4 border-black pl-2 bg-blue-300 inline-block pr-2">Requirements</h3>
-                        <!-- NEW: Added ID -->
+                        <h3 class="font-bold text-lg border-l-4 border-black pl-2 bg-blue-300 text-black inline-block pr-2">Requirements</h3>
                         <div id="solverStorageReqContainer">
-                            <label for="solverStorageReq" class="block text-sm font-bold text-black mb-1 uppercase">Storage Requirement</label>
+                            <label for="solverStorageReq" class="block text-sm font-bold mb-1 uppercase">Storage Requirement</label>
                             <input type="text" id="solverStorageReq" value="30,000" class="w-full">
                         </div>
                         <div>
-                            <label for="solverToteSizeSelect" class="block text-sm font-bold text-black mb-1 uppercase">Tote Size (WxLxH)</label>
+                            <label for="solverToteSizeSelect" class="block text-sm font-bold mb-1 uppercase">Tote Size (WxLxH)</label>
                             <select id="solverToteSizeSelect" class="w-full">
                                 <option value="all" selected>All Types</option>
                                 <option value="650x450x300">650 x 450 x 300 mm</option>
                                 <option value="850x650x400">850 x 650 x 400 mm</option>
                             </select>
                         </div>
-                        <!-- NEW: Added ID -->
                         <div class="pt-2" id="solverEquivalentVolumeContainer">
                             <div class="flex items-center">
                                 <input type="checkbox" id="solverEquivalentVolumeCheckbox">
-                                <label for="solverEquivalentVolumeCheckbox" class="ml-1 block text-sm font-bold text-black">Consider equivalent gross volume</label>
+                                <label for="solverEquivalentVolumeCheckbox" class="ml-1 block text-sm font-bold">Consider equivalent gross volume</label>
                             </div>
                         </div>
                         <div>
-                            <label for="solverThroughputReq" class="block text-sm font-bold text-black mb-1 uppercase">Throughput Req (PPH)</label>
+                            <label for="solverThroughputReq" class="block text-sm font-bold mb-1 uppercase">Throughput Req (PPH)</label>
                             <input type="text" id="solverThroughputReq" value="2,000" class="w-full">
                         </div>
                     </div>
 
                     <!-- Col 3: Constraints -->
                     <div class="space-y-5">
-                        <h3 class="font-black text-lg border-l-4 border-black pl-2 bg-red-300 inline-block pr-2">Constraints</h3>
+                        <h3 class="font-bold text-lg border-l-4 border-black pl-2 bg-red-300 text-black inline-block pr-2">Constraints</h3>
                         <div id="warehouseLengthContainer">
-                            <label for="warehouseLength" class="block text-sm font-bold text-black mb-1 uppercase">Warehouse Length (mm)</label>
+                            <label for="warehouseLength" class="block text-sm font-bold mb-1 uppercase">Warehouse Length (mm)</label>
                             <input type="text" id="warehouseLength" value="30,000" class="w-full">
                         </div>
                         <div id="warehouseWidthContainer">
-                            <label for="warehouseWidth" class="block text-sm font-bold text-black mb-1 uppercase">Warehouse Width (mm)</label>
+                            <label for="warehouseWidth" class="block text-sm font-bold mb-1 uppercase">Warehouse Width (mm)</label>
                             <input type="text" id="warehouseWidth" value="25,000" class="w-full">
                         </div>
                         <div>
-                            <label for="clearHeight" class="block text-sm font-bold text-black mb-1 uppercase">Clear Height (mm)</label>
+                            <label for="clearHeight" class="block text-sm font-bold mb-1 uppercase">Clear Height (mm)</label>
                             <input type="text" id="clearHeight" value="10,000" class="w-full">
                         </div>
                     </div>
@@ -178,24 +173,23 @@
                     <button id="runSolverButton" class="w-full nb-btn text-lg">
                         Find Solutions
                     </button>
-                    <p id="solverConfigStatus" class="text-center text-black font-mono mt-3 h-5 font-bold"></p>
+                    <p id="solverConfigStatus" class="text-center font-mono mt-3 h-5 font-bold"></p>
                 </div>
             </section>
 
             <!-- Horizontal Configuration Results -->
             <section id="solverConfigResultsContainer" class="w-full" style="display: none;">
-                <h2 class="nb-title text-xl text-black mb-2">
+                <h2 class="nb-title text-xl mb-2">
                     Select a Solution
                 </h2>
-                <p class="text-sm text-black font-mono mb-4 bg-white inline-block p-1 border border-black shadow-[2px_2px_0_#000]">Click a card to view detailed results.</p>
+                <p class="text-sm font-mono mb-4 helper-text">Click a card to view detailed results.</p>
                 <div id="solverConfigResultsScroller" class="flex overflow-x-auto gap-6 pb-6 pt-2 px-2">
                     <!-- Config cards will be injected here -->
                 </div>
             </section>
 
             <!-- Visualizations -->
-            <section id="solverVisualizationsSection" class="nb-box p-6 bg-white" style="display: none;">
-                <!-- FIXED: Removed the "Visualizations" h2 title -->
+            <section id="solverVisualizationsSection" class="nb-box p-6" style="display: none;">
 
                 <div class="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-hidden">
                     <div class="vis-container flex flex-col h-full lg:col-span-2 lg:row-span-1">
@@ -203,24 +197,24 @@
                             <span>Top-Down View</span>
                             <div class="flex items-center gap-2">
                                 <input type="checkbox" id="detailViewToggle" class="h-5 w-5 !shadow-none border-2">
-                                <label for="detailViewToggle" class="text-sm font-bold text-white uppercase">Show Detail</label>
+                                <label for="detailViewToggle" class="text-sm font-bold uppercase">Show Detail</label>
                             </div>
                         </div>
-                        <div class="flex-1 w-full h-full overflow-hidden relative bg-white">
+                        <div class="flex-1 w-full h-full overflow-hidden relative vis-canvas-wrapper">
                             <canvas id="warehouseCanvas"></canvas>
                         </div>
                     </div>
                     
                     <div class="vis-container flex flex-col h-full lg:col-span-1 lg:row-span-1">
                         <div class="vis-header">Elevation View</div>
-                        <div class="flex-1 w-full h-full overflow-hidden relative bg-white">
+                        <div class="flex-1 w-full h-full overflow-hidden relative vis-canvas-wrapper">
                              <canvas id="elevationCanvas"></canvas>
                         </div>
                     </div>
     
                     <div class="vis-container flex flex-col h-full lg:col-span-1 lg:row-span-1">
                          <div class="vis-header">Rack Detail View</div>
-                        <div class="flex-1 w-full h-full overflow-hidden relative bg-white">
+                        <div class="flex-1 w-full h-full overflow-hidden relative vis-canvas-wrapper">
                              <canvas id="rackDetailCanvas"></canvas>
                         </div>
                     </div>
@@ -228,16 +222,16 @@
             </section>
 
             <!-- Detailed Results -->
-            <section id="solverResultsSection" class="nb-box p-6 bg-white" style="display: none;">
-                <h2 class="nb-title text-xl text-black mb-6">
+            <section id="solverResultsSection" class="nb-box p-6" style="display: none;">
+                <h2 class="nb-title text-xl mb-6">
                     Detailed Results
                 </h2>
                 <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-8 font-mono">
                     <!-- Row 1 -->
                     <div>
-                        <span class="block text-xs font-bold text-gray-500 uppercase mb-1">Solved Length</span>
+                        <span class="block text-xs font-bold opacity-70 uppercase mb-1">Solved Length</span>
                         <div class="flex items-baseline gap-2">
-                            <span id="solverResultLength" class="text-3xl font-black text-black">0</span>
+                            <span id="solverResultLength" class="text-3xl font-black">0</span>
                             <span class="text-sm font-bold">mm</span>
                             <svg id="solverResultLengthWarning" style="display: none;" class="h-6 w-6 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                                 <path fill-rule="evenodd" d="M8.485 2.495c.646-1.136 2.384-1.136 3.03 0l6.29 11.007a1.75 1.75 0 01-1.515 2.498H3.71c-1.266 0-2.028-1.23-1.515-2.498l6.29-11.007zM9 11a1 1 0 112 0v1a1 1 0 11-2 0v-1zm1-6.99a.99.99 0 00-1 .99v3.01a1 1 0 102 0V5a.99.99 0 00-1-.99z" clip-rule="evenodd" />
@@ -245,9 +239,9 @@
                         </div>
                     </div>
                     <div>
-                        <span class="block text-xs font-bold text-gray-500 uppercase mb-1">Solved Width</span>
+                        <span class="block text-xs font-bold opacity-70 uppercase mb-1">Solved Width</span>
                          <div class="flex items-baseline gap-2">
-                            <span id="solverResultWidth" class="text-3xl font-black text-black">0</span>
+                            <span id="solverResultWidth" class="text-3xl font-black">0</span>
                             <span class="text-sm font-bold">mm</span>
                             <svg id="solverResultWidthWarning" style="display: none;" class="h-6 w-6 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                                 <path fill-rule="evenodd" d="M8.485 2.495c.646-1.136 2.384-1.136 3.03 0l6.29 11.007a1.75 1.75 0 01-1.515 2.498H3.71c-1.266 0-2.028-1.23-1.515-2.498l6.29-11.007zM9 11a1 1 0 112 0v1a1 1 0 11-2 0v-1zm1-6.99a.99.99 0 00-1 .99v3.01a1 1 0 102 0V5a.99.99 0 00-1-.99z" clip-rule="evenodd" />
@@ -255,43 +249,42 @@
                         </div>
                     </div>
                     <div>
-                        <span class="block text-xs font-bold text-gray-500 uppercase mb-1">Footprint</span>
-                        <span id="solverResultFootprint" class="text-3xl font-black text-black">0</span>
+                        <span class="block text-xs font-bold opacity-70 uppercase mb-1">Footprint</span>
+                        <span id="solverResultFootprint" class="text-3xl font-black">0</span>
                         <span class="text-sm font-bold">m²</span>
                     </div>
                     
                     <!-- Row 2 -->
                     <div>
-                        <span class="block text-xs font-bold text-gray-500 uppercase mb-1">Locations</span>
+                        <span class="block text-xs font-bold opacity-70 uppercase mb-1">Locations</span>
                         <span id="solverResultLocations" class="text-3xl font-black text-blue-600">0</span>
                     </div>
                     <div>
-                        <span class="block text-xs font-bold text-gray-500 uppercase mb-1">Gross Volume</span>
-                        <span id="solverResultGrossVolume" class="text-3xl font-black text-black">0.0</span>
+                        <span class="block text-xs font-bold opacity-70 uppercase mb-1">Gross Volume</span>
+                        <span id="solverResultGrossVolume" class="text-3xl font-black">0.0</span>
                         <span class="text-sm font-bold">m³</span>
                     </div>
                     <div>
-                        <span class="block text-xs font-bold text-gray-500 uppercase mb-1">Total Bays</span>
-                        <span id="solverResultTotalBays" class="text-3xl font-black text-black">0</span>
+                        <span class="block text-xs font-bold opacity-70 uppercase mb-1">Total Bays</span>
+                        <span id="solverResultTotalBays" class="text-3xl font-black">0</span>
                     </div>
 
                     <!-- Row 3 -->
                     <div>
-                        <span class="block text-xs font-bold text-gray-500 uppercase mb-1">Perf. Density</span>
-                        <span id="solverResultPerfDensity" class="text-3xl font-black text-black">0.0</span>
+                        <span class="block text-xs font-bold opacity-70 uppercase mb-1">Perf. Density</span>
+                        <span id="solverResultPerfDensity" class="text-3xl font-black">0.0</span>
                     </div>
                     <div>
-                        <span class="block text-xs font-bold text-gray-500 uppercase mb-1">Cap. Utilization</span>
-                        <span id="solverResultCapacityUtil" class="text-3xl font-black text-black">0.0 %</span>
+                        <span class="block text-xs font-bold opacity-70 uppercase mb-1">Cap. Utilization</span>
+                        <span id="solverResultCapacityUtil" class="text-3xl font-black">0.0 %</span>
                     </div>
                     <div>
-                        <span class="block text-xs font-bold text-gray-500 uppercase mb-1">Rows x Bays/Row</span>
-                        <span id="solverResultRowsAndBays" class="text-3xl font-black text-black">0 x 0</span>
+                        <span class="block text-xs font-bold opacity-70 uppercase mb-1">Rows x Bays/Row</span>
+                        <span id="solverResultRowsAndBays" class="text-3xl font-black">0 x 0</span>
                     </div>
                 </div>
                 
-                <!-- MODIFIED: Layout Metrics section moved back here -->
-                <h2 class="nb-title text-xl text-black mt-8 mb-4">
+                <h2 class="nb-title text-xl mt-8 mb-4">
                     Layout Metrics
                 </h2>
                 <div class="space-y-4">
@@ -357,10 +350,10 @@
         <!-- 3. Main Tab Content: Configuration -->
         <div id="configTabContent" class="main-tab-content overflow-y-auto space-y-8">
             
-            <h2 class="nb-title text-xl text-black mb-2">
+            <h2 class="nb-title text-xl mb-2">
                 Available System Configurations
             </h2>
-            <p class="text-black font-mono mb-6">
+            <p class="font-mono mb-6 opacity-80">
                 These are the read-only parameter sets used by the solver.
             </p>
 
@@ -371,9 +364,8 @@
         </div>
         
         <!-- 4. Main Tab Content: Debug -->
-        <!-- MODIFIED: Replaced metric-table with new debug-bay-list table -->
         <div id="debugTabContent" class="main-tab-content space-y-8">
-            <h2 class="nb-title text-xl text-black mt-8 mb-4">
+            <h2 class="nb-title text-xl mt-8 mb-4">
                 Master Bay List
             </h2>
             <div class="space-y-4 h-[600px] overflow-auto nb-box p-2">
@@ -390,6 +382,54 @@
                         <!-- Bay data will be injected here -->
                     </tbody>
                 </table>
+            </div>
+        </div>
+
+        <!-- 5. NEW: Roadmap Tab Content -->
+        <div id="roadmapTabContent" class="main-tab-content space-y-8">
+            <h2 class="nb-title text-xl mb-2">Development Roadmap</h2>
+            <p class="font-mono mb-6 opacity-80">Tracking future features and priorities.</p>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                
+                <!-- Priority 1 -->
+                <section class="nb-box p-6">
+                    <h3 class="font-bold text-lg border-b-2 border-black/20 mb-4 pb-2">Priority 1: AutoCAD Export</h3>
+                    <ul class="space-y-2 font-mono text-sm">
+                        <li class="flex items-center"><input type="checkbox" disabled class="mr-2"> Add Robot Paths</li>
+                        <li class="flex items-center"><input type="checkbox" disabled class="mr-2"> Add Fencing</li>
+                        <li class="flex items-center"><input type="checkbox" disabled class="mr-2"> Rack Details Table</li>
+                        <li class="flex items-center"><input type="checkbox" disabled class="mr-2"> Elevation Views (Export)</li>
+                    </ul>
+                </section>
+
+                <!-- Visuals -->
+                <section class="nb-box p-6">
+                    <h3 class="font-bold text-lg border-b-2 border-black/20 mb-4 pb-2">Visual Previews</h3>
+                    <ul class="space-y-2 font-mono text-sm">
+                        <li class="flex items-center"><input type="checkbox" disabled class="mr-2"> Improve Dimension Scaling</li>
+                        <li class="flex items-center"><input type="checkbox" disabled class="mr-2"> Fix Rack Detail View Bugs</li>
+                    </ul>
+                </section>
+
+                <!-- Fine Tuning -->
+                <section class="nb-box p-6">
+                    <h3 class="font-bold text-lg border-b-2 border-black/20 mb-4 pb-2">Fine Tuning & Logic</h3>
+                    <ul class="space-y-2 font-mono text-sm">
+                        <li class="flex items-center"><input type="checkbox" disabled class="mr-2"> Add Workstations & Chargers</li>
+                        <li class="flex items-center"><input type="checkbox" disabled class="mr-2"> Custom Tote Height Input</li>
+                        <li class="flex items-center"><input type="checkbox" disabled class="mr-2"> Logic: Aisle Width > 10m Height</li>
+                    </ul>
+                </section>
+
+                <!-- Future -->
+                <section class="nb-box p-6">
+                    <h3 class="font-bold text-lg border-b-2 border-black/20 mb-4 pb-2">Future / Advanced</h3>
+                    <ul class="space-y-2 font-mono text-sm">
+                         <li class="flex items-center"><input type="checkbox" disabled class="mr-2"> Generate Solutions Deck (PDF)</li>
+                         <li class="flex items-center"><input type="checkbox" disabled class="mr-2"> Building Column Handling</li>
+                    </ul>
+                </section>
             </div>
         </div>
         
