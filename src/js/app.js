@@ -38,7 +38,13 @@ import {
     solverToteSizeSelect,
 
     // --- NEW: THEME SWITCHER ---
-    themeSwitcher
+    themeSwitcher,
+
+    // --- NEW: Robot Path Inputs ---
+    robotPathTopLinesInput,
+    robotPathBottomLinesInput,
+    robotPathAddLeftACRCheckbox,
+    robotPathAddRightACRCheckbox
 
 } from './dom.js';
 
@@ -232,6 +238,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const redrawInputs = [
         warehouseLengthInput, warehouseWidthInput, clearHeightInput,
         detailViewToggle,
+        // --- NEW: Path Inputs ---
+        robotPathTopLinesInput, robotPathBottomLinesInput,
+        robotPathAddLeftACRCheckbox, robotPathAddRightACRCheckbox
     ];
 
     // All inputs that should be formatted as numbers

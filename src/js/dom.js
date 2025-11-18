@@ -49,6 +49,12 @@ export const solverStorageReqContainer = document.getElementById('solverStorageR
 export const solverEquivalentVolumeContainer = document.getElementById('solverEquivalentVolumeContainer');
 export const solverOptionsContainer = document.getElementById('solverOptionsContainer');
 
+// --- NEW: Robot Path Inputs ---
+export const robotPathTopLinesInput = document.getElementById('robotPathTopLines');
+export const robotPathBottomLinesInput = document.getElementById('robotPathBottomLines');
+export const robotPathAddLeftACRCheckbox = document.getElementById('robotPathAddLeftACR');
+export const robotPathAddRightACRCheckbox = document.getElementById('robotPathAddRightACR');
+
 
 export const solverConfigStatus = document.getElementById('solverConfigStatus');
 export const solverParametersSection = document.getElementById('solverParametersSection');

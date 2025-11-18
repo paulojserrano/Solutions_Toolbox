@@ -151,7 +151,7 @@
                         </div>
                     </div>
 
-                    <!-- Col 3: Constraints -->
+                    <!-- Col 3: Constraints & Robot Settings -->
                     <div class="space-y-5">
                         <h3 class="font-bold text-lg border-l-4 border-black pl-2 bg-red-300 text-black inline-block pr-2">Constraints</h3>
                         <div id="warehouseLengthContainer">
@@ -166,6 +166,32 @@
                             <label for="clearHeight" class="block text-sm font-bold mb-1 uppercase">Clear Height (mm)</label>
                             <input type="text" id="clearHeight" value="10,000" class="w-full">
                         </div>
+
+                        <!-- NEW: Robot Path Settings -->
+                        <div class="mt-4 border-t-2 border-black/10 pt-4">
+                             <h3 class="font-bold text-lg border-l-4 border-black pl-2 bg-purple-300 text-black inline-block pr-2 mb-3">Robot Path Settings</h3>
+                             <div class="grid grid-cols-2 gap-3">
+                                 <div>
+                                     <label for="robotPathTopLines" class="block text-xs font-bold mb-1 uppercase">Top AMR Lines</label>
+                                     <input type="number" id="robotPathTopLines" value="3" min="0" class="w-full">
+                                 </div>
+                                 <div>
+                                     <label for="robotPathBottomLines" class="block text-xs font-bold mb-1 uppercase">Bottom AMR Lines</label>
+                                     <input type="number" id="robotPathBottomLines" value="3" min="0" class="w-full">
+                                 </div>
+                             </div>
+                             <div class="mt-3 space-y-1">
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="robotPathAddLeftACR">
+                                    <label for="robotPathAddLeftACR" class="ml-1 block text-sm font-bold">Add Left ACR Path</label>
+                                </div>
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="robotPathAddRightACR">
+                                    <label for="robotPathAddRightACR" class="ml-1 block text-sm font-bold">Add Right ACR Path</label>
+                                </div>
+                             </div>
+                        </div>
+
                     </div>
                     
                 </div>
@@ -396,7 +422,7 @@
                 <section class="nb-box p-6">
                     <h3 class="font-bold text-lg border-b-2 border-black/20 mb-4 pb-2">Priority 1: AutoCAD Export</h3>
                     <ul class="space-y-2 font-mono text-sm">
-                        <li class="flex items-center"><input type="checkbox" disabled class="mr-2"> Add Robot Paths</li>
+                        <li class="flex items-center"><input type="checkbox" disabled checked class="mr-2"> Add Robot Paths</li>
                         <li class="flex items-center"><input type="checkbox" disabled class="mr-2"> Add Fencing</li>
                         <li class="flex items-center"><input type="checkbox" disabled class="mr-2"> Rack Details Table</li>
                         <li class="flex items-center"><input type="checkbox" disabled class="mr-2"> Elevation Views (Export)</li>

@@ -76,9 +76,10 @@ function addBaysToMasterList(allBays, rowItem, verticalBayTemplate, config, layo
  * @param {number} sysLength - The warehouse length.
  * @param {number} sysWidth - The warehouse width.
  * @param {object} config - The full configuration object.
+ * @param {object} pathSettings - (Optional) Settings for robot path generation.
  * @returns {object} A comprehensive layout data object.
  */
-export function calculateLayout(sysLength, sysWidth, config) {
+export function calculateLayout(sysLength, sysWidth, config, pathSettings = null) {
     // --- 1. Extract parameters from config ---
     const setbackTop = config['top-setback'] || 0;
     const setbackBottom = config['bottom-setback'] || 0;
@@ -98,6 +99,13 @@ export function calculateLayout(sysLength, sysWidth, config) {
     const layoutMode = config['layout-mode'] || 's-d-s';
     const considerTunnels = config['considerTunnels'] || false;
     const considerBackpacks = config['considerBackpacks'] || false;
+
+    // Path parameters
+    const robotPathFirstOffset = config['robot-path-first-offset'] || 500;
+    const robotPathGap = config['robot-path-gap'] || 600;
+    const acrPathOffsetTop = config['acr-path-offset-top'] || 1000;
+    const acrPathOffsetBottom = config['acr-path-offset-bottom'] || 1000;
+    const amrPathOffset = config['amr-path-offset'] || 850;
 
     // --- 2. Calculate core dimensions ---
     const clearOpening = (toteQtyPerBay * toteLength) +
@@ -172,7 +180,8 @@ export function calculateLayout(sysLength, sysWidth, config) {
         verticalBayTemplate.push({
             bayColumn: i,
             y_center: y_center,
-            bayType: bayType
+            bayType: bayType,
+            bayHeight: clearOpening // For tunnel offsets
         });
     }
     
@@ -194,7 +203,7 @@ export function calculateLayout(sysLength, sysWidth, config) {
     if (usableWidth_h <= 0) {
         // No room for anything
         return { 
-            layoutItems: [], allBays: [], verticalBayTemplate: [],
+            layoutItems: [], allBays: [], verticalBayTemplate: [], paths: [],
             totalLayoutWidth: 0, totalRackLength_world: 0,
             usableLength_v: usableLength_v, usableWidth_h: usableWidth_h,
             layoutOffsetX_world: 0, layoutOffsetY_world: layoutOffsetY_world,
@@ -202,7 +211,8 @@ export function calculateLayout(sysLength, sysWidth, config) {
             clearOpening,
             numStorageBays: 0,
             numTunnelBays: 0,
-            numBackpackBays: 0
+            numBackpackBays: 0,
+            repeatingBayUnitWidth
         };
     }
     
@@ -255,13 +265,14 @@ export function calculateLayout(sysLength, sysWidth, config) {
         } else {
              // No room
              return { 
-                layoutItems: [], allBays: [], verticalBayTemplate: [],
+                layoutItems: [], allBays: [], verticalBayTemplate: [], paths: [],
                 totalLayoutWidth: 0, totalRackLength_world: 0,
                 usableLength_v: usableLength_v, usableWidth_h: usableWidth_h,
                 layoutOffsetX_world: 0, layoutOffsetY_world: layoutOffsetY_world,
                 baysPerRack: totalBayPositions,
                 clearOpening,
-                numStorageBays: 0, numTunnelBays: 0, numBackpackBays: 0
+                numStorageBays: 0, numTunnelBays: 0, numBackpackBays: 0,
+                repeatingBayUnitWidth
             };
         }
 
@@ -312,12 +323,220 @@ export function calculateLayout(sysLength, sysWidth, config) {
     const numBackpackBays = allBays.filter(b => b.bayType === 'backpack').length;
     const numStandardBays = allBays.filter(b => b.bayType === 'standard').length;
 
-    // --- 7. Return Value (Step 2.4) ---
+
+    // --- 7. Robot Path Generation (UPDATED) ---
+    const paths = [];
+    // Only generate paths if pathSettings are provided (even empty is fine)
+    // Note: This logic applies only to HPS3 configs where path offsets are defined
+    if (pathSettings && robotPathGap > 0) {
+        
+        const rackStructureTopY = setbackTop + layoutOffsetY_world;
+        const rackStructureBottomY = rackStructureTopY + totalRackLength_world;
+
+        // Calculate Y-coordinates for ACR paths
+        const yAcrTop = rackStructureTopY - acrPathOffsetTop;
+        const yAcrBottom = rackStructureBottomY + acrPathOffsetBottom;
+
+        // Use these exact Y-coordinates for vertical paths
+        const pathStartY = yAcrTop;
+        const pathEndY = yAcrBottom;
+        
+        // To track X-bounds
+        let minBayPathX = Infinity;
+        let maxBayPathX = -Infinity;
+        let firstAisleX = null;
+        let lastAisleX = null;
+
+        // Helper to generate bay paths
+        const createBayPaths = (startX, direction, count) => {
+            // Calculate AMR bounds relative to rack structure
+            const amrCountTop = pathSettings.topAMRLines || 0;
+            const amrCountBottom = pathSettings.bottomAMRLines || 0;
+            const maxAmrOffsetTop = amrPathOffset * amrCountTop;
+            const maxAmrOffsetBottom = amrPathOffset * amrCountBottom;
+
+            const bayPathStartY = rackStructureTopY - maxAmrOffsetTop;
+            const bayPathEndY = rackStructureBottomY + maxAmrOffsetBottom;
+
+            for(let i=0; i<count; i++) {
+                const totalOffset = robotPathFirstOffset + (i * robotPathGap);
+                const x = startX + (direction * totalOffset);
+
+                if (x < minBayPathX) minBayPathX = x;
+                if (x > maxBayPathX) maxBayPathX = x;
+
+                paths.push({
+                    type: 'bay',
+                    x1: x, y1: bayPathStartY,
+                    x2: x, y2: bayPathEndY,
+                    orientation: 'vertical'
+                });
+            }
+        };
+
+        // --- B. Vertical Paths (Bays & Aisles) ---
+        layoutItems.forEach((item, index) => {
+            const itemAbsX = setbackLeft + layoutOffsetX_world + item.x;
+
+            // B1. Aisles (ACR)
+            if (item.type === 'aisle') {
+                const aisleCenterX = itemAbsX + (item.width / 2);
+                paths.push({ type: 'aisle', x1: aisleCenterX, y1: pathStartY, x2: aisleCenterX, y2: pathEndY, orientation: 'vertical' });
+                
+                if (firstAisleX === null) firstAisleX = aisleCenterX;
+                lastAisleX = aisleCenterX;
+            }
+            // B2. Bays (AMR)
+            else if (item.type === 'rack') {
+                 if (item.rackType === 'single') {
+                    if (index === 0) {
+                        // First rack, paths on right side (facing left into rack)
+                         createBayPaths(itemAbsX + item.width, -1, totesDeep);
+                    } else {
+                        // Last rack, paths on left side
+                        createBayPaths(itemAbsX, 1, totesDeep);
+                    }
+                }
+                else if (item.rackType === 'double') {
+                     // Paths on left (rack 1)
+                    createBayPaths(itemAbsX, 1, totesDeep);
+                    // Paths on right (rack 2)
+                    createBayPaths(itemAbsX + item.width, -1, totesDeep);
+                }
+            }
+        });
+
+
+        // --- C. External & Tunnel Horizontal Paths ---
+        if (minBayPathX !== Infinity && maxBayPathX !== -Infinity) {
+            
+            // C1. Cross-Aisle (AMR) - One per TOTE level (Updated)
+            verticalBayTemplate.forEach(bayTpl => {
+                // Only generate tote-center paths for NON-tunnel bays
+                 if (bayTpl.bayType !== 'tunnel') {
+                    const bayRelativeY = (bayTpl.bayColumn * repeatingBayUnitWidth) + uprightLength;
+                    let currentY = bayRelativeY + toteToUprightDist + (toteLength / 2);
+                    
+                    for (let t = 0; t < toteQtyPerBay; t++) {
+                        const yAbs = rackStructureTopY + currentY;
+                        paths.push({
+                            type: 'cross-aisle',
+                            x1: minBayPathX, y1: yAbs,
+                            x2: maxBayPathX, y2: yAbs,
+                            orientation: 'horizontal'
+                        });
+                        currentY += (toteLength + toteToToteDist);
+                    }
+                 }
+            });
+
+            // C2. External AMR Lines
+            const numTopAMR = pathSettings.topAMRLines || 0;
+            const numBottomAMR = pathSettings.bottomAMRLines || 0;
+            
+            const baseTopY = rackStructureTopY - amrPathOffset;
+            const baseBottomY = rackStructureBottomY + amrPathOffset;
+
+            // Top
+            for (let i = 0; i < numTopAMR; i++) {
+                 const y = baseTopY - (i * amrPathOffset);
+                paths.push({
+                    type: 'amr',
+                    x1: minBayPathX, y1: y,
+                    x2: maxBayPathX, y2: y,
+                    orientation: 'horizontal'
+                });
+            }
+            // Bottom
+            for (let i = 0; i < numBottomAMR; i++) {
+                const y = baseBottomY + (i * amrPathOffset);
+                paths.push({
+                    type: 'amr',
+                    x1: minBayPathX, y1: y,
+                    x2: maxBayPathX, y2: y,
+                    orientation: 'horizontal'
+                });
+            }
+
+            // C3. External ACR Lines & Tunnel Logic
+            if (firstAisleX !== null && lastAisleX !== null) {
+                
+                let acrStartX = firstAisleX;
+                let acrEndX = lastAisleX;
+                
+                // Add Left ACR
+                if (pathSettings.addLeftACR) {
+                     const layoutStartX = setbackLeft + layoutOffsetX_world;
+                     const spacingX = acrPathOffsetTop; // Use offset as spacing metric
+                     const leftAcrXPos = layoutStartX - spacingX;
+
+                    paths.push({ type: 'acr', x1: leftAcrXPos, y1: yAcrTop, x2: leftAcrXPos, y2: yAcrBottom, orientation: 'vertical' });
+                    acrStartX = leftAcrXPos;
+                }
+                // Add Right ACR
+                if (pathSettings.addRightACR) {
+                    const layoutEndX = setbackLeft + layoutOffsetX_world + totalLayoutWidth;
+                    const spacingX = acrPathOffsetTop;
+                    const rightAcrXPos = layoutEndX + spacingX;
+
+                    paths.push({ type: 'acr', x1: rightAcrXPos, y1: yAcrTop, x2: rightAcrXPos, y2: yAcrBottom, orientation: 'vertical' });
+                    acrEndX = rightAcrXPos;
+                }
+
+                // Horizontal ACR Lines (Top/Bottom)
+                paths.push({
+                    type: 'acr',
+                    x1: acrStartX, y1: yAcrTop,
+                    x2: acrEndX, y2: yAcrTop,
+                    orientation: 'horizontal'
+                });
+                paths.push({
+                    type: 'acr',
+                    x1: acrStartX, y1: yAcrBottom,
+                    x2: acrEndX, y2: yAcrBottom,
+                    orientation: 'horizontal'
+                });
+
+                // C4. Tunnel Logic (Updated)
+                const tunnelIndices = [];
+                verticalBayTemplate.forEach((bay, index) => {
+                    if (bay.bayType === 'tunnel') tunnelIndices.push(index);
+                });
+
+                tunnelIndices.forEach(tunnelIdx => {
+                    const bayTpl = verticalBayTemplate[tunnelIdx];
+                    const absY_Center = rackStructureTopY + bayTpl.y_center;
+
+                    // Center Path (ACR)
+                    paths.push({
+                        type: 'acr',
+                        x1: acrStartX, y1: absY_Center,
+                        x2: acrEndX, y2: absY_Center,
+                        orientation: 'horizontal'
+                    });
+
+                    // Offset Paths (AMR)
+                    const quarterHeight = repeatingBayUnitWidth / 4;
+                    const amrY_Top = absY_Center - quarterHeight;
+                    const amrY_Bottom = absY_Center + quarterHeight;
+
+                    if (minBayPathX !== Infinity && maxBayPathX !== -Infinity) {
+                         paths.push({ type: 'amr', x1: minBayPathX, y1: amrY_Top, x2: maxBayPathX, y2: amrY_Top, orientation: 'horizontal' });
+                         paths.push({ type: 'amr', x1: minBayPathX, y1: amrY_Bottom, x2: maxBayPathX, y2: amrY_Bottom, orientation: 'horizontal' });
+                    }
+                });
+            }
+        }
+    }
+
+
+    // --- 8. Return Value (Step 2.4) ---
     return {
         // Data lists
         layoutItems,          // List of rack rows and aisles (for drawing)
         allBays,              // Master list of every single bay
         verticalBayTemplate,  // Template for vertical layout
+        paths,                // NEW: Robot paths
         
         // Core dimensions
         totalLayoutWidth,     // Total width of the rack/aisle layout (pixels)
@@ -334,7 +553,10 @@ export function calculateLayout(sysLength, sysWidth, config) {
         numTunnelBays,        // Total tunnel bays in system
         numBackpackBays,      // Total backpack bays in system
         numStandardBays,      // Total standard bays in system
-        numRows: rowCounter   // Total number of rack rows
+        numRows: rowCounter,   // Total number of rack rows
+        
+        // NEW: Return this for Export Block Correction
+        repeatingBayUnitWidth
     };
 }
 
@@ -493,7 +715,7 @@ export function getMetrics(sysLength, sysWidth, sysHeight, config, levelOverride
     const hasBufferLayer = config['hasBufferLayer'] || false;
     
     // --- 2. Calculate Layout (Total Bays) ---
-    // MODIFIED: Call new calculateLayout
+    // MODIFIED: Call new calculateLayout with no path settings (not needed for metrics)
     const layout = calculateLayout(sysLength, sysWidth, config);
 
     // --- 3. Get Vertical Inputs from config ---

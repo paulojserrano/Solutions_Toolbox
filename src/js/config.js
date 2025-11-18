@@ -136,6 +136,11 @@ export const configurations = {
         "sprinkler-threshold": 4572,
         "sprinkler-clearance": 200,
         "max-perf-density": 1.2,
+        "robot-path-first-offset": 500,
+        "robot-path-gap": 600,
+        "acr-path-offset-top": 1000,
+        "acr-path-offset-bottom": 1000,
+        "amr-path-offset": 850
     },
     "hps3-e2-650-td": {
         "name": "HPS3-E2 - 650x450x300 - Triple Deep",
@@ -204,6 +209,11 @@ export const configurations = {
         "sprinkler-threshold": 4572,
         "sprinkler-clearance": 200,
         "max-perf-density": 0.65,
+        "robot-path-first-offset": 500,
+        "robot-path-gap": 600,
+        "acr-path-offset-top": 1000,
+        "acr-path-offset-bottom": 1000,
+        "amr-path-offset": 850
     },
     "hps3-e2-850-dd": {
         "name": "HPS3-E2 - 850x650x400 - Double Deep",
@@ -274,6 +284,11 @@ export const configurations = {
         "sprinkler-threshold": 4572,
         "sprinkler-clearance": 200,
         "max-perf-density": 1,
+        "robot-path-first-offset": 500,
+        "robot-path-gap": 600,
+        "acr-path-offset-top": 1000,
+        "acr-path-offset-bottom": 1000,
+        "amr-path-offset": 850
     },
     "hps3-e2-850-td": {
         "name": "HPS3-E2 - 850x650x400 - Triple Deep",
@@ -345,6 +360,11 @@ export const configurations = {
         "sprinkler-threshold": 4572,
         "sprinkler-clearance": 200,
         "max-perf-density": 0.4,
+        "robot-path-first-offset": 500,
+        "robot-path-gap": 600,
+        "acr-path-offset-top": 1000,
+        "acr-path-offset-bottom": 1000,
+        "amr-path-offset": 850
     },
     "HPC": {
         "name": "HPC - Single Deep",
