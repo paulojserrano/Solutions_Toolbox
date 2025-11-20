@@ -181,6 +181,14 @@ body[data-theme="neo-brutalist"] .nb-box {
     border-width: 3px;
 }
 
+/* Sidebar for Fine Tuning */
+.fine-tune-sidebar {
+    background-color: var(--input-bg);
+    color: var(--content-text);
+}
+body[data-theme="neo-brutalist"] .fine-tune-sidebar {
+    /* Specific overrides for neo-brutalist sidebar if needed */
+}
 
 /* Headings */
 .nb-title {
@@ -199,7 +207,7 @@ body[data-theme="neo-brutalist"] .nb-title {
 }
 
 /* Inputs & Selects */
-input[type="text"], select {
+input[type="text"], input[type="number"], select {
     border: 1px solid var(--nb-border-color) !important;
     border-radius: 0 !important;
     box-shadow: none !important;
@@ -211,13 +219,14 @@ input[type="text"], select {
     font-family: var(--font-main);
 }
 body[data-theme="neo-brutalist"] input[type="text"], 
+body[data-theme="neo-brutalist"] input[type="number"],
 body[data-theme="neo-brutalist"] select {
     border-width: 3px !important;
     box-shadow: var(--nb-shadow) !important;
     font-weight: 700 !important;
 }
 
-input[type="text"]:focus, select:focus {
+input[type="text"]:focus, input[type="number"]:focus, select:focus {
     background-color: var(--input-focus-bg) !important;
     border-color: var(--nb-accent-primary) !important;
 }
