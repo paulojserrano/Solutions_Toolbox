@@ -26,13 +26,13 @@
                 Layout Builder
             </h1>
 
-            <!-- Theme Switcher -->
-            <div class="ml-auto">
-                <label for="themeSwitcher" class="sr-only">Theme</label>
-                <select id="themeSwitcher">
-                    <option value="engineering">Engineering</option>
-                    <option value="neo-brutalist">Neo-Brutalist</option>
-                </select>
+            <!-- Right Side Utilities -->
+            <div class="ml-auto flex items-center gap-4">
+                <!-- User Profile Display -->
+                <div id="userProfileContainer" class="hidden md:flex flex-col items-end text-right">
+                    <span id="userProfileName" class="text-xs font-bold uppercase opacity-70">Not Logged In</span>
+                    <a href="/.auth/logout" class="text-[10px] underline hover:text-red-600 font-mono">Logout</a>
+                </div>
             </div>
 
         </div>

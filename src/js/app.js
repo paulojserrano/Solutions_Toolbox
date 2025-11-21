@@ -37,9 +37,6 @@ import {
     // --- NEW: Import tote size select ---
     solverToteSizeSelect,
 
-    // --- NEW: THEME SWITCHER ---
-    themeSwitcher,
-
     // --- NEW: Robot Path Inputs ---
     robotPathTopLinesInput,
     robotPathBottomLinesInput,
@@ -50,7 +47,11 @@ import {
     userSetbackTopInput,
     userSetbackBottomInput,
     userSetbackLeftInput, // NEW
-    userSetbackRightInput // NEW
+    userSetbackRightInput, // NEW
+
+    // --- NEW: Auth Elements ---
+    userProfileName,
+    userProfileContainer
 
 } from './dom.js';
 
@@ -235,6 +236,32 @@ function updateSolverMethodUI() {
 }
 
 
+// --- NEW: Authentication Logic ---
+async function loadAuthInfo() {
+    if (!userProfileContainer || !userProfileName) return;
+
+    try {
+        const response = await fetch('/.auth/me');
+        const payload = await response.json();
+        const { clientPrincipal } = payload;
+
+        if (clientPrincipal) {
+            userProfileName.textContent = clientPrincipal.userDetails || clientPrincipal.userId;
+            userProfileContainer.classList.remove('hidden');
+            userProfileContainer.classList.add('flex');
+        } else {
+            // Not logged in (or running locally without emulator)
+            userProfileName.textContent = "Local / Guest";
+        }
+    } catch (error) {
+        console.log("Auth check failed (likely running locally):", error);
+        userProfileName.textContent = "Local Dev";
+        userProfileContainer.classList.remove('hidden');
+        userProfileContainer.classList.add('flex');
+    }
+}
+
+
 document.addEventListener('DOMContentLoaded', () => {
     
     // Build the read-only config page
@@ -279,18 +306,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Run once on load to set initial state
     updateSolverMethodUI();
 
-    // --- NEW: Theme-switching logic ---
-    if (themeSwitcher) {
-        // 1. On load, check localStorage for a saved theme
-        const savedTheme = localStorage.getItem('layout-theme') || 'engineering';
-        themeSwitcher.value = savedTheme;
-        document.body.setAttribute('data-theme', savedTheme);
-
-        // 2. Add listener for changes
-        themeSwitcher.addEventListener('change', (e) => {
-            const newTheme = e.target.value;
-            document.body.setAttribute('data-theme', newTheme);
-            localStorage.setItem('layout-theme', newTheme);
-        });
-    }
+    // --- NEW: Load User Info ---
+    loadAuthInfo();
 });
