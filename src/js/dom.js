@@ -54,6 +54,16 @@ export const robotPathTopLinesInput = document.getElementById('robotPathTopLines
 export const robotPathBottomLinesInput = document.getElementById('robotPathBottomLines');
 export const robotPathAddLeftACRCheckbox = document.getElementById('robotPathAddLeftACR');
 export const robotPathAddRightACRCheckbox = document.getElementById('robotPathAddRightACR');
+export const robotPathACRContainer = document.getElementById('robotPathACRContainer');
+
+// --- NEW: Setback Inputs ---
+export const userSetbackTopInput = document.getElementById('userSetbackTop');
+export const userSetbackBottomInput = document.getElementById('userSetbackBottom');
+export const userSetbackLeftInput = document.getElementById('userSetbackLeft'); // NEW
+export const userSetbackRightInput = document.getElementById('userSetbackRight'); // NEW
+
+// --- NEW: Live Metrics ---
+export const adjustedLocationsDisplay = document.getElementById('adjustedLocationsDisplay');
 
 
 export const solverConfigStatus = document.getElementById('solverConfigStatus');

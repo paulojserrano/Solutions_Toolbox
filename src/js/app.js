@@ -44,7 +44,13 @@ import {
     robotPathTopLinesInput,
     robotPathBottomLinesInput,
     robotPathAddLeftACRCheckbox,
-    robotPathAddRightACRCheckbox
+    robotPathAddRightACRCheckbox,
+
+    // --- NEW: Setback Inputs ---
+    userSetbackTopInput,
+    userSetbackBottomInput,
+    userSetbackLeftInput, // NEW
+    userSetbackRightInput // NEW
 
 } from './dom.js';
 
@@ -240,7 +246,9 @@ document.addEventListener('DOMContentLoaded', () => {
         detailViewToggle,
         // --- NEW: Path Inputs ---
         robotPathTopLinesInput, robotPathBottomLinesInput,
-        robotPathAddLeftACRCheckbox, robotPathAddRightACRCheckbox
+        robotPathAddLeftACRCheckbox, robotPathAddRightACRCheckbox,
+        userSetbackTopInput, userSetbackBottomInput,
+        userSetbackLeftInput, userSetbackRightInput // NEW
     ];
 
     // All inputs that should be formatted as numbers
@@ -249,8 +257,12 @@ document.addEventListener('DOMContentLoaded', () => {
         solverStorageReqInput, solverThroughputReqInput,
         solverFixedLength,
         solverFixedWidth,
-        solverManualLength, // NEW
-        solverManualWidth   // NEW
+        solverManualLength,
+        solverManualWidth,
+        userSetbackTopInput, 
+        userSetbackBottomInput,
+        userSetbackLeftInput, // NEW
+        userSetbackRightInput // NEW
     ];
 
     // Inputs that should be formatted as decimals

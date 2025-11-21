@@ -35,6 +35,16 @@ import {
     solverResultCapacityUtil,
     solverResultRowsAndBays,
 
+    // --- NEW: Robot Path Inputs ---
+    robotPathTopLinesInput,
+    robotPathBottomLinesInput,
+    robotPathAddLeftACRCheckbox,
+    robotPathAddRightACRCheckbox,
+    userSetbackTopInput,
+    userSetbackBottomInput,
+    userSetbackLeftInput, // NEW
+    userSetbackRightInput // NEW
+
 } from './dom.js';
 import { parseNumber, formatNumber } from './utils.js';
 import { getMetrics, calculateLayout, calculateElevationLayout } from './calculations.js';
@@ -96,7 +106,7 @@ export function updateSolverResults(results) {
 /**
  * Runs a non-blocking, promise-based solver for a single configuration.
  */
-function findSolutionForConfig(storageReq, throughputReq, sysHeight, config, configKey, expandForPerformance, reduceLevels, warehouseL, warehouseW, respectConstraints, options) {
+function findSolutionForConfig(storageReq, throughputReq, sysHeight, config, configKey, expandForPerformance, reduceLevels, warehouseL, warehouseW, respectConstraints, options, pathSettings) {
     return new Promise((resolve) => {
         
         let currentL = 10000;
@@ -122,7 +132,8 @@ function findSolutionForConfig(storageReq, throughputReq, sysHeight, config, con
 
                     currentL += step;
                     currentW = currentL / options.value;
-                    metrics = getMetrics(currentL, currentW, sysHeight, config);
+                    // NEW: Pass pathSettings
+                    metrics = getMetrics(currentL, currentW, sysHeight, config, pathSettings);
 
                     if (metrics.totalLocations >= storageReq) {
                         const density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
@@ -149,7 +160,8 @@ function findSolutionForConfig(storageReq, throughputReq, sysHeight, config, con
                     
                     currentL += step;
                     currentW = currentL / options.value;
-                    metrics = getMetrics(currentL, currentW, sysHeight, config);
+                    // NEW: Pass pathSettings
+                    metrics = getMetrics(currentL, currentW, sysHeight, config, pathSettings);
                     let density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
 
                     if (density <= metrics.maxPerfDensity) {
@@ -174,7 +186,8 @@ function findSolutionForConfig(storageReq, throughputReq, sysHeight, config, con
                     }
 
                     currentW += step;
-                    metrics = getMetrics(currentL, currentW, sysHeight, config);
+                    // NEW: Pass pathSettings
+                    metrics = getMetrics(currentL, currentW, sysHeight, config, pathSettings);
 
                     if (metrics.totalLocations >= storageReq) {
                         const density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
@@ -199,7 +212,8 @@ function findSolutionForConfig(storageReq, throughputReq, sysHeight, config, con
                     }
                     
                     currentW += step;
-                    metrics = getMetrics(currentL, currentW, sysHeight, config);
+                    // NEW: Pass pathSettings
+                    metrics = getMetrics(currentL, currentW, sysHeight, config, pathSettings);
                     let density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
 
                     if (density <= metrics.maxPerfDensity) {
@@ -221,7 +235,8 @@ function findSolutionForConfig(storageReq, throughputReq, sysHeight, config, con
                     }
 
                     currentL += step;
-                    metrics = getMetrics(currentL, currentW, sysHeight, config);
+                    // NEW: Pass pathSettings
+                    metrics = getMetrics(currentL, currentW, sysHeight, config, pathSettings);
 
                     if (metrics.totalLocations >= storageReq) {
                         const density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
@@ -246,7 +261,8 @@ function findSolutionForConfig(storageReq, throughputReq, sysHeight, config, con
                     }
                     
                     currentL += step;
-                    metrics = getMetrics(currentL, currentW, sysHeight, config);
+                    // NEW: Pass pathSettings
+                    metrics = getMetrics(currentL, currentW, sysHeight, config, pathSettings);
                     let density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
 
                     if (density <= metrics.maxPerfDensity) {
@@ -272,7 +288,8 @@ function findSolutionForConfig(storageReq, throughputReq, sysHeight, config, con
             const perfDensity = storageMetResults.density;
 
             for (let levels = storageMetResults.calculatedMaxLevels - 1; levels > 0; levels--) {
-                const reducedMetrics = getMetrics(perfL, perfW, sysHeight, config, levels);
+                // NEW: Pass pathSettings
+                const reducedMetrics = getMetrics(perfL, perfW, sysHeight, config, pathSettings, levels);
                 
                 if (reducedMetrics.totalLocations >= storageReq) {
                     bestMetrics = { ...reducedMetrics, density: perfDensity };
@@ -365,6 +382,18 @@ async function runAllConfigurationsSolver() {
     const throughputReq = parseNumber(solverThroughputReqInput.value);
     const sysHeight = parseNumber(clearHeightInput.value);
 
+    // --- NEW: Get Path Settings from DOM ---
+    const pathSettings = {
+        topAMRLines: robotPathTopLinesInput ? parseNumber(robotPathTopLinesInput.value) : 3,
+        bottomAMRLines: robotPathBottomLinesInput ? parseNumber(robotPathBottomLinesInput.value) : 3,
+        addLeftACR: robotPathAddLeftACRCheckbox ? robotPathAddLeftACRCheckbox.checked : false,
+        addRightACR: robotPathAddRightACRCheckbox ? robotPathAddRightACRCheckbox.checked : false,
+        userSetbackTop: userSetbackTopInput ? parseNumber(userSetbackTopInput.value) : 500,
+        userSetbackBottom: userSetbackBottomInput ? parseNumber(userSetbackBottomInput.value) : 500,
+        userSetbackLeft: userSetbackLeftInput ? parseNumber(userSetbackLeftInput.value) : 500, // NEW
+        userSetbackRight: userSetbackRightInput ? parseNumber(userSetbackRightInput.value) : 500 // NEW
+    };
+
     // --- 3. Get Selected Configurations (Common) ---
     const tasksToRun = [];
     const selectedToteSize = solverToteSizeSelect.value;
@@ -436,7 +465,8 @@ async function runAllConfigurationsSolver() {
             
             // Create a self-resolving promise that just runs getMetrics
             promises.push(Promise.resolve().then(() => {
-                const metrics = getMetrics(manualL, manualW, sysHeight, config);
+                // NEW: Pass pathSettings
+                const metrics = getMetrics(manualL, manualW, sysHeight, config, pathSettings);
                 const density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
                 return { ...metrics, density, configKey: task.configKey, configName: config.name };
             }));
@@ -523,7 +553,8 @@ async function runAllConfigurationsSolver() {
                 warehouseL,
                 warehouseW,
                 respectConstraints,
-                solverOptions
+                solverOptions,
+                pathSettings // NEW
             ));
         }
     }

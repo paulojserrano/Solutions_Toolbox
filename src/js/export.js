@@ -7,7 +7,11 @@ import {
     robotPathTopLinesInput,
     robotPathBottomLinesInput,
     robotPathAddLeftACRCheckbox,
-    robotPathAddRightACRCheckbox
+    robotPathAddRightACRCheckbox,
+    userSetbackTopInput, // NEW
+    userSetbackBottomInput, // NEW
+    userSetbackLeftInput, // NEW
+    userSetbackRightInput // NEW
 } from './dom.js';
 import { calculateLayout } from './calculations.js';
 
@@ -257,11 +261,16 @@ export function exportLayout() {
     // const sysHeight = parseNumber(clearHeightInput.value); // Not needed for 2D export
 
     // --- 0. Get current path settings from UI ---
+    // MODIFIED: Get all path settings including new Setbacks
     const pathSettings = {
         topAMRLines: robotPathTopLinesInput ? parseNumber(robotPathTopLinesInput.value) : 3,
         bottomAMRLines: robotPathBottomLinesInput ? parseNumber(robotPathBottomLinesInput.value) : 3,
         addLeftACR: robotPathAddLeftACRCheckbox ? robotPathAddLeftACRCheckbox.checked : false,
-        addRightACR: robotPathAddRightACRCheckbox ? robotPathAddRightACRCheckbox.checked : false
+        addRightACR: robotPathAddRightACRCheckbox ? robotPathAddRightACRCheckbox.checked : false,
+        userSetbackTop: userSetbackTopInput ? parseNumber(userSetbackTopInput.value) : 500,
+        userSetbackBottom: userSetbackBottomInput ? parseNumber(userSetbackBottomInput.value) : 500,
+        userSetbackLeft: userSetbackLeftInput ? parseNumber(userSetbackLeftInput.value) : 500, // NEW
+        userSetbackRight: userSetbackRightInput ? parseNumber(userSetbackRightInput.value) : 500 // NEW
     };
 
     // 1. Re-calculate Layout (visuals) with path settings

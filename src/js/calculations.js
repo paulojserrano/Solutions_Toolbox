@@ -81,10 +81,11 @@ function addBaysToMasterList(allBays, rowItem, verticalBayTemplate, config, layo
  */
 export function calculateLayout(sysLength, sysWidth, config, pathSettings = null) {
     // --- 1. Extract parameters from config ---
-    const setbackTop = config['top-setback'] || 0;
-    const setbackBottom = config['bottom-setback'] || 0;
-    const setbackLeft = config['setback-left'] || 0;
-    const setbackRight = config['setback-right'] || 0;
+    let setbackTop = config['top-setback'] || 0;
+    let setbackBottom = config['bottom-setback'] || 0;
+    let setbackLeft = config['setback-left'] || 0;
+    let setbackRight = config['setback-right'] || 0;
+    
     const uprightLength = config['upright-length'] || 0;
     const toteLength = config['tote-length'] || 0;
     const toteQtyPerBay = config['tote-qty-per-bay'] || 1;
@@ -105,7 +106,35 @@ export function calculateLayout(sysLength, sysWidth, config, pathSettings = null
     const robotPathGap = config['robot-path-gap'] || 600; // Can be number OR array
     const acrPathOffsetTop = config['acr-path-offset-top'] || 1000;
     const acrPathOffsetBottom = config['acr-path-offset-bottom'] || 1000;
-    const amrPathOffset = config['amr-path-offset'] || 850;
+    const amrPathOffset = config['amr-path-offset'] || 850; // Default to 850 if not in config
+
+    // --- NEW: Dynamic Setback Calculation ---
+    // If pathSettings are provided, override the default top/bottom setbacks
+    if (pathSettings) {
+        // 1. Top/Bottom (AMR Logic)
+        const topLines = pathSettings.topAMRLines || 0;
+        const bottomLines = pathSettings.bottomAMRLines || 0;
+        const userAdditionalTop = pathSettings.userSetbackTop || 0;
+        const userAdditionalBottom = pathSettings.userSetbackBottom || 0;
+        
+        const topPathSpace = (topLines * amrPathOffset) + (0.5 * amrPathOffset);
+        const bottomPathSpace = (bottomLines * amrPathOffset) + (0.5 * amrPathOffset);
+        
+        setbackTop = topPathSpace + userAdditionalTop;
+        setbackBottom = bottomPathSpace + userAdditionalBottom;
+
+        // 2. Left/Right (ACR Logic)
+        // If ACR exists, use the ACR offset (acrPathOffsetTop) as the "path space" width.
+        // If not, 0.
+        const userAdditionalLeft = pathSettings.userSetbackLeft || 0;
+        const userAdditionalRight = pathSettings.userSetbackRight || 0;
+
+        const leftPathSpace = pathSettings.addLeftACR ? acrPathOffsetTop : 0;
+        const rightPathSpace = pathSettings.addRightACR ? acrPathOffsetTop : 0;
+
+        setbackLeft = leftPathSpace + userAdditionalLeft;
+        setbackRight = rightPathSpace + userAdditionalRight;
+    }
 
     // --- 2. Calculate core dimensions ---
     const clearOpening = (toteQtyPerBay * toteLength) +
@@ -212,7 +241,9 @@ export function calculateLayout(sysLength, sysWidth, config, pathSettings = null
             numStorageBays: 0,
             numTunnelBays: 0,
             numBackpackBays: 0,
-            repeatingBayUnitWidth
+            repeatingBayUnitWidth,
+            // Return calculated setbacks
+            setbackTop, setbackBottom, setbackLeft, setbackRight
         };
     }
     
@@ -272,7 +303,9 @@ export function calculateLayout(sysLength, sysWidth, config, pathSettings = null
                 baysPerRack: totalBayPositions,
                 clearOpening,
                 numStorageBays: 0, numTunnelBays: 0, numBackpackBays: 0,
-                repeatingBayUnitWidth
+                repeatingBayUnitWidth,
+                // Return calculated setbacks
+                setbackTop, setbackBottom, setbackLeft, setbackRight
             };
         }
 
@@ -310,10 +343,18 @@ export function calculateLayout(sysLength, sysWidth, config, pathSettings = null
     const layoutOffsetX_world = (usableWidth_h - totalLayoutWidth) / 2;
 
     // --- 5. Populate Master Bay List (Step 2.3) ---
-    // Now that we have the horizontal centering offset, populate allBays
+    // Create a renderConfig that carries the dynamically calculated setbacks.
+    const renderConfig = { 
+        ...config, 
+        'top-setback': setbackTop, 
+        'bottom-setback': setbackBottom,
+        'setback-left': setbackLeft,
+        'setback-right': setbackRight
+    };
+
     for (const item of layoutItems) {
         if (item.type === 'rack') {
-            addBaysToMasterList(allBays, item, verticalBayTemplate, config, layoutOffsetX_world, layoutOffsetY_world);
+            addBaysToMasterList(allBays, item, verticalBayTemplate, renderConfig, layoutOffsetX_world, layoutOffsetY_world);
         }
     }
 
@@ -326,9 +367,7 @@ export function calculateLayout(sysLength, sysWidth, config, pathSettings = null
 
     // --- 7. Robot Path Generation (UPDATED) ---
     const paths = [];
-    // Only generate paths if pathSettings are provided (even empty is fine)
-    // Note: This logic applies only to HPS3 configs where path offsets are defined
-    // Use a basic check: if firstOffset > 0, assume we want paths
+    // Only generate paths if pathSettings are provided
     if (pathSettings && robotPathFirstOffset > 0) {
         
         const rackStructureTopY = setbackTop + layoutOffsetY_world;
@@ -576,7 +615,9 @@ export function calculateLayout(sysLength, sysWidth, config, pathSettings = null
         numRows: rowCounter,   // Total number of rack rows
         
         // NEW: Return this for Export Block Correction
-        repeatingBayUnitWidth
+        repeatingBayUnitWidth,
+        // Return calculated setbacks so drawing logic stays in sync
+        setbackTop, setbackBottom, setbackLeft, setbackRight
     };
 }
 
@@ -718,8 +759,8 @@ export function calculateElevationLayout(inputs, evenDistribution = false, hasBu
 // --- MODIFIED FUNCTION ---
 // This function is the core of the solver logic.
 // It should ONLY use the passed-in parameters, not read from the DOM.
-// MODIFIED: Added levelOverride parameter
-export function getMetrics(sysLength, sysWidth, sysHeight, config, levelOverride = null) {
+// MODIFIED: Added levelOverride parameter and pathSettings
+export function getMetrics(sysLength, sysWidth, sysHeight, config, pathSettings = null, levelOverride = null) {
     if (!config) {
         // This should not happen if solver.js is correct
         console.error("getMetrics was called with no config.");
@@ -735,8 +776,8 @@ export function getMetrics(sysLength, sysWidth, sysHeight, config, levelOverride
     const hasBufferLayer = config['hasBufferLayer'] || false;
     
     // --- 2. Calculate Layout (Total Bays) ---
-    // MODIFIED: Call new calculateLayout with no path settings (not needed for metrics)
-    const layout = calculateLayout(sysLength, sysWidth, config);
+    // MODIFIED: Call new calculateLayout WITH path settings
+    const layout = calculateLayout(sysLength, sysWidth, config, pathSettings);
 
     // --- 3. Get Vertical Inputs from config ---
     const coreElevationInputs = {

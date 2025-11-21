@@ -13,7 +13,12 @@ import {
     robotPathTopLinesInput,
     robotPathBottomLinesInput,
     robotPathAddLeftACRCheckbox,
-    robotPathAddRightACRCheckbox
+    robotPathAddRightACRCheckbox,
+    // --- NEW: Setback Inputs ---
+    userSetbackTopInput,
+    userSetbackBottomInput,
+    userSetbackLeftInput,
+    userSetbackRightInput
 } from '../dom.js';
 import { formatNumber, parseNumber } from '../utils.js';
 import { calculateLayout, calculateElevationLayout } from '../calculations.js';
@@ -399,11 +404,16 @@ export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config
         return;
     }
     
+    // --- MODIFIED: Read all path settings including setbacks ---
     const pathSettings = {
         topAMRLines: robotPathTopLinesInput ? parseNumber(robotPathTopLinesInput.value) : 3,
         bottomAMRLines: robotPathBottomLinesInput ? parseNumber(robotPathBottomLinesInput.value) : 3,
         addLeftACR: robotPathAddLeftACRCheckbox ? robotPathAddLeftACRCheckbox.checked : false,
-        addRightACR: robotPathAddRightACRCheckbox ? robotPathAddRightACRCheckbox.checked : false
+        addRightACR: robotPathAddRightACRCheckbox ? robotPathAddRightACRCheckbox.checked : false,
+        userSetbackTop: userSetbackTopInput ? parseNumber(userSetbackTopInput.value) : 500,
+        userSetbackBottom: userSetbackBottomInput ? parseNumber(userSetbackBottomInput.value) : 500,
+        userSetbackLeft: userSetbackLeftInput ? parseNumber(userSetbackLeftInput.value) : 500, // NEW
+        userSetbackRight: userSetbackRightInput ? parseNumber(userSetbackRightInput.value) : 500 // NEW
     };
 
     const layout = calculateLayout(layoutL_world, layoutW_world, config, pathSettings);
@@ -429,10 +439,12 @@ export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config
         (Math.max(0, 1 - 1) * toteBackToBackDist) +
         hookAllowance;
 
-    const setbackTop = config['top-setback'] || 0;
-    const setbackBottom = config['bottom-setback'] || 0;
-    const setbackLeft = config['setback-left'] || 0;
-    const setbackRight = config['setback-right'] || 0;
+    // --- FIX: Read setbacks directly from the calculated layout object ---
+    // This ensures visual consistency with the calculation logic
+    const setbackTop = layout.setbackTop;
+    const setbackBottom = layout.setbackBottom;
+    const setbackLeft = layout.setbackLeft;
+    const setbackRight = layout.setbackRight;
     
     const isDetailView = detailViewToggle.checked;
 

@@ -151,7 +151,7 @@
                         </div>
                     </div>
 
-                    <!-- Col 3: Constraints (Robot Settings Moved to Fine Tune) -->
+                    <!-- Col 3: Constraints -->
                     <div class="space-y-5">
                         <h3 class="font-bold text-lg border-l-4 border-black pl-2 bg-red-300 text-black inline-block pr-2">Constraints</h3>
                         <div id="warehouseLengthContainer">
@@ -201,25 +201,26 @@
                             </div>
                         </div>
                         
-                        <!-- UPDATED: Split View for Canvas & Fine Tune Controls -->
+                        <!-- Split View for Canvas & Fine Tune Controls -->
                         <div class="flex-1 w-full h-full overflow-hidden relative flex flex-col md:flex-row">
                             
-                            <!-- 1. Canvas Wrapper (Approx 3/4 width on desktop) -->
+                            <!-- 1. Canvas Wrapper -->
                             <div class="flex-1 relative overflow-hidden h-full bg-white order-2 md:order-1">
                                 <canvas id="warehouseCanvas"></canvas>
                             </div>
                             
-                            <!-- 2. Fine Tune Sidebar (Approx 1/4 width on desktop) -->
+                            <!-- 2. Fine Tune Sidebar -->
                             <div class="fine-tune-sidebar w-full md:w-1/4 p-4 overflow-y-auto order-1 md:order-2 border-b-2 md:border-b-0 md:border-l-2 border-[var(--nb-border-color)]">
                                 <h3 class="text-sm font-black uppercase border-b-2 border-[var(--nb-border-color)] pb-2 mb-4 text-[var(--accent-primary)]">
                                     Fine Tune
                                 </h3>
                                 
-                                <!-- Moved Robot Path Inputs -->
                                 <div class="space-y-4">
+                                    <!-- Robot Paths Block -->
                                     <div class="bg-[var(--content-bg)] border-2 border-[var(--nb-border-color)] p-3">
                                         <h4 class="text-xs font-bold uppercase mb-3 opacity-70 border-b border-[var(--nb-border-color)] pb-1">Robot Paths</h4>
                                         
+                                        <!-- AMR Lines -->
                                         <div class="grid grid-cols-2 gap-2 mb-3">
                                             <div>
                                                 <label for="robotPathTopLines" class="block text-[10px] font-bold mb-1 uppercase">Top AMR</label>
@@ -231,22 +232,53 @@
                                             </div>
                                         </div>
 
-                                        <div class="space-y-2">
+                                        <!-- Top/Bottom Setbacks -->
+                                        <div class="space-y-2 mb-3 pb-3 border-b border-[var(--nb-border-color)] border-dashed">
+                                            <div>
+                                                <label for="userSetbackTop" class="block text-[10px] font-bold mb-1 uppercase">Add. Top Setback (mm)</label>
+                                                <input type="text" id="userSetbackTop" value="500" class="w-full text-sm p-1">
+                                            </div>
+                                            <div>
+                                                <label for="userSetbackBottom" class="block text-[10px] font-bold mb-1 uppercase">Add. Btm Setback (mm)</label>
+                                                <input type="text" id="userSetbackBottom" value="500" class="w-full text-sm p-1">
+                                            </div>
+                                        </div>
+
+                                        <!-- ACR Paths (Conditional) -->
+                                        <div id="robotPathACRContainer" class="space-y-2">
                                             <div class="flex items-center">
                                                 <input type="checkbox" id="robotPathAddLeftACR" class="h-4 w-4">
                                                 <label for="robotPathAddLeftACR" class="ml-2 block text-xs font-bold">Add Left ACR</label>
                                             </div>
-                                            <div class="flex items-center">
+                                            <div class="flex items-center mb-2">
                                                 <input type="checkbox" id="robotPathAddRightACR" class="h-4 w-4">
                                                 <label for="robotPathAddRightACR" class="ml-2 block text-xs font-bold">Add Right ACR</label>
                                             </div>
+                                            
+                                            <!-- Left/Right Setbacks -->
+                                            <div class="pt-2 border-t border-[var(--nb-border-color)] border-dashed">
+                                                <div class="mb-2">
+                                                    <label for="userSetbackLeft" class="block text-[10px] font-bold mb-1 uppercase">Add. Left Setback (mm)</label>
+                                                    <input type="text" id="userSetbackLeft" value="500" class="w-full text-sm p-1">
+                                                </div>
+                                                <div>
+                                                    <label for="userSetbackRight" class="block text-[10px] font-bold mb-1 uppercase">Add. Right Setback (mm)</label>
+                                                    <input type="text" id="userSetbackRight" value="500" class="w-full text-sm p-1">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Live Metrics Block -->
+                                    <div class="bg-[var(--content-bg)] border-2 border-[var(--nb-border-color)] p-3">
+                                        <h4 class="text-xs font-bold uppercase mb-3 opacity-70 border-b border-[var(--nb-border-color)] pb-1">Live Metrics</h4>
+                                        
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-[10px] font-bold uppercase">Adj. Locations:</span>
+                                            <span id="adjustedLocationsDisplay" class="text-lg font-black text-[var(--accent-primary)]">0</span>
                                         </div>
                                     </div>
                                     
-                                    <!-- Placeholder for future fine-tuning controls -->
-                                    <div class="opacity-50 text-xs font-mono text-center mt-6">
-                                        More controls coming soon...
-                                    </div>
                                 </div>
                             </div>
 
