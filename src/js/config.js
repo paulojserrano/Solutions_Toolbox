@@ -205,7 +205,7 @@ export const configurations = {
         "base-beam-height": 370,
         "beam-width": 60,
         "min-clearance": 40,
-        "overhead-clearance": 915,
+        "overhead-clearance": 915, 
         "sprinkler-threshold": 4572,
         "sprinkler-clearance": 200,
         "max-perf-density": 0.9,
