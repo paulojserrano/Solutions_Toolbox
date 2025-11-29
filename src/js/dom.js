@@ -134,3 +134,9 @@ export const debugBayListBody = document.getElementById('debugBayListBody');
 // --- NEW: Auth Elements ---
 export const userProfileContainer = document.getElementById('userProfileContainer');
 export const userProfileName = document.getElementById('userProfileName');
+
+// --- NEW: SharePoint Tab Elements ---
+export const btnFetchSharePoint = document.getElementById('btnFetchSharePoint');
+export const sharepointStatus = document.getElementById('sharepointStatus');
+export const sharepointTableBody = document.getElementById('sharepointTableBody');
+export const sharepointRawOutput = document.getElementById('sharepointRawOutput');

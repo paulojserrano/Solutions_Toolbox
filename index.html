@@ -47,8 +47,9 @@
                 <button class="main-tab-button active" data-tab="solverTabContent">Solver</button>
                 <button class="main-tab-button" data-tab="configTabContent">Configuration</button>
                 <button class="main-tab-button" data-tab="debugTabContent">Debug</button>
-                <!-- NEW: Roadmap Tab Button -->
                 <button class="main-tab-button" data-tab="roadmapTabContent">Roadmap</button>
+                <!-- NEW: SharePoint Tab -->
+                <button class="main-tab-button" data-tab="sharepointTabContent">SharePoint</button>
             </div>
         </nav>
 
@@ -465,7 +466,7 @@
             </div>
         </div>
 
-        <!-- 5. NEW: Roadmap Tab Content -->
+        <!-- 5. Roadmap Tab Content -->
         <div id="roadmapTabContent" class="main-tab-content space-y-8">
             <h2 class="nb-title text-xl mb-2">Development Roadmap</h2>
             <p class="font-mono mb-6 opacity-80">Tracking future features and priorities.</p>
@@ -510,6 +511,46 @@
                          <li class="flex items-center"><input type="checkbox" disabled class="mr-2"> Building Column Handling</li>
                     </ul>
                 </section>
+            </div>
+        </div>
+
+        <!-- 6. NEW: SharePoint Tab Content -->
+        <div id="sharepointTabContent" class="main-tab-content space-y-8">
+            <h2 class="nb-title text-xl mb-2">SharePoint Integration Test</h2>
+            
+            <div class="nb-box p-6">
+                <h3 class="font-bold text-lg border-b-2 border-black/20 mb-4 pb-2">Master Cost Table (Top 5)</h3>
+                <p class="font-mono mb-4 text-sm">
+                    Target: <span class="bg-gray-100 p-1 text-blue-600 break-all">hairoboticshq.sharepoint.com/sites/USInternalToolDev/Lists/Master_Cost_Table</span>
+                </p>
+
+                <div class="flex gap-4 mb-6">
+                    <button id="btnFetchSharePoint" class="nb-btn text-sm">Fetch Data</button>
+                    <span id="sharepointStatus" class="flex items-center text-sm font-bold font-mono"></span>
+                </div>
+
+                <!-- Results Table -->
+                <div class="overflow-x-auto border-2 border-[var(--nb-border-color)] min-h-[200px] bg-white">
+                    <table class="metric-table w-full">
+                        <thead>
+                            <tr id="sharepointTableHead">
+                                <th>ID</th>
+                                <th>Title</th>
+                                <th>Created</th>
+                                <th>Raw Data</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sharepointTableBody">
+                            <tr><td colspan="4" class="text-center p-4 opacity-50">Click Fetch to load data</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Debug / Raw Response Area -->
+                <div class="mt-6">
+                    <h4 class="text-xs font-bold uppercase mb-2 opacity-70">Raw API Response (Debug)</h4>
+                    <pre id="sharepointRawOutput" class="bg-gray-100 p-4 text-xs font-mono overflow-auto h-40 border border-gray-300"></pre>
+                </div>
             </div>
         </div>
         
