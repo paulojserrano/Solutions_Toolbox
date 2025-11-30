@@ -89,9 +89,12 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
             const isBackpack = bayTpl.bayType === 'backpack';
             
             // Calculate bay dimensions from template
+            // Note: For detail view, we rely on the precise geometry as well, 
+            // but the simplified view logic was the one causing the visual bug.
             const clearOpening_world = (i < verticalBayTemplate.length - 1) 
                 ? (verticalBayTemplate[i+1].y_center - bayTpl.y_center) - uprightLength_world
-                : (totalRackLength_world - bayTpl.y_center - uprightLength_world/2); // Estimate last C.O.
+                : params.clearOpening; // Use the fixed clear opening for consistency
+                
             const clearOpening_canvas = clearOpening_world * scale;
 
             // --- NEW: Exclude tunnel if levels are 0 ---
@@ -201,6 +204,9 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
     // --- ELSE: Original Simple View ---
     else {
         const uprightLength_canvas = uprightLength_world * scale;
+        // FIXED: Use the passed clearOpening param for all bays to ensure perfect alignment
+        // The previous center-based calculation caused floating point rounding errors on the last bay
+        const clearOpening_canvas = params.clearOpening * scale;
 
         if (rackType === 'single') {
             const rackWidth_canvas = rackDepth_world * scale;
@@ -220,13 +226,6 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
                     
                     // --- NEW: Exclude tunnel if levels are 0 ---
                     if (isTunnel && numTunnelLevels === 0) {
-                        // This bay is a tunnel, but tunnels have 0 levels. Skip drawing.
-                        // We must still advance the Y-coordinate.
-                        const clearOpening_world = (i < verticalBayTemplate.length - 1) 
-                            ? (verticalBayTemplate[i+1].y_center - bayTpl.y_center) - uprightLength_world
-                            : (totalRackLength_world - bayTpl.y_center - uprightLength_world/2);
-                        const clearOpening_canvas = clearOpening_world * scale;
-                        
                         currentY_canvas += (clearOpening_canvas + uprightLength_canvas);
                         continue; // Skip to the next bay
                     }
@@ -236,12 +235,6 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
                     ctx.fillStyle = isTunnel ? '#fde047' : (isBackpack ? '#a855f7' : '#cbd5e1'); // yellow, purple, or grey
                     ctx.strokeStyle = '#64748b'; // slate-500
                     ctx.lineWidth = 0.5;
-                    
-                    // Calculate bay dimensions from template
-                    const clearOpening_world = (i < verticalBayTemplate.length - 1) 
-                        ? (verticalBayTemplate[i+1].y_center - bayTpl.y_center) - uprightLength_world
-                        : (totalRackLength_world - bayTpl.y_center - uprightLength_world/2); // Estimate last C.O.
-                    const clearOpening_canvas = clearOpening_world * scale;
                     
                     const bayHeight_canvas = (clearOpening_canvas + uprightLength_canvas);
                     ctx.fillRect(rackX_canvas, currentY_canvas, rackWidth_canvas, bayHeight_canvas);
@@ -283,11 +276,6 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
                     
                     // --- NEW: Exclude tunnel if levels are 0 ---
                     if (isTunnel && numTunnelLevels === 0) {
-                        const clearOpening_world = (i < verticalBayTemplate.length - 1) 
-                            ? (verticalBayTemplate[i+1].y_center - bayTpl.y_center) - uprightLength_world
-                            : (totalRackLength_world - bayTpl.y_center - uprightLength_world/2);
-                        const clearOpening_canvas = clearOpening_world * scale;
-                        
                         currentY_canvas += (clearOpening_canvas + uprightLength_canvas);
                         continue; // Skip to the next bay
                     }
@@ -295,11 +283,6 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
                     
                     ctx.fillStyle = isTunnel ? '#fde047' : (isBackpack ? '#a855f7' : '#cbd5e1'); // yellow, purple, or grey
                     ctx.strokeStyle = '#64748b'; ctx.lineWidth = 0.5;
-
-                    const clearOpening_world = (i < verticalBayTemplate.length - 1) 
-                        ? (verticalBayTemplate[i+1].y_center - bayTpl.y_center) - uprightLength_world
-                        : (totalRackLength_world - bayTpl.y_center - uprightLength_world/2);
-                    const clearOpening_canvas = clearOpening_world * scale;
 
                     const bayHeight_canvas = (clearOpening_canvas + uprightLength_canvas);
                     ctx.fillRect(rackX_canvas, currentY_canvas, rack1_width_canvas, bayHeight_canvas);
@@ -330,11 +313,6 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
 
                     // --- NEW: Exclude tunnel if levels are 0 ---
                     if (isTunnel && numTunnelLevels === 0) {
-                        const clearOpening_world = (i < verticalBayTemplate.length - 1) 
-                            ? (verticalBayTemplate[i+1].y_center - bayTpl.y_center) - uprightLength_world
-                            : (totalRackLength_world - bayTpl.y_center - uprightLength_world/2);
-                        const clearOpening_canvas = clearOpening_world * scale;
-                        
                         currentY_canvas += (clearOpening_canvas + uprightLength_canvas);
                         continue; // Skip to the next bay
                     }
@@ -342,11 +320,6 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
 
                     ctx.fillStyle = isTunnel ? '#fde047' : (isBackpack ? '#a855f7' : '#cbd5e1'); // yellow, purple, or grey
                     ctx.strokeStyle = '#64748b'; ctx.lineWidth = 0.5;
-
-                    const clearOpening_world = (i < verticalBayTemplate.length - 1) 
-                        ? (verticalBayTemplate[i+1].y_center - bayTpl.y_center) - uprightLength_world
-                        : (totalRackLength_world - bayTpl.y_center - uprightLength_world/2);
-                    const clearOpening_canvas = clearOpening_world * scale;
 
                     const bayHeight_canvas = (clearOpening_canvas + uprightLength_canvas);
                     ctx.fillRect(rack2_x_canvas, currentY_canvas, rack2_width_canvas, bayHeight_canvas);
@@ -513,7 +486,9 @@ export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config
         verticalBayTemplate: layout.verticalBayTemplate,
         totalRackLength_world: layout.totalRackLength_world,
         layoutOffsetY_world: layoutOffsetY_world,
-        numTunnelLevels: numTunnelLevels
+        numTunnelLevels: numTunnelLevels,
+        // --- FIXED: Pass clearOpening explicitly to fix partial bay issue ---
+        clearOpening: layout.clearOpening
     };
     
     // Draw Racks and Aisles
@@ -527,17 +502,17 @@ export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config
     if (isDetailView && layout.paths && layout.paths.length > 0) { // <<< Added isDetailView check
         warehouseCtx.save();
         
-        // Dash pattern scaled to stay constant on screen (approx 10px)
-        warehouseCtx.setLineDash([10 / state.scale, 10 / state.scale]);
+        // --- MODIFIED: Solid lines (no dash) ---
+        warehouseCtx.setLineDash([]); 
 
         layout.paths.forEach(path => {
             warehouseCtx.beginPath();
             
-            // Color Logic: Match Prototype
+            // --- MODIFIED: Solid lines with transparency ---
             if (path.type === 'aisle' || path.type === 'acr') {
-                warehouseCtx.strokeStyle = '#f97316'; // Orange
+                warehouseCtx.strokeStyle = 'rgba(249, 115, 22, 0.5)'; // Orange #f97316 @ 50%
             } else {
-                warehouseCtx.strokeStyle = '#a855f7'; // Purple (AMR, Cross-Aisle, Bay)
+                warehouseCtx.strokeStyle = 'rgba(168, 85, 247, 0.5)'; // Purple #a855f7 @ 50%
             }
 
             // Line Width Logic: Match Prototype

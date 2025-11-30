@@ -1,7 +1,6 @@
 import { initializeUI } from './ui.js';
 import { initializeSolver } from './solver.js';
 import { configurations } from './config.js'; // Import configurations
-import { initializeSharePoint } from './sharepoint.js'; // NEW
 import {
     // --- MAIN SOLVER TAB INPUTS ---
     warehouseLengthInput, warehouseWidthInput, clearHeightInput,
@@ -300,7 +299,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     initializeUI(redrawInputs, numberInputs, decimalInputs);
     initializeSolver();
-    initializeSharePoint(); // NEW
 
     // --- MODIFIED: Add listeners for new UI ---
     solverRespectConstraintsCheckbox.addEventListener('change', updateSolverMethodUI);
