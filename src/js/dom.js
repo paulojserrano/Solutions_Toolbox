@@ -50,11 +50,16 @@ export const manualInputContainer = document.getElementById('manualInputContaine
 export const solverManualLength = document.getElementById('solverManualLength');
 export const solverManualWidth = document.getElementById('solverManualWidth');
 export const manualSystemConfigSelect = document.getElementById('manualSystemConfigSelect');
-// NEW: Manual Height Select
-export const solverToteHeightSelectManual = document.getElementById('solverToteHeightSelectManual');
+// NEW: Manual Elements
+export const manualToteSizeSelect = document.getElementById('manualToteSizeSelect');
+export const manualToteHeightSelect = document.getElementById('manualToteHeightSelect');
 export const manualThroughputInput = document.getElementById('manualThroughputInput');
 export const manualClearHeightInput = document.getElementById('manualClearHeightInput');
-
+export const manualLengthSlider = document.getElementById('manualLengthSlider');
+export const manualWidthSlider = document.getElementById('manualWidthSlider');
+export const manualLengthValue = document.getElementById('manualLengthValue');
+export const manualWidthValue = document.getElementById('manualWidthValue');
+export const solverFooter = document.getElementById('solverFooter'); 
 
 // --- NEW: Solver Input Containers ---
 export const solverRequirementsContainer = document.getElementById('solverRequirementsContainer');
@@ -106,6 +111,9 @@ export const solverResultPDUtil = document.getElementById('solverResultPDUtil');
 export const unitToggle = document.getElementById('unitToggle');
 export const solverResultFootprintUnit = document.getElementById('solverResultFootprintUnit');
 export const solverResultGrossVolumeUnit = document.getElementById('solverResultGrossVolumeUnit');
+// NEW: PD Util Card for Color Styling
+export const pdUtilCard = document.getElementById('pdUtilCard');
+
 
 export const detailViewToggle = document.getElementById('detailViewToggle');
 export const readOnlyConfigContainer = document.getElementById('readOnlyConfigContainer');
@@ -160,6 +168,20 @@ export const btnFetchSharePoint = document.getElementById('btnFetchSharePoint');
 export const sharepointStatus = document.getElementById('sharepointStatus');
 export const sharepointTableBody = document.getElementById('sharepointTableBody');
 export const sharepointRawOutput = document.getElementById('sharepointRawOutput');
+
+export const analyzerClearHeightInput = document.getElementById('analyzerClearHeight');
+export const analyzerThroughputInput = document.getElementById('analyzerThroughput');
+export const analyzerStorageStartInput = document.getElementById('analyzerStorageStart');
+export const analyzerStorageEndInput = document.getElementById('analyzerStorageEnd');
+export const analyzerStorageStepInput = document.getElementById('analyzerStorageStep');
+export const analyzerConfigChecklist = document.getElementById('analyzerConfigChecklist');
+export const runAnalyzerButton = document.getElementById('runAnalyzerButton');
+export const analyzerStatus = document.getElementById('analyzerStatus');
+export const analyzerChartsSection = document.getElementById('analyzerChartsSection');
+export const analyzerChartFootprint = document.getElementById('analyzerChartFootprint');
+export const analyzerChartPerfDensity = document.getElementById('analyzerChartPerfDensity');
+export const analyzerChartTotalBays = document.getElementById('analyzerChartTotalBays');
+
 export const calculatorFileInput = document.getElementById('calculatorFileInput');
 export const exportCalculatorButton = document.getElementById('exportCalculatorButton');
 export const calculatorStatus = document.getElementById('calculatorStatus');

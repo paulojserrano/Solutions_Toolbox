@@ -301,13 +301,12 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
 }
 
 // --- Main Drawing Function (Top-Down) ---
-// MODIFIED: Return Content Scale
 export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config, solverResults = null) {
     const dpr = window.devicePixelRatio || 1;
     const canvasWidth = warehouseCanvas.clientWidth;
     const canvasHeight = warehouseCanvas.clientHeight;
 
-    if (canvasWidth === 0 || canvasHeight === 0) return 1; // Return scale 1
+    if (canvasWidth === 0 || canvasHeight === 0) return 1;
 
     warehouseCanvas.width = canvasWidth * dpr;
     warehouseCanvas.height = canvasHeight * dpr;
@@ -510,18 +509,8 @@ export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config
         warehouseCtx.setLineDash([]);
     }
 
-    const dimLineX = layoutDrawX + layoutDrawWidth + (20 / state.scale); 
-    
-    if (setbackTop > 0) {
-        drawVerticalDimension(warehouseCtx, dimLineX, layoutDrawY, setbackTop * contentScale, `Top Setback: ${formatNumber(setbackTop)}`, state.scale);
-    }
-    
-    drawVerticalDimension(warehouseCtx, dimLineX, layoutDrawY + (setbackTop * contentScale), layout.usableLength_v * contentScale, `Usable Length: ${formatNumber(layout.usableLength_v)}`, state.scale);
-
-    if (setbackBottom > 0) {
-        drawVerticalDimension(warehouseCtx, dimLineX, layoutDrawY + (setbackTop * contentScale) + (layout.usableLength_v * contentScale), setbackBottom * contentScale, `Bottom Setback: ${formatNumber(setbackBottom)}`, state.scale);
-    }
-
+    // --- REMOVED SETBACK DIMENSIONS HERE ---
+    // Kept only the overall dimensions
     drawDimensions(warehouseCtx, layoutDrawX, layoutDrawY, layoutDrawWidth, layoutDrawHeight, layoutW_world, layoutL_world, state.scale);
     
     try {
@@ -690,6 +679,5 @@ export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config
         }
     }
 
-    // MODIFIED: Return contentScale for external use (zooming persistence)
     return contentScale;
 }

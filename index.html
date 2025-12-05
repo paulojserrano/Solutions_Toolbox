@@ -110,7 +110,6 @@
                                         <div>
                                             <label for="solverToteSizeSelect" class="input-label">Tote Footprint</label>
                                             <select id="solverToteSizeSelect" class="input-field">
-                                                <!-- Removed "All" -->
                                                 <option value="650x450x300">650 x 450</option>
                                                 <option value="850x650x400">850 x 650</option>
                                             </select>
@@ -155,29 +154,66 @@
 
                     <div id="manualTabContent" class="main-tab-content space-y-6" style="display: none;">
                         <section class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-                            <div class="px-4 py-3 border-b border-slate-100 bg-white"><h3 class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Manual Setup</h3></div>
+                            <div class="px-4 py-3 border-b border-slate-100 bg-white"><h3 class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">1. Manual Setup</h3></div>
                             <div class="p-4 space-y-5">
+                                
+                                <!-- Config Type -->
                                 <div>
                                     <label for="manualSystemConfigSelect" class="input-label">System Type</label>
                                     <select id="manualSystemConfigSelect" class="input-field"></select>
                                 </div>
+
+                                <!-- Tote & Requirements -->
                                 <div class="grid grid-cols-2 gap-3">
                                     <div>
-                                        <label for="solverToteHeightSelectManual" class="input-label">Tote Height</label>
-                                        <select id="solverToteHeightSelectManual" class="input-field">
+                                        <label for="manualToteSizeSelect" class="input-label">Tote Footprint</label>
+                                        <select id="manualToteSizeSelect" class="input-field">
+                                            <option value="650x450x300">650 x 450</option>
+                                            <option value="850x650x400">850 x 650</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label for="manualToteHeightSelect" class="input-label">Tote Height</label>
+                                        <select id="manualToteHeightSelect" class="input-field">
                                             <option value="300" selected>300 mm</option>
                                             <option value="400">400 mm</option>
                                         </select>
                                     </div>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div><label for="manualClearHeightInput" class="input-label">Clear Height</label><input type="text" id="manualClearHeightInput" value="10,000" class="input-field"></div>
                                     <div><label for="manualThroughputInput" class="input-label">Throughput</label><input type="text" id="manualThroughputInput" value="2,000" class="input-field"></div>
                                 </div>
-                                <div><label for="manualClearHeightInput" class="input-label">Clear Height</label><input type="text" id="manualClearHeightInput" value="10,000" class="input-field"></div>
-                                <div id="manualInputContainer" class="pt-3 border-t border-slate-100">
-                                    <div class="grid grid-cols-2 gap-3">
-                                        <div><label for="solverManualLength" class="input-label">Length (mm)</label><input type="text" id="solverManualLength" value="50,000" class="input-field"></div>
-                                        <div><label for="solverManualWidth" class="input-label">Width (mm)</label><input type="text" id="solverManualWidth" value="30,000" class="input-field"></div>
+
+                                <!-- Sliders -->
+                                <div class="pt-4 border-t border-slate-100 space-y-4">
+                                    <div>
+                                        <div class="flex justify-between items-center mb-1">
+                                            <label for="manualLengthSlider" class="text-xs font-bold text-slate-500">Length</label>
+                                            <!-- Default 40,000 -->
+                                            <span id="manualLengthValue" class="text-xs font-mono font-bold text-blue-600">40,000 mm</span>
+                                        </div>
+                                        <input type="range" id="manualLengthSlider" min="20000" max="500000" step="1000" value="40000" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                                    </div>
+                                    <div>
+                                        <div class="flex justify-between items-center mb-1">
+                                            <label for="manualWidthSlider" class="text-xs font-bold text-slate-500">Width</label>
+                                            <!-- Default 60,000 -->
+                                            <span id="manualWidthValue" class="text-xs font-mono font-bold text-blue-600">60,000 mm</span>
+                                        </div>
+                                        <input type="range" id="manualWidthSlider" min="20000" max="500000" step="1000" value="60000" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
                                     </div>
                                 </div>
+
+                                <!-- Hidden text inputs synced with sliders for logic -->
+                                <div id="manualInputContainer" class="hidden">
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div><input type="text" id="solverManualLength" value="40,000" class="input-field"></div>
+                                        <div><input type="text" id="solverManualWidth" value="60,000" class="input-field"></div>
+                                    </div>
+                                </div>
+
                             </div>
                         </section>
                     </div>
@@ -187,7 +223,8 @@
                     <div class="h-20"></div>
                 </div>
 
-                <div class="p-4 bg-white border-t border-slate-200 sticky bottom-0 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                <!-- Footer: Only visible in Solver mode -->
+                <div id="solverFooter" class="p-4 bg-white border-t border-slate-200 sticky bottom-0 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                     <button id="runSolverButton" class="w-full nb-btn py-3 text-sm shadow-lg shadow-blue-500/20 flex justify-center items-center gap-2">
                         <span id="runButtonText">Run Analysis</span>
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
@@ -260,7 +297,7 @@
                                 <div class="grid grid-cols-2 gap-3 flex-1">
                                      <div class="p-3 bg-slate-50 rounded border border-slate-100 flex flex-col justify-center"><div class="text-[10px] text-slate-400 font-bold uppercase">Locations</div><div id="solverResultLocations" class="text-xl font-black text-slate-800 leading-tight">0</div></div>
                                      <div class="p-3 bg-slate-50 rounded border border-slate-100 flex flex-col justify-center"><div class="text-[10px] text-slate-400 font-bold uppercase">Footprint</div><div class="flex items-baseline gap-1"><span id="solverResultFootprint" class="text-xl font-black text-slate-800 leading-tight">0</span><span class="text-sm font-medium text-slate-500" id="solverResultFootprintUnit">m²</span></div></div>
-                                     <div class="p-3 bg-slate-50 rounded border border-slate-100 flex flex-col justify-center"><div class="text-[10px] text-slate-400 font-bold uppercase">PD Utilization</div><div class="flex items-baseline gap-1"><span id="solverResultPDUtil" class="text-xl font-black text-slate-800 leading-tight">0</span><span class="text-sm font-medium text-slate-500">%</span></div></div>
+                                     <div id="pdUtilCard" class="p-3 bg-slate-50 rounded border border-slate-100 flex flex-col justify-center"><div class="text-[10px] text-slate-400 font-bold uppercase">PD Utilization</div><div class="flex items-baseline gap-1"><span id="solverResultPDUtil" class="text-xl font-black text-slate-800 leading-tight">0</span><span class="text-sm font-medium text-slate-500">%</span></div></div>
                                      <div class="p-3 bg-slate-50 rounded border border-slate-100 flex flex-col justify-center"><div class="text-[10px] text-slate-400 font-bold uppercase">Gross Vol.</div><div class="flex items-baseline gap-1"><span id="solverResultGrossVolume" class="text-xl font-black text-slate-800 leading-tight">0</span><span class="text-sm font-medium text-slate-500" id="solverResultGrossVolumeUnit">m³</span></div></div>
                                 </div>
                                 <div class="flex justify-end">

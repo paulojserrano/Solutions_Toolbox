@@ -9,7 +9,13 @@ import {
     adjustedLocationsDisplay, solverToteHeightSelect,
     visTabsNav, viewContainerWarehouse, viewContainerElevation, viewContainerDetail,
     leftPanel, rightPanel, runButtonText,
-    robotPathACRContainer, solverThroughputReqInput
+    robotPathACRContainer, solverThroughputReqInput,
+    solverFooter,
+    manualLengthSlider, manualWidthSlider,
+    manualLengthValue, manualWidthValue,
+    manualSystemConfigSelect, manualToteSizeSelect, manualToteHeightSelect,
+    manualClearHeightInput, manualThroughputInput,
+    pdUtilCard, solverResultPDUtil
 } from './dom.js';
 
 import { drawWarehouse } from './drawing/warehouseView.js';
@@ -19,7 +25,11 @@ import { parseNumber, formatNumber, formatDecimalNumber } from './utils.js';
 import { configurations } from './config.js';
 import { getViewState } from './viewState.js';
 import { getMetrics } from './calculations.js';
-import { selectedSolverResult, setSelectedSolverResult, getSolverResultByKey, updateSolverResults, reSolveCurrent } from './solver.js';
+import { 
+    selectedSolverResult, setSelectedSolverResult, 
+    getSolverResultByKey, updateSolverResults, 
+    reSolveCurrent, runManualLayout 
+} from './solver.js';
 
 let rafId = null;
 let debounceTimer = null;
@@ -89,10 +99,13 @@ export function requestRedraw(maintainVisualScale = false) {
         const config = configurations[selectedSolverResult.configKey];
         if (!config) return;
 
+        // Use properties from result object to support both Solver and Manual modes
         let drawL = selectedSolverResult.L;
         let drawW = selectedSolverResult.W;
-        const sysHeight = parseNumber(clearHeightInput.value);
-        const toteHeight = solverToteHeightSelect ? Number(solverToteHeightSelect.value) : 300;
+        
+        // Priority: Manual Height > Result Height > Input Height
+        const sysHeight = selectedSolverResult.sysHeight ? selectedSolverResult.sysHeight : parseNumber(clearHeightInput.value);
+        const toteHeight = selectedSolverResult.resolvedToteHeight ? selectedSolverResult.resolvedToteHeight : (solverToteHeightSelect ? Number(solverToteHeightSelect.value) : 300);
         
         const metrics = getMetrics(drawL, drawW, sysHeight, config, null, selectedSolverResult.maxLevels, toteHeight);
         
@@ -109,38 +122,33 @@ export function requestRedraw(maintainVisualScale = false) {
         drawRackDetail(0, 0, sysHeight, drawConfig, selectedSolverResult);
         drawElevationView(0, 0, sysHeight, drawConfig, selectedSolverResult);
 
-        // --- NEW: Draw Alerts for Expansion/Reduction ---
+        // --- Alerts for Expansion/Reduction ---
         if (selectedSolverResult.isExpanded || selectedSolverResult.isReduced) {
             const w = warehouseCanvas.width / (window.devicePixelRatio || 1);
-            const h = warehouseCanvas.height / (window.devicePixelRatio || 1);
             
             warehouseCtx.save();
-            warehouseCtx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform to draw UI overlay
+            warehouseCtx.setTransform(1, 0, 0, 1, 0, 0); 
             
             const msg = selectedSolverResult.isExpanded 
                 ? (selectedSolverResult.isReduced ? "Layout Expanded & Levels Reduced" : "Layout Expanded to meet PD") 
                 : "Levels Reduced to Match Storage";
 
-            const padding = 12;
             warehouseCtx.font = 'bold 12px Inter, sans-serif';
             const textWidth = warehouseCtx.measureText(msg).width;
-            
-            // Draw pill background
             const boxX = (w - textWidth - 30) / 2;
             const boxY = 20;
             const boxW = textWidth + 30;
             const boxH = 30;
             
-            warehouseCtx.fillStyle = 'rgba(254, 242, 242, 0.9)'; // Red-50
-            warehouseCtx.strokeStyle = '#fca5a5'; // Red-300
+            warehouseCtx.fillStyle = 'rgba(254, 242, 242, 0.9)'; 
+            warehouseCtx.strokeStyle = '#fca5a5'; 
             warehouseCtx.lineWidth = 1;
             warehouseCtx.beginPath();
             warehouseCtx.roundRect(boxX, boxY, boxW, boxH, 15);
             warehouseCtx.fill();
             warehouseCtx.stroke();
             
-            // Draw Text
-            warehouseCtx.fillStyle = '#dc2626'; // Red-600
+            warehouseCtx.fillStyle = '#dc2626'; 
             warehouseCtx.textAlign = 'center';
             warehouseCtx.textBaseline = 'middle';
             warehouseCtx.fillText(msg, w / 2, boxY + boxH/2);
@@ -153,6 +161,7 @@ export function requestRedraw(maintainVisualScale = false) {
             if (Math.abs(targetZoom - oldZoom) > 0.0001) {
                 state.scale = targetZoom;
                 drawWarehouse(drawL, drawW, sysHeight, drawConfig, selectedSolverResult);
+                
                 // Re-draw alert if re-drawn
                 if (selectedSolverResult.isExpanded || selectedSolverResult.isReduced) {
                     const w = warehouseCanvas.width / (window.devicePixelRatio || 1);
@@ -187,6 +196,7 @@ export function requestRedraw(maintainVisualScale = false) {
             
             adjustedLocationsDisplay.textContent = formatNumber(currentMetrics.totalLocations);
             
+            // --- Live Update of Metrics Panel ---
             if (selectedSolverResult) {
                  const locEl = document.getElementById('solverResultLocations');
                  const bayEl = document.getElementById('solverResultTotalBays');
@@ -202,15 +212,32 @@ export function requestRedraw(maintainVisualScale = false) {
                      volEl.textContent = vol.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
                  }
                  
+                 // --- Live PD Utilization Color Coding ---
                  if (pdUtilEl && currentMetrics.maxPerfDensity > 0) {
-                     const throughput = parseNumber(solverThroughputReqInput.value);
+                     // Get throughput from result (Manual) or Input (Solver)
+                     const throughput = selectedSolverResult.throughputReq || (solverThroughputReqInput ? parseNumber(solverThroughputReqInput.value) : 0);
                      const footprint = currentMetrics.footprint;
+                     
                      let currentPD = 0;
                      if (footprint > 0) {
                          currentPD = throughput / footprint;
                      }
                      const pdUtil = (currentPD / currentMetrics.maxPerfDensity) * 100;
                      pdUtilEl.textContent = pdUtil.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %';
+
+                     // Color Logic
+                     if (pdUtilCard) {
+                        pdUtilCard.classList.remove('border-orange-400', 'bg-orange-50', 'border-red-500', 'bg-red-50');
+                        pdUtilEl.classList.remove('text-orange-600', 'text-red-600');
+
+                        if (pdUtil > 100) {
+                            pdUtilCard.classList.add('border-red-500', 'bg-red-50');
+                            pdUtilEl.classList.add('text-red-600');
+                        } else if (pdUtil >= 95) {
+                            pdUtilCard.classList.add('border-orange-400', 'bg-orange-50');
+                            pdUtilEl.classList.add('text-orange-600');
+                        }
+                    }
                  }
             }
         }
@@ -223,6 +250,13 @@ function debouncedReSolve() {
     debounceTimer = setTimeout(() => {
         reSolveCurrent();
     }, 300); 
+}
+
+function debouncedManualRun() {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+        runManualLayout();
+    }, 100); // Fast debounce for sliders
 }
 
 function applyZoomPan(canvas, drawFunction) {
@@ -293,6 +327,7 @@ function handleConfigCardClick(e) {
 }
 
 export function initializeUI(redrawInputs, numberInputs, decimalInputs = []) {
+    // Fine Adjustment Inputs -> Trigger Re-Solve
     const reSolveInputs = [
         robotPathTopLinesInput, robotPathBottomLinesInput,
         robotPathAddLeftACRCheckbox, robotPathAddRightACRCheckbox,
@@ -307,6 +342,34 @@ export function initializeUI(redrawInputs, numberInputs, decimalInputs = []) {
         }
     });
 
+    // --- MANUAL SLIDER LOGIC ---
+    if (manualLengthSlider && manualLengthValue) {
+        manualLengthSlider.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            manualLengthValue.textContent = val.toLocaleString() + " mm";
+            debouncedManualRun();
+        });
+    }
+    
+    if (manualWidthSlider && manualWidthValue) {
+        manualWidthSlider.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value);
+            manualWidthValue.textContent = val.toLocaleString() + " mm";
+            debouncedManualRun();
+        });
+    }
+
+    // Manual Inputs Auto-Run
+    const manualInputs = [
+        manualSystemConfigSelect, manualToteSizeSelect, manualToteHeightSelect,
+        manualClearHeightInput, manualThroughputInput
+    ];
+    
+    manualInputs.forEach(input => {
+        if(input) input.addEventListener('change', debouncedManualRun);
+    });
+
+    // General inputs just redraw
     redrawInputs.forEach(input => { 
         if (input && !reSolveInputs.includes(input)) {
             input.addEventListener('input', () => requestRedraw(false)); 
@@ -352,12 +415,11 @@ export function initializeUI(redrawInputs, numberInputs, decimalInputs = []) {
                     tabContent.style.display = 'block';
                 }
                 
-                const footer = document.querySelector('.sticky.bottom-0');
-                if (footer) {
-                    if (tabId === 'configTabContent' || tabId === 'debugTabContent') {
-                        footer.style.display = 'none';
+                if (solverFooter) {
+                    if (tabId === 'configTabContent' || tabId === 'debugTabContent' || tabId === 'manualTabContent') {
+                        solverFooter.style.display = 'none';
                     } else {
-                        footer.style.display = 'block';
+                        solverFooter.style.display = 'block';
                     }
                 }
 
@@ -368,9 +430,13 @@ export function initializeUI(redrawInputs, numberInputs, decimalInputs = []) {
                         leftPanel.classList.remove('w-full'); leftPanel.classList.add('w-[420px]'); rightPanel.style.display = 'flex';
                     }
                 }
-                if (runButtonText) {
-                    runButtonText.textContent = (tabId === 'manualTabContent') ? "Visualize Layout" : "Run Analysis";
+                
+                // If switching to Manual Tab, run initial default manual layout if none exists
+                if (tabId === 'manualTabContent') {
+                    // Slight delay to ensure visibility
+                    setTimeout(() => runManualLayout(), 50);
                 }
+
                 requestRedraw(false);
             }
         });

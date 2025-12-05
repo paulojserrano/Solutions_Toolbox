@@ -33,8 +33,10 @@ import {
     userSetbackRightInput,
     userProfileName,
     userProfileContainer,
-    solverExpandPDCheckbox, // Import these specifically for logic
-    solverReduceLevelsCheckbox
+    solverExpandPDCheckbox,
+    solverReduceLevelsCheckbox,
+    manualSystemConfigSelect,
+    manualToteSizeSelect // NEW
 
 } from './dom.js';
 
@@ -141,7 +143,7 @@ function updateSolverMethodUI() {
     
     const allTypesOption = solverToteSizeSelect.querySelector('option[value="all"]');
     if (allTypesOption) {
-        allTypesOption.style.display = 'none'; // REMOVED "ALL" as requested
+        allTypesOption.style.display = 'none'; 
     }
     
     if (!respectConstraints) {
@@ -160,11 +162,9 @@ function updateSolverMethodUI() {
         }
     }
 
-    // Logic: If Expand is unchecked, Reduce must be disabled/unchecked
     if (!solverExpandPDCheckbox.checked) {
         solverReduceLevelsCheckbox.checked = false;
         solverReduceLevelsCheckbox.disabled = true;
-        // Optionally grey out parent label
         const reduceLabel = document.getElementById('reduceLevelsLabel');
         if(reduceLabel) reduceLabel.classList.add('opacity-50');
     } else {
@@ -212,6 +212,33 @@ async function loadAuthInfo() {
 document.addEventListener('DOMContentLoaded', () => {
     buildReadOnlyConfigPage();
 
+    if (manualSystemConfigSelect) {
+        manualSystemConfigSelect.innerHTML = '';
+        for (const key in configurations) {
+            const option = document.createElement('option');
+            option.value = key;
+            option.textContent = configurations[key].name;
+            manualSystemConfigSelect.appendChild(option);
+        }
+        manualSystemConfigSelect.selectedIndex = 0;
+        
+        // --- HPC Logic Handler ---
+        manualSystemConfigSelect.addEventListener('change', () => {
+            const selectedConfig = manualSystemConfigSelect.value;
+            const option850 = manualToteSizeSelect.querySelector('option[value="850x650x400"]');
+            
+            if (selectedConfig.includes('HPC')) {
+                // Force 650
+                manualToteSizeSelect.value = "650x450x300"; 
+                if (option850) option850.disabled = true;
+            } else {
+                if (option850) option850.disabled = false;
+            }
+        });
+        // Trigger once
+        manualSystemConfigSelect.dispatchEvent(new Event('change'));
+    }
+
     const redrawInputs = [
         warehouseLengthInput, warehouseWidthInput, clearHeightInput,
         detailViewToggle,
@@ -244,8 +271,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     solverRespectConstraintsCheckbox.addEventListener('change', updateSolverMethodUI);
     solverMethodSelect.addEventListener('change', updateSolverMethodUI);
-    
-    // Add listener to Expand checkbox to trigger UI update for Reduce checkbox
     solverExpandPDCheckbox.addEventListener('change', updateSolverMethodUI);
 
     updateSolverMethodUI();
