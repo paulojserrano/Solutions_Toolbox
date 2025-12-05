@@ -9,7 +9,7 @@ import {
     adjustedLocationsDisplay, solverToteHeightSelect,
     visTabsNav, viewContainerWarehouse, viewContainerElevation, viewContainerDetail,
     leftPanel, rightPanel, runButtonText,
-    robotPathACRContainer
+    robotPathACRContainer, solverThroughputReqInput
 } from './dom.js';
 
 import { drawWarehouse } from './drawing/warehouseView.js';
@@ -19,9 +19,11 @@ import { parseNumber, formatNumber, formatDecimalNumber } from './utils.js';
 import { configurations } from './config.js';
 import { getViewState } from './viewState.js';
 import { getMetrics } from './calculations.js';
-import { selectedSolverResult, setSelectedSolverResult, getSolverResultByKey, updateSolverResults } from './solver.js';
+import { selectedSolverResult, setSelectedSolverResult, getSolverResultByKey, updateSolverResults, reSolveCurrent } from './solver.js';
 
 let rafId = null;
+let debounceTimer = null;
+let lastContentScaleWarehouse = 1;
 
 function initializeVisTabs() {
     if (!visTabsNav) return;
@@ -40,7 +42,6 @@ function initializeVisTabs() {
             if (target === 'elevation' && viewContainerElevation) viewContainerElevation.classList.remove('hidden');
             if (target === 'detail' && viewContainerDetail) viewContainerDetail.classList.remove('hidden');
 
-            // Force immediate redraw when tab switches
             requestRedraw(false);
         }
     });
@@ -54,7 +55,7 @@ function resetCanvasView(canvas) {
     state.offsetY = 0;
 }
 
-export function requestRedraw(shouldResetView = false) {
+export function requestRedraw(maintainVisualScale = false) {
     if (rafId) cancelAnimationFrame(rafId);
     rafId = requestAnimationFrame(() => {
         if (!warehouseCanvas || !rackDetailCanvas || !elevationCanvas) return;
@@ -63,7 +64,7 @@ export function requestRedraw(shouldResetView = false) {
         const rackCtx = rackDetailCanvas.getContext('2d');
         const elevCtx = elevationCanvas.getContext('2d');
         
-        if (shouldResetView) {
+        if (!maintainVisualScale) {
             resetCanvasView(warehouseCanvas);
             resetCanvasView(rackDetailCanvas);
             resetCanvasView(elevationCanvas);
@@ -93,21 +94,83 @@ export function requestRedraw(shouldResetView = false) {
         const sysHeight = parseNumber(clearHeightInput.value);
         const toteHeight = solverToteHeightSelect ? Number(solverToteHeightSelect.value) : 300;
         
-        // Re-calc aisle width for accurate drawing
         const metrics = getMetrics(drawL, drawW, sysHeight, config, null, selectedSolverResult.maxLevels, toteHeight);
         
-        // Create a temporary config object for drawing that includes the resolved properties
         const drawConfig = { 
             ...config, 
             'tote-height': toteHeight, 
             'aisle-width': metrics.resolvedAisleWidth 
         };
 
-        drawWarehouse(drawL, drawW, sysHeight, drawConfig, selectedSolverResult);
+        const state = getViewState(warehouseCanvas);
+        const oldZoom = state.scale;
+        
+        const newContentScale = drawWarehouse(drawL, drawW, sysHeight, drawConfig, selectedSolverResult);
         drawRackDetail(0, 0, sysHeight, drawConfig, selectedSolverResult);
         drawElevationView(0, 0, sysHeight, drawConfig, selectedSolverResult);
 
-        // Update Live Metrics in Toolbar
+        // --- NEW: Draw Alerts for Expansion/Reduction ---
+        if (selectedSolverResult.isExpanded || selectedSolverResult.isReduced) {
+            const w = warehouseCanvas.width / (window.devicePixelRatio || 1);
+            const h = warehouseCanvas.height / (window.devicePixelRatio || 1);
+            
+            warehouseCtx.save();
+            warehouseCtx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform to draw UI overlay
+            
+            const msg = selectedSolverResult.isExpanded 
+                ? (selectedSolverResult.isReduced ? "Layout Expanded & Levels Reduced" : "Layout Expanded to meet PD") 
+                : "Levels Reduced to Match Storage";
+
+            const padding = 12;
+            warehouseCtx.font = 'bold 12px Inter, sans-serif';
+            const textWidth = warehouseCtx.measureText(msg).width;
+            
+            // Draw pill background
+            const boxX = (w - textWidth - 30) / 2;
+            const boxY = 20;
+            const boxW = textWidth + 30;
+            const boxH = 30;
+            
+            warehouseCtx.fillStyle = 'rgba(254, 242, 242, 0.9)'; // Red-50
+            warehouseCtx.strokeStyle = '#fca5a5'; // Red-300
+            warehouseCtx.lineWidth = 1;
+            warehouseCtx.beginPath();
+            warehouseCtx.roundRect(boxX, boxY, boxW, boxH, 15);
+            warehouseCtx.fill();
+            warehouseCtx.stroke();
+            
+            // Draw Text
+            warehouseCtx.fillStyle = '#dc2626'; // Red-600
+            warehouseCtx.textAlign = 'center';
+            warehouseCtx.textBaseline = 'middle';
+            warehouseCtx.fillText(msg, w / 2, boxY + boxH/2);
+            
+            warehouseCtx.restore();
+        }
+
+        if (maintainVisualScale && lastContentScaleWarehouse > 0 && newContentScale > 0) {
+            const targetZoom = (lastContentScaleWarehouse * oldZoom) / newContentScale;
+            if (Math.abs(targetZoom - oldZoom) > 0.0001) {
+                state.scale = targetZoom;
+                drawWarehouse(drawL, drawW, sysHeight, drawConfig, selectedSolverResult);
+                // Re-draw alert if re-drawn
+                if (selectedSolverResult.isExpanded || selectedSolverResult.isReduced) {
+                    const w = warehouseCanvas.width / (window.devicePixelRatio || 1);
+                    warehouseCtx.save();
+                    warehouseCtx.setTransform(1, 0, 0, 1, 0, 0); 
+                    const msg = selectedSolverResult.isExpanded 
+                        ? (selectedSolverResult.isReduced ? "Layout Expanded & Levels Reduced" : "Layout Expanded to meet PD") 
+                        : "Levels Reduced to Match Storage";
+                    const boxY = 20; const boxH = 30;
+                    warehouseCtx.fillStyle = '#dc2626'; 
+                    warehouseCtx.textAlign = 'center'; warehouseCtx.textBaseline = 'middle';
+                    warehouseCtx.fillText(msg, w / 2, boxY + boxH/2);
+                    warehouseCtx.restore();
+                }
+            }
+        }
+        lastContentScaleWarehouse = newContentScale;
+
         if (adjustedLocationsDisplay) {
             const pathSettings = {
                 topAMRLines: robotPathTopLinesInput ? parseNumber(robotPathTopLinesInput.value) : 3,
@@ -124,27 +187,42 @@ export function requestRedraw(shouldResetView = false) {
             
             adjustedLocationsDisplay.textContent = formatNumber(currentMetrics.totalLocations);
             
-            // Sync bottom panel metrics
-            const locEl = document.getElementById('solverResultLocations');
-            const bayEl = document.getElementById('solverResultTotalBays');
-            const rowEl = document.getElementById('solverResultRowsAndBays');
-            const volEl = document.getElementById('solverResultGrossVolume');
-            const pdUtilEl = document.getElementById('solverResultPDUtil'); 
+            if (selectedSolverResult) {
+                 const locEl = document.getElementById('solverResultLocations');
+                 const bayEl = document.getElementById('solverResultTotalBays');
+                 const rowEl = document.getElementById('solverResultRowsAndBays');
+                 const volEl = document.getElementById('solverResultGrossVolume');
+                 const pdUtilEl = document.getElementById('solverResultPDUtil'); 
 
-            if (locEl) locEl.textContent = formatNumber(currentMetrics.totalLocations);
-            if (bayEl) bayEl.textContent = formatNumber(currentMetrics.totalBays);
-            if (rowEl) rowEl.textContent = `${formatNumber(currentMetrics.numRows)} x ${formatNumber(currentMetrics.baysPerRack)}`;
-            if (volEl) {
-                const vol = currentMetrics.toteVolume_m3 * currentMetrics.totalLocations;
-                volEl.textContent = vol.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-            }
-            if (pdUtilEl && currentMetrics.maxPerfDensity > 0) {
-                const pdUtil = (currentMetrics.density / currentMetrics.maxPerfDensity) * 100;
-                pdUtilEl.textContent = pdUtil.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %';
+                 if (locEl) locEl.textContent = formatNumber(currentMetrics.totalLocations);
+                 if (bayEl) bayEl.textContent = formatNumber(currentMetrics.totalBays);
+                 if (rowEl) rowEl.textContent = `${formatNumber(currentMetrics.numRows)} x ${formatNumber(currentMetrics.baysPerRack)}`;
+                 if (volEl) {
+                     const vol = currentMetrics.toteVolume_m3 * currentMetrics.totalLocations;
+                     volEl.textContent = vol.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+                 }
+                 
+                 if (pdUtilEl && currentMetrics.maxPerfDensity > 0) {
+                     const throughput = parseNumber(solverThroughputReqInput.value);
+                     const footprint = currentMetrics.footprint;
+                     let currentPD = 0;
+                     if (footprint > 0) {
+                         currentPD = throughput / footprint;
+                     }
+                     const pdUtil = (currentPD / currentMetrics.maxPerfDensity) * 100;
+                     pdUtilEl.textContent = pdUtil.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %';
+                 }
             }
         }
         rafId = null;
     });
+}
+
+function debouncedReSolve() {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+        reSolveCurrent();
+    }, 300); 
 }
 
 function applyZoomPan(canvas, drawFunction) {
@@ -207,17 +285,33 @@ function handleConfigCardClick(e) {
     setSelectedSolverResult(result);
     updateSolverResults(result);
 
-    // FIX: Check if robotPathACRContainer exists before accessing style
     if (robotPathACRContainer) {
         robotPathACRContainer.style.display = key.includes('HPC') ? 'none' : 'flex';
     }
 
-    // Force redraw immediately with view reset
     requestRedraw(true);
 }
 
 export function initializeUI(redrawInputs, numberInputs, decimalInputs = []) {
-    redrawInputs.forEach(input => { if (input) input.addEventListener('input', () => requestRedraw(false)); });
+    const reSolveInputs = [
+        robotPathTopLinesInput, robotPathBottomLinesInput,
+        robotPathAddLeftACRCheckbox, robotPathAddRightACRCheckbox,
+        userSetbackTopInput, userSetbackBottomInput,
+        userSetbackLeftInput, userSetbackRightInput
+    ];
+
+    reSolveInputs.forEach(input => {
+        if (input) {
+            const eventType = input.type === 'checkbox' ? 'change' : 'input';
+            input.addEventListener(eventType, debouncedReSolve);
+        }
+    });
+
+    redrawInputs.forEach(input => { 
+        if (input && !reSolveInputs.includes(input)) {
+            input.addEventListener('input', () => requestRedraw(false)); 
+        }
+    });
     
     numberInputs.forEach(input => {
         if (input && input.tagName.toLowerCase() !== 'select') {
@@ -238,9 +332,9 @@ export function initializeUI(redrawInputs, numberInputs, decimalInputs = []) {
     if (rackDetailCanvas && rackDetailCanvas.parentElement) resizeObserver.observe(rackDetailCanvas.parentElement);
     if (elevationCanvas && elevationCanvas.parentElement) resizeObserver.observe(elevationCanvas.parentElement);
 
-    if (warehouseCanvas) applyZoomPan(warehouseCanvas, () => requestRedraw(false));
-    if (rackDetailCanvas) applyZoomPan(rackDetailCanvas, () => requestRedraw(false));
-    if (elevationCanvas) applyZoomPan(elevationCanvas, () => requestRedraw(false));
+    if (warehouseCanvas) applyZoomPan(warehouseCanvas, () => requestRedraw(true));
+    if (rackDetailCanvas) applyZoomPan(rackDetailCanvas, () => requestRedraw(true));
+    if (elevationCanvas) applyZoomPan(elevationCanvas, () => requestRedraw(true));
 
     if (mainViewTabs) {
         mainViewTabs.addEventListener('click', (e) => {
@@ -258,6 +352,15 @@ export function initializeUI(redrawInputs, numberInputs, decimalInputs = []) {
                     tabContent.style.display = 'block';
                 }
                 
+                const footer = document.querySelector('.sticky.bottom-0');
+                if (footer) {
+                    if (tabId === 'configTabContent' || tabId === 'debugTabContent') {
+                        footer.style.display = 'none';
+                    } else {
+                        footer.style.display = 'block';
+                    }
+                }
+
                 if (leftPanel && rightPanel) {
                     if (tabId === 'configTabContent' || tabId === 'debugTabContent') {
                         leftPanel.classList.remove('w-[420px]'); leftPanel.classList.add('w-full'); rightPanel.style.display = 'none';
@@ -274,6 +377,7 @@ export function initializeUI(redrawInputs, numberInputs, decimalInputs = []) {
     }
 
     if (solverConfigResultsScroller) solverConfigResultsScroller.addEventListener('click', handleConfigCardClick);
+    
     if (solverToteHeightSelect) solverToteHeightSelect.addEventListener('change', () => requestRedraw(false));
 
     initializeVisTabs();

@@ -6,35 +6,53 @@ function addBaysToMasterList(allBays, rowItem, verticalBayTemplate, config, layo
     const setbackTop = config['top-setback'] || 0;
     const flueSpace = config['rack-flue-space'] || 0;
     
+    // Calculate the 'config' depth (used for double racks)
     const configBayDepth = (config['totes-deep'] * config['tote-width']) + 
                            (Math.max(0, config['totes-deep'] - 1) * config['tote-back-to-back-dist']) + 
                            config['hook-allowance'];
 
+    // Iterate through the vertical template
     for (const bayTpl of verticalBayTemplate) {
+        
         const final_y = setbackTop + layoutOffsetY_world + bayTpl.y_center;
+
+        // --- Rack 1 (or Single Rack) ---
+        // X-center is the row's X + offset + half its width
+        // For double racks, 'item.width' is the total width, so we use configBayDepth
         const rack1_width = (rowItem.rackType === 'single') ? rowItem.width : configBayDepth;
         const bay_x_center_rack1 = layoutOffsetX_world + rowItem.x + (rack1_width / 2);
         const final_x_rack1 = setbackLeft + bay_x_center_rack1;
         
         allBays.push({
             id: `R${rowItem.row}-B${bayTpl.bayColumn}-1`,
-            row: rowItem.row, bay: bayTpl.bayColumn, rackSubId: 1,
-            x: final_x_rack1, y: final_y,
-            bayType: bayTpl.bayType, rackType: rowItem.rackType,
-            rowWidth: rowItem.width, rackWidth: rack1_width
+            row: rowItem.row,
+            bay: bayTpl.bayColumn,
+            rackSubId: 1, // First rack in the row
+            x: final_x_rack1,
+            y: final_y,
+            bayType: bayTpl.bayType,
+            rackType: rowItem.rackType,
+            rowWidth: rowItem.width,
+            rackWidth: rack1_width
         });
 
+        // --- Rack 2 (If Double Rack) ---
         if (rowItem.rackType === 'double') {
-            const rack2_width = configBayDepth;
+            const rack2_width = configBayDepth; // Second part of a double is always configBayDepth
             const bay_x_center_rack2 = layoutOffsetX_world + rowItem.x + configBayDepth + flueSpace + (rack2_width / 2);
             const final_x_rack2 = setbackLeft + bay_x_center_rack2;
 
              allBays.push({
                 id: `R${rowItem.row}-B${bayTpl.bayColumn}-2`,
-                row: rowItem.row, bay: bayTpl.bayColumn, rackSubId: 2,
-                x: final_x_rack2, y: final_y,
-                bayType: bayTpl.bayType, rackType: rowItem.rackType,
-                rowWidth: rowItem.width, rackWidth: rack2_width
+                row: rowItem.row,
+                bay: bayTpl.bayColumn,
+                rackSubId: 2, // Second rack in the row
+                x: final_x_rack2,
+                y: final_y,
+                bayType: bayTpl.bayType,
+                rackType: rowItem.rackType,
+                rowWidth: rowItem.width,
+                rackWidth: rack2_width
             });
         }
     }
@@ -272,7 +290,8 @@ export function calculateLayout(sysLength, sysWidth, config, pathSettings = null
     const numBackpackBays = allBays.filter(b => b.bayType === 'backpack').length;
     const numStandardBays = allBays.filter(b => b.bayType === 'standard').length;
 
-    // 7. Robot Paths
+    // 7. Robot Paths (omitted for brevity, no changes in calculations.js related to paths)
+    // NOTE: The path logic was already correct in previous turns.
     const paths = [];
     if (pathSettings && robotPathFirstOffset > 0) {
         const rackStructureTopY = setbackTop + layoutOffsetY_world;
@@ -545,21 +564,19 @@ export function getMetrics(sysLength, sysWidth, sysHeight, config, pathSettings 
     const maxLevels = (levelOverride !== null && levelOverride > 0 && levelOverride <= calculatedMaxLevels) ? levelOverride : calculatedMaxLevels;
     const allLevels = layoutResult ? layoutResult.levels : [];
 
-    // 4. Dynamic Aisle Width
+    // 4. Dynamic Aisle Width using Config Low/High
     let maxPickHeight = 0;
     if (maxLevels > 0 && allLevels.length >= maxLevels) {
         const topLevel = allLevels[maxLevels - 1];
         maxPickHeight = topLevel.beamTop; 
     }
 
-    let calculatedAisleWidth = config['aisle-width']; 
+    let calculatedAisleWidth = config['aisle-width-low'] || config['aisle-width'] || 2400; // Default fallback
     const threshold = 10000; // 10m
 
-    // Dynamic Aisle Width Logic
-    if (toteWidth === 650) {
-        calculatedAisleWidth = (maxPickHeight < threshold) ? 1160 : 1200;
-    } else if (toteWidth === 850) {
-        calculatedAisleWidth = (maxPickHeight < threshold) ? 1380 : 1400;
+    // If config has specific low/high values, use them logic
+    if (config['aisle-width-low'] && config['aisle-width-high']) {
+        calculatedAisleWidth = (maxPickHeight < threshold) ? config['aisle-width-low'] : config['aisle-width-high'];
     }
     
     resolvedConfig['aisle-width'] = calculatedAisleWidth;

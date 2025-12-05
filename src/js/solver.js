@@ -1,5 +1,4 @@
 import {
-    // Solver Tab
     solverStorageReqInput, solverThroughputReqInput,
     solverToteSizeSelect, solverToteHeightSelect, 
     solverEquivalentVolumeCheckbox,
@@ -18,24 +17,20 @@ import {
     solverReduceLevelsCheckbox,
     solverRespectConstraintsCheckbox,
     solverResultLengthWarning, solverResultWidthWarning,
-
-    // --- NEW SOLVER METHOD IMPORTS ---
     solverMethodSelect,
     solverAspectRatioInput,
     solverFixedLength,
     solverFixedWidth,
-
-    // --- NEW: Manual Mode ---
     solverManualLength,
     solverManualWidth,
-
-    // --- Result Metrics ---
     solverResultGrossVolume,
     solverResultTotalBays,
     solverResultCapacityUtil,
     solverResultRowsAndBays,
-
-    // --- NEW: Robot Path Inputs ---
+    solverResultPDUtil,
+    unitToggle,
+    solverResultFootprintUnit,
+    solverResultGrossVolumeUnit,
     robotPathTopLinesInput,
     robotPathBottomLinesInput,
     robotPathAddLeftACRCheckbox,
@@ -54,6 +49,18 @@ import { exportLayout } from './export.js';
 
 export let selectedSolverResult = null;
 let allSolverResults = [];
+let isImperial = false; 
+
+export function toggleUnits() {
+    isImperial = !isImperial;
+    if (unitToggle) unitToggle.textContent = isImperial ? 'Imperial' : 'Metric';
+    if (solverResultFootprintUnit) solverResultFootprintUnit.textContent = isImperial ? 'ft²' : 'm²';
+    if (solverResultGrossVolumeUnit) solverResultGrossVolumeUnit.textContent = isImperial ? 'ft³' : 'm³';
+    
+    if (selectedSolverResult) {
+        updateSolverResults(selectedSolverResult);
+    }
+}
 
 export function setSelectedSolverResult(result) {
     selectedSolverResult = result;
@@ -63,62 +70,52 @@ export function getSolverResultByKey(key) {
     return allSolverResults.find(r => r.configKey === key);
 }
 
-// --- HTML Card Generator ---
-function createResultCard(result) {
-    if (!result) return '';
+export function reSolveCurrent() {
+    if (!selectedSolverResult) return;
 
-    const footprint = result.footprint.toLocaleString('en-US', { maximumFractionDigits: 1 });
-    const locations = formatNumber(result.totalLocations);
-    const density = result.density.toLocaleString('en-US', { maximumFractionDigits: 2 });
+    const config = configurations[selectedSolverResult.configKey];
+    if (!config) return;
+
+    const storageReq = parseNumber(solverStorageReqInput.value);
+    const throughputReq = parseNumber(solverThroughputReqInput.value);
+    const sysHeight = parseNumber(clearHeightInput.value);
+    const toteHeight = solverToteHeightSelect ? Number(solverToteHeightSelect.value) : 300;
     
-    const grossVolume = (result.toteVolume_m3 * result.totalLocations).toLocaleString('en-US', { maximumFractionDigits: 1 });
-    const capacityUtil = ((result.density > 0 && result.maxPerfDensity > 0) ? (result.density / result.maxPerfDensity) * 100 : 0).toLocaleString('en-US', { maximumFractionDigits: 1 });
-    const totalBays = formatNumber(result.totalBays);
-    const rowsAndBays = `${formatNumber(result.numRows)} x ${formatNumber(result.baysPerRack)}`;
+    const warehouseL = parseNumber(warehouseLengthInput.value);
+    const warehouseW = parseNumber(warehouseWidthInput.value);
+    const respectConstraints = solverRespectConstraintsCheckbox.checked;
+    const expandForPerformance = solverExpandPDCheckbox.checked;
+    const reduceLevels = solverReduceLevelsCheckbox.checked;
 
-    return `
-        <div class="comparison-card" data-config-key="${result.configKey}">
-            <h3 class="comparison-card-title">${result.configName}</h3>
-            
-            <div class="comparison-card-metric">
-                <span class="comparison-card-label">Footprint (m²)</span>
-                <span class="comparison-card-value">${footprint}</span>
-            </div>
-            
-            <div class="comparison-card-metric">
-                <span class="comparison-card-label">Perf. Density</span>
-                <span class="comparison-card-value">${density}</span>
-            </div>
-            
-            <div class="comparison-card-metric">
-                <span class="comparison-card-label">Cap. Utilization</span>
-                <span class="comparison-card-value">${capacityUtil} %</span>
-            </div>
+    let solverOptions = { method: solverMethodSelect.value };
+    if (solverOptions.method === 'aspectRatio') solverOptions.value = parseNumber(solverAspectRatioInput.value);
+    else if (solverOptions.method === 'fixedLength') solverOptions.value = parseNumber(solverFixedLength.value);
+    else if (solverOptions.method === 'fixedWidth') solverOptions.value = parseNumber(solverFixedWidth.value);
 
-            <div class="comparison-card-metric">
-                <span class="comparison-card-label">Locations</span>
-                <span class="comparison-card-value-small">${locations}</span>
-            </div>
-            
-            <div class="comparison-card-metric">
-                <span class="comparison-card-label">Gross Volume (m³)</span>
-                <span class="comparison-card-value-small">${grossVolume}</span>
-            </div>
-            
-            <div class="comparison-card-metric">
-                <span class="comparison-card-label">Total Bays</span>
-                <span class="comparison-card-value-small">${totalBays}</span>
-            </div>
-            
-            <div class="comparison-card-metric">
-                <span class="comparison-card-label">Rows x Bays/Row</span>
-                <span class="comparison-card-value-small">${rowsAndBays}</span>
-            </div>
-        </div>
-    `;
+    const pathSettings = {
+        topAMRLines: robotPathTopLinesInput ? parseNumber(robotPathTopLinesInput.value) : 3,
+        bottomAMRLines: robotPathBottomLinesInput ? parseNumber(robotPathBottomLinesInput.value) : 3,
+        addLeftACR: robotPathAddLeftACRCheckbox ? robotPathAddLeftACRCheckbox.checked : false,
+        addRightACR: robotPathAddRightACRCheckbox ? robotPathAddRightACRCheckbox.checked : false,
+        userSetbackTop: userSetbackTopInput ? parseNumber(userSetbackTopInput.value) : 500,
+        userSetbackBottom: userSetbackBottomInput ? parseNumber(userSetbackBottomInput.value) : 500,
+        userSetbackLeft: userSetbackLeftInput ? parseNumber(userSetbackLeftInput.value) : 500,
+        userSetbackRight: userSetbackRightInput ? parseNumber(userSetbackRightInput.value) : 500
+    };
+
+    findSolutionForConfig(
+        storageReq, throughputReq, sysHeight, config, selectedSolverResult.configKey,
+        expandForPerformance, reduceLevels, warehouseL, warehouseW, respectConstraints,
+        solverOptions, pathSettings, toteHeight
+    ).then(newResult => {
+        if (newResult) {
+            setSelectedSolverResult(newResult);
+            updateSolverResults(newResult);
+            requestRedraw(true); 
+        }
+    });
 }
 
-// --- Update Results Panel (Main Tab) ---
 export function updateSolverResults(results) {
     if (!results) {
         if (solverResultsSection) solverResultsSection.style.display = 'none';
@@ -128,16 +125,26 @@ export function updateSolverResults(results) {
 
     if (solverResultLength) solverResultLength.textContent = formatNumber(results.L);
     if (solverResultWidth) solverResultWidth.textContent = formatNumber(results.W);
-    if (solverResultFootprint) solverResultFootprint.textContent = results.footprint.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
     if (solverResultLocations) solverResultLocations.textContent = formatNumber(results.totalLocations);
     if (solverResultPerfDensity) solverResultPerfDensity.textContent = (results.density || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     
-    const grossVolume = results.toteVolume_m3 * results.totalLocations;
+    let footprintVal = results.footprint;
+    let grossVolVal = results.toteVolume_m3 * results.totalLocations;
+
+    if (isImperial) {
+        footprintVal = footprintVal * 10.7639; 
+        grossVolVal = grossVolVal * 35.3147; 
+    }
+
+    if (solverResultFootprint) solverResultFootprint.textContent = footprintVal.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    if (solverResultGrossVolume) solverResultGrossVolume.textContent = grossVolVal.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
     const capacityUtil = (results.density > 0 && results.maxPerfDensity > 0) ? (results.density / results.maxPerfDensity) * 100 : 0;
     
-    if (solverResultGrossVolume) solverResultGrossVolume.textContent = grossVolume.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-    if (solverResultTotalBays) solverResultTotalBays.textContent = formatNumber(results.totalBays);
+    if (solverResultPDUtil) solverResultPDUtil.textContent = capacityUtil.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %';
     if (solverResultCapacityUtil) solverResultCapacityUtil.textContent = capacityUtil.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %';
+
+    if (solverResultTotalBays) solverResultTotalBays.textContent = formatNumber(results.totalBays);
     if (solverResultRowsAndBays) solverResultRowsAndBays.textContent = `${formatNumber(results.numRows)} x ${formatNumber(results.baysPerRack)}`;
 
     const warehouseL = parseNumber(warehouseLengthInput.value);
@@ -155,14 +162,12 @@ export function updateSolverResults(results) {
     if (solverResultsSection) solverResultsSection.style.display = 'block';
 }
 
-// --- Headless Solver for a Single Config ---
 function findSolutionForConfig(storageReq, throughputReq, sysHeight, config, configKey, expandForPerformance, reduceLevels, warehouseL, warehouseW, respectConstraints, options, pathSettings, toteHeight) {
     return new Promise((resolve) => {
-        
         let currentL = 10000;
         let currentW = 10000;
         const step = 1000;
-        const safetyBreak = 1000; // 1000m
+        const safetyBreak = 1000; 
         let storageMetResults = null;
         let metrics;
 
@@ -172,24 +177,24 @@ function findSolutionForConfig(storageReq, throughputReq, sysHeight, config, con
                 while (currentL <= (safetyBreak * 1000)) {
                     currentW = currentL / options.value;
                     if (respectConstraints && (currentL > warehouseL || currentW > warehouseW)) break;
-
                     currentL += step;
                     currentW = currentL / options.value;
                     metrics = getMetrics(currentL, currentW, sysHeight, config, pathSettings, null, toteHeight);
-
                     if (metrics.totalLocations >= storageReq) {
                         const density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
-                        storageMetResults = { ...metrics, density: density };
+                        storageMetResults = { ...metrics, density: density, isExpanded: false, isReduced: false };
                         break; 
                     }
                 }
                 if (!storageMetResults) { resolve(null); return; }
-
+                
+                // If already good or expansion not allowed
                 if (storageMetResults.density <= storageMetResults.maxPerfDensity || !expandForPerformance) {
                     resolve({ ...storageMetResults, configKey, configName: config.name });
                     return;
                 }
 
+                // Loop 2: Expand for Performance
                 while (currentL <= (safetyBreak * 1000)) {
                     currentW = currentL / options.value;
                     if (respectConstraints && (currentL > warehouseL || currentW > warehouseW)) break;
@@ -200,12 +205,12 @@ function findSolutionForConfig(storageReq, throughputReq, sysHeight, config, con
                     let density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
 
                     if (density <= metrics.maxPerfDensity) {
-                        storageMetResults = { ...metrics, density: density };
+                        storageMetResults = { ...metrics, density: density, isExpanded: true, isReduced: false };
                         break;
                     }
                 }
                 break;
-
+            // ... (Other cases simplified for brevity but follow same logic)
             case 'fixedLength':
                 currentL = options.value;
                 currentW = 10000;
@@ -215,7 +220,7 @@ function findSolutionForConfig(storageReq, throughputReq, sysHeight, config, con
                     metrics = getMetrics(currentL, currentW, sysHeight, config, pathSettings, null, toteHeight);
                     if (metrics.totalLocations >= storageReq) {
                         const density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
-                        storageMetResults = { ...metrics, density: density };
+                        storageMetResults = { ...metrics, density: density, isExpanded: false, isReduced: false };
                         break;
                     }
                 }
@@ -230,12 +235,11 @@ function findSolutionForConfig(storageReq, throughputReq, sysHeight, config, con
                     metrics = getMetrics(currentL, currentW, sysHeight, config, pathSettings, null, toteHeight);
                     let density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
                     if (density <= metrics.maxPerfDensity) {
-                        storageMetResults = { ...metrics, density: density };
+                        storageMetResults = { ...metrics, density: density, isExpanded: true, isReduced: false };
                         break;
                     }
                 }
                 break;
-
             case 'fixedWidth':
                 currentW = options.value;
                 currentL = 10000;
@@ -245,7 +249,7 @@ function findSolutionForConfig(storageReq, throughputReq, sysHeight, config, con
                     metrics = getMetrics(currentL, currentW, sysHeight, config, pathSettings, null, toteHeight);
                     if (metrics.totalLocations >= storageReq) {
                         const density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
-                        storageMetResults = { ...metrics, density: density };
+                        storageMetResults = { ...metrics, density: density, isExpanded: false, isReduced: false };
                         break;
                     }
                 }
@@ -260,27 +264,28 @@ function findSolutionForConfig(storageReq, throughputReq, sysHeight, config, con
                     metrics = getMetrics(currentL, currentW, sysHeight, config, pathSettings, null, toteHeight);
                     let density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
                     if (density <= metrics.maxPerfDensity) {
-                        storageMetResults = { ...metrics, density: density };
+                        storageMetResults = { ...metrics, density: density, isExpanded: true, isReduced: false };
                         break;
                     }
                 }
                 break;
-            
             case 'manual':
                 resolve(null);
                 return;
         }
 
-        if (storageMetResults && reduceLevels && storageMetResults.totalLocations > storageReq) {
+        // Reduction Logic
+        if (storageMetResults && reduceLevels && storageMetResults.isExpanded && storageMetResults.totalLocations > storageReq) {
             let bestMetrics = storageMetResults;
             const perfL = storageMetResults.L;
             const perfW = storageMetResults.W;
             const perfDensity = storageMetResults.density;
-
+            
+            // Try reducing levels to match storage requirement
             for (let levels = storageMetResults.calculatedMaxLevels - 1; levels > 0; levels--) {
                 const reducedMetrics = getMetrics(perfL, perfW, sysHeight, config, pathSettings, levels, toteHeight);
                 if (reducedMetrics.totalLocations >= storageReq) {
-                    bestMetrics = { ...reducedMetrics, density: perfDensity };
+                    bestMetrics = { ...reducedMetrics, density: perfDensity, isExpanded: true, isReduced: true };
                 } else {
                     break;
                 }
@@ -294,7 +299,30 @@ function findSolutionForConfig(storageReq, throughputReq, sysHeight, config, con
     });
 }
 
-// --- Main Solver Function ---
+function createResultCard(result) {
+    if (!result) return '';
+    const footprint = result.footprint.toLocaleString('en-US', { maximumFractionDigits: 1 });
+    const locations = formatNumber(result.totalLocations);
+    const density = result.density.toLocaleString('en-US', { maximumFractionDigits: 2 });
+    const grossVolume = (result.toteVolume_m3 * result.totalLocations).toLocaleString('en-US', { maximumFractionDigits: 1 });
+    const capacityUtil = ((result.density > 0 && result.maxPerfDensity > 0) ? (result.density / result.maxPerfDensity) * 100 : 0).toLocaleString('en-US', { maximumFractionDigits: 1 });
+    const totalBays = formatNumber(result.totalBays);
+    const rowsAndBays = `${formatNumber(result.numRows)} x ${formatNumber(result.baysPerRack)}`;
+
+    return `
+        <div class="comparison-card" data-config-key="${result.configKey}">
+            <h3 class="comparison-card-title">${result.configName}</h3>
+            <div class="comparison-card-metric"><span class="comparison-card-label">Footprint (m²)</span><span class="comparison-card-value">${footprint}</span></div>
+            <div class="comparison-card-metric"><span class="comparison-card-label">Perf. Density</span><span class="comparison-card-value">${density}</span></div>
+            <div class="comparison-card-metric"><span class="comparison-card-label">PD Utilization</span><span class="comparison-card-value">${capacityUtil} %</span></div>
+            <div class="comparison-card-metric"><span class="comparison-card-label">Locations</span><span class="comparison-card-value-small">${locations}</span></div>
+            <div class="comparison-card-metric"><span class="comparison-card-label">Gross Volume (m³)</span><span class="comparison-card-value-small">${grossVolume}</span></div>
+            <div class="comparison-card-metric"><span class="comparison-card-label">Total Bays</span><span class="comparison-card-value-small">${totalBays}</span></div>
+            <div class="comparison-card-metric"><span class="comparison-card-label">Rows x Bays/Row</span><span class="comparison-card-value-small">${rowsAndBays}</span></div>
+        </div>
+    `;
+}
+
 async function runAllConfigurationsSolver() {
     if (runSolverButton) runSolverButton.disabled = true;
     if (solverConfigStatus) solverConfigStatus.textContent = "Running all configurations...";
@@ -307,7 +335,7 @@ async function runAllConfigurationsSolver() {
     
     allSolverResults = [];
     setSelectedSolverResult(null);
-    requestRedraw(); // Clear canvas
+    requestRedraw(); 
 
     const solverMethod = solverMethodSelect ? solverMethodSelect.value : 'aspectRatio';
     const throughputReq = solverThroughputReqInput ? parseNumber(solverThroughputReqInput.value) : 0;
@@ -326,7 +354,7 @@ async function runAllConfigurationsSolver() {
     };
 
     const tasksToRun = [];
-    const selectedToteSize = solverToteSizeSelect ? solverToteSizeSelect.value : 'all';
+    const selectedToteSize = solverToteSizeSelect ? solverToteSizeSelect.value : '650x450x300';
     const isEquivalentVolume = solverEquivalentVolumeCheckbox ? solverEquivalentVolumeCheckbox.checked : false;
 
     // Volume calculation
@@ -354,16 +382,11 @@ async function runAllConfigurationsSolver() {
         otherKeys = Object.keys(configurations).filter(k => is650Tote(configurations[k]));
         selectedVolume = vol850;
         otherVolume = vol650;
-    } else {
-        selectedKeys = Object.keys(configurations);
-        otherKeys = [];
-    }
+    } 
     
     const promises = [];
     
     if (solverMethod === 'manual') {
-        // Manual mode is handled in app.js via active tab check now
-        // This block effectively unreachable if tabs are used correctly
         resolve(null);
     } else {
         const originalStorageReq = solverStorageReqInput ? parseNumber(solverStorageReqInput.value) : 0;
@@ -392,50 +415,29 @@ async function runAllConfigurationsSolver() {
         }
         
         selectedKeys.forEach(configKey => {
-            tasksToRun.push({
-                configKey: configKey,
-                storageReq: originalStorageReq,
-                isEquivalent: false
-            });
+            tasksToRun.push({ configKey: configKey, storageReq: originalStorageReq, isEquivalent: false });
         });
 
-        if (isEquivalentVolume && selectedToteSize !== 'all' && otherVolume > 0 && selectedVolume > 0) {
+        if (isEquivalentVolume && otherVolume > 0 && selectedVolume > 0) {
             const equivalentStorageReq = Math.round((originalStorageReq * selectedVolume) / otherVolume);
-            
             otherKeys.forEach(configKey => {
-                tasksToRun.push({
-                    configKey: configKey,
-                    storageReq: equivalentStorageReq,
-                    isEquivalent: true
-                });
+                tasksToRun.push({ configKey: configKey, storageReq: equivalentStorageReq, isEquivalent: true });
             });
         }
         
         for (const task of tasksToRun) {
             const config = configurations[task.configKey];
             if (!config) continue;
-            
             promises.push(findSolutionForConfig(
-                task.storageReq,
-                throughputReq,
-                sysHeight,
-                config,
-                task.configKey,
-                expandForPerformance,
-                reduceLevels,
-                warehouseL,
-                warehouseW,
-                respectConstraints,
-                solverOptions,
-                pathSettings,
-                toteHeight 
+                task.storageReq, throughputReq, sysHeight, config, task.configKey,
+                expandForPerformance, reduceLevels, warehouseL, warehouseW, respectConstraints,
+                solverOptions, pathSettings, toteHeight 
             ));
         }
     }
 
     try {
         const allResults = await Promise.all(promises);
-        
         const validResults = allResults.filter(res => res !== null);
         validResults.sort((a, b) => a.footprint - b.footprint);
         allSolverResults = validResults;
@@ -460,4 +462,6 @@ async function runAllConfigurationsSolver() {
 export function initializeSolver() {
     if (runSolverButton) runSolverButton.addEventListener('click', runAllConfigurationsSolver);
     if (exportResultsButton) exportResultsButton.addEventListener('click', exportLayout);
+    // NEW: Unit Toggle Listener
+    if (unitToggle) unitToggle.addEventListener('click', toggleUnits);
 }

@@ -2,7 +2,7 @@ import {
     rackDetailCtx,
     rackDetailCanvas,
 } from '../dom.js';
-import { calculateElevationLayout } from '../calculations.js'; // Not used, but kept for consistency
+import { calculateElevationLayout } from '../calculations.js'; 
 import { getViewState } from '../viewState.js';
 import {
     drawStructure,
@@ -13,16 +13,17 @@ import {
 } from './drawingUtils.js';
 
 // --- Main Drawing Function (Rack Detail) ---
+// MODIFIED: Return Content Scale
 export function drawRackDetail(sysLength, sysWidth, sysHeight, config, solverResults = null) {
     const dpr = window.devicePixelRatio || 1;
     const canvasWidth = rackDetailCanvas.clientWidth;
     const canvasHeight = rackDetailCanvas.clientHeight;
 
-    if (canvasWidth === 0 || canvasHeight === 0) return;
+    if (canvasWidth === 0 || canvasHeight === 0) return 1;
 
     rackDetailCanvas.width = canvasWidth * dpr;
     rackDetailCanvas.height = canvasHeight * dpr;
-    rackDetailCtx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
+    rackDetailCtx.setTransform(1, 0, 0, 1, 0, 0); 
     rackDetailCtx.scale(dpr, dpr);
 
     const ctx = rackDetailCtx;
@@ -33,10 +34,8 @@ export function drawRackDetail(sysLength, sysWidth, sysHeight, config, solverRes
     ctx.translate(state.offsetX, state.offsetY);
     ctx.scale(state.scale, state.scale);
     
-    if (!config) {
-        console.warn("drawRackDetail called with no config.");
-        return;
-    }
+    if (!config) return 1;
+    
     const toteWidth = config['tote-width'] || 0;
     const toteLength = config['tote-length'] || 0;
     const toteQtyPerBay = config['tote-qty-per-bay'] || 1;
@@ -51,13 +50,13 @@ export function drawRackDetail(sysLength, sysWidth, sysHeight, config, solverRes
     const bayWidth = (toteQtyPerBay * toteLength) + (2 * toteToUprightDist) + (Math.max(0, toteQtyPerBay - 1) * toteToToteDist) + (uprightLength * 2);
     const bayDepth_total = (totesDeep * toteWidth) + (Math.max(0, totesDeep - 1) * toteBackToBackDist) + hookAllowance;
 
-    if (bayWidth === 0 || bayDepth_total === 0) return;
+    if (bayWidth === 0 || bayDepth_total === 0) return 1;
     
     const contentPadding = 100;
     const contentScaleX = (canvasWidth - contentPadding * 2) / bayWidth;
     const contentScaleY = (canvasHeight - contentPadding * 2) / bayDepth_total;
     const contentScale = Math.min(contentScaleX, contentScaleY);
-    if (contentScale <= 0 || !isFinite(contentScale)) return;
+    if (contentScale <= 0 || !isFinite(contentScale)) return 1;
 
     const drawWidth = bayWidth * contentScale;
     const drawHeight = bayDepth_total * contentScale;
@@ -65,13 +64,11 @@ export function drawRackDetail(sysLength, sysWidth, sysHeight, config, solverRes
     const offsetY = (canvasHeight - drawHeight) / 2;
     
     const params = {
-        // World values
         toteWidth, toteLength, toteToToteDist, toteToUprightDist, toteBackToBackDist,
         toteQtyPerBay, totesDeep,
         uprightLength_world: uprightLength,
-        uprightWidth_world: uprightWidth, // ADDED
+        uprightWidth_world: uprightWidth, 
 
-        // Canvas-scaled values
         upLength_c: uprightLength * contentScale,
         upWidth_c: uprightWidth * contentScale,
         toteWidth_c: toteWidth * contentScale,
@@ -85,4 +82,6 @@ export function drawRackDetail(sysLength, sysWidth, sysHeight, config, solverRes
     drawTotes(ctx, offsetX, offsetY, contentScale, params, 'full');
     drawDimensions(ctx, offsetX, offsetY, drawWidth, drawHeight, bayWidth, bayDepth_total, state.scale);
     drawDetailDimensions(ctx, offsetX, offsetY, contentScale, params);
+
+    return contentScale;
 }

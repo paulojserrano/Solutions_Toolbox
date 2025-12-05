@@ -48,7 +48,7 @@ export const configTemplate = {
     "hasBufferLayer": false,
     "tote-width": 400,
     "tote-length": 600,
-    "tote-height": 320,
+    // "tote-height": 320, // Removed, now user input
     "tote-qty-per-bay": 4,
     "totes-deep": 2,
     "tote-to-tote-dist": 25,
@@ -57,7 +57,8 @@ export const configTemplate = {
     "upright-length": 100,
     "upright-width": 100,
     "hook-allowance": 0,
-    "aisle-width": 2400,
+    "aisle-width-low": 2400, // < 10m
+    "aisle-width-high": 2400, // > 10m
     "rack-flue-space": 150,
     "base-beam-height": 150,
     "beam-width": 127,
@@ -70,7 +71,7 @@ export const configTemplate = {
 
 export const configurations = {
     "hps3-e2-650-dd": {
-        "name": "HPS3-E2 - 650x450x300 - Double Deep",
+        "name": "HPS3-E2 - 650x450 - Double Deep",
         "lispExportProps": {
             "singleRack": {
                 "base": { "rotation": 90, "xOffset": 0, "yOffset": 0 },
@@ -118,7 +119,7 @@ export const configurations = {
         "hasBufferLayer": true,
         "tote-width": 650,
         "tote-length": 450,
-        "tote-height": 300,
+        // "tote-height": 300,
         "tote-qty-per-bay": 4,
         "totes-deep": 2,
         "tote-to-tote-dist": 40,
@@ -127,7 +128,8 @@ export const configurations = {
         "upright-length": 90,
         "upright-width": 70,
         "hook-allowance": 90,
-        "aisle-width": 1160,
+        "aisle-width-low": 1160,
+        "aisle-width-high": 1200,
         "rack-flue-space": 152.4,
         "base-beam-height": 370,
         "beam-width": 60,
@@ -143,7 +145,7 @@ export const configurations = {
         "amr-path-offset": 850
     },
     "hps3-e2-650-td": {
-        "name": "HPS3-E2 - 650x450x300 - Triple Deep",
+        "name": "HPS3-E2 - 650x450 - Triple Deep",
         "lispExportProps": {
             "singleRack": {
                 "base": { "rotation": 90, "xOffset": 0, "yOffset": 0 },
@@ -191,7 +193,7 @@ export const configurations = {
         "hasBufferLayer": true,
         "tote-width": 650,
         "tote-length": 450,
-        "tote-height": 300,
+        // "tote-height": 300,
         "tote-qty-per-bay": 4,
         "totes-deep": 3,
         "tote-to-tote-dist": 40,
@@ -200,7 +202,8 @@ export const configurations = {
         "upright-length": 90,
         "upright-width": 70,
         "hook-allowance": 90,
-        "aisle-width": 1160,
+        "aisle-width-low": 1160,
+        "aisle-width-high": 1200,
         "rack-flue-space": 152.4,
         "base-beam-height": 370,
         "beam-width": 60,
@@ -216,7 +219,7 @@ export const configurations = {
         "amr-path-offset": 850
     },
     "hps3-e2-850-dd": {
-        "name": "HPS3-E2 - 850x650x400 - Double Deep",
+        "name": "HPS3-E2 - 850x650 - Double Deep",
         "lispExportProps": {
             "singleRack": {
                 "base": { "rotation": 90, "xOffset": 0, "yOffset": 0 },
@@ -266,7 +269,7 @@ export const configurations = {
         "hasBufferLayer": true,
         "tote-width": 850,
         "tote-length": 650,
-        "tote-height": 400,
+        // "tote-height": 400,
         "tote-qty-per-bay": 3,
         "totes-deep": 2,
         "tote-to-tote-dist": 50,
@@ -275,7 +278,8 @@ export const configurations = {
         "upright-length": 90,
         "upright-width": 70,
         "hook-allowance": 90,
-        "aisle-width": 1380,
+        "aisle-width-low": 1380,
+        "aisle-width-high": 1400,
         "rack-flue-space": 152.4,
         "base-beam-height": 370,
         "beam-width": 60,
@@ -291,7 +295,7 @@ export const configurations = {
         "amr-path-offset": 850
     },
     "hps3-e2-850-td": {
-        "name": "HPS3-E2 - 850x650x400 - Triple Deep",
+        "name": "HPS3-E2 - 850x650 - Triple Deep",
         "lispExportProps": {
             "singleRack": {
                 "base": { "rotation": 90, "xOffset": 0, "yOffset": 0 },
@@ -342,7 +346,7 @@ export const configurations = {
         "hasBufferLayer": true,
         "tote-width": 850,
         "tote-length": 650,
-        "tote-height": 400,
+        // "tote-height": 400,
         "tote-qty-per-bay": 3,
         "totes-deep": 3,
         "tote-to-tote-dist": 50,
@@ -351,7 +355,8 @@ export const configurations = {
         "upright-length": 90,
         "upright-width": 70,
         "hook-allowance": 90,
-        "aisle-width": 1400,
+        "aisle-width-low": 1400,
+        "aisle-width-high": 1400,
         "rack-flue-space": 152.4,
         "base-beam-height": 370,
         "beam-width": 60,
@@ -408,7 +413,7 @@ export const configurations = {
         "hasBufferLayer": false,
         "tote-width": 650,
         "tote-length": 450,
-        "tote-height": 300,
+        // "tote-height": 300,
         "tote-qty-per-bay": 3,
         "totes-deep": 2,
         "tote-to-tote-dist": 140,
@@ -417,7 +422,8 @@ export const configurations = {
         "upright-length": 90,
         "upright-width": 70,
         "hook-allowance": 0,
-        "aisle-width": 900,
+        "aisle-width-low": 900,
+        "aisle-width-high": 900,
         "rack-flue-space": 150,
         "base-beam-height": 840,
         "beam-width": 60,

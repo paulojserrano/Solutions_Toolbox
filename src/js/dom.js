@@ -102,6 +102,10 @@ export const solverResultRowsAndBays = document.getElementById('solverResultRows
 // NEW: PD Utilization
 export const solverResultPDUtil = document.getElementById('solverResultPDUtil');
 
+// NEW: Unit Toggle Elements
+export const unitToggle = document.getElementById('unitToggle');
+export const solverResultFootprintUnit = document.getElementById('solverResultFootprintUnit');
+export const solverResultGrossVolumeUnit = document.getElementById('solverResultGrossVolumeUnit');
 
 export const detailViewToggle = document.getElementById('detailViewToggle');
 export const readOnlyConfigContainer = document.getElementById('readOnlyConfigContainer');
