@@ -584,18 +584,45 @@ export function getMetrics(sysLength, sysWidth, sysHeight, config, pathSettings 
     // 5. Calculate Horizontal Layout
     const layout = calculateLayout(sysLength, sysWidth, resolvedConfig, pathSettings);
 
-    // 6. Calculate Locations
+    // 6. Calculate Locations (UPDATED LOGIC)
     let storageLevels = maxLevels;
     if (hasBufferLayer && maxLevels > 0) storageLevels = maxLevels - 1; 
     if (storageLevels < 0) storageLevels = 0;
 
-    const locsPerBay = storageLevels * toteQtyPerBay * totesDeep;
+    // Calculate Tunnel Levels
     const tunnelThreshold = 6500; 
     const usedLevels = allLevels.slice(0, maxLevels);
     const numTunnelLevels = usedLevels.filter(level => level.beamBottom >= tunnelThreshold).length;
-    const locsPerTunnel = numTunnelLevels * toteQtyPerBay * totesDeep; 
 
-    const totalLocations = (layout.numStorageBays * locsPerBay) + (layout.numTunnelBays * locsPerTunnel);
+    // Calculate Single Deep Width Reference (for detection)
+    const hookAllowance = config['hook-allowance'] || 0;
+    const singleDeepWidthRef = (1 * toteWidth) + hookAllowance;
+
+    let totalLocations = 0;
+
+    // Iterate through specific bays to calculate exact capacity
+    for (const bay of layout.allBays) {
+        // Determine Bay Depth (1 vs Config) based on physical width
+        let currentTotesDeep = totesDeep; // Default to config
+        
+        // If bay width matches single-deep width (with small tolerance), treat as 1-deep
+        if (Math.abs(bay.rackWidth - singleDeepWidthRef) < 50) {
+            currentTotesDeep = 1;
+        }
+
+        // Determine Levels for this bay type
+        let levelsForBay = 0;
+        if (bay.bayType === 'tunnel') {
+            levelsForBay = numTunnelLevels;
+        } else {
+            // Standard or Backpack
+            levelsForBay = storageLevels;
+        }
+
+        // Add to total
+        totalLocations += (levelsForBay * toteQtyPerBay * currentTotesDeep);
+    }
+
     const area = (sysLength / 1000) * (sysWidth / 1000); 
     const toteVolume_m3 = (toteWidth / 1000) * (toteLength / 1000) * (toteHeight / 1000);
     const maxPerfDensity = config['max-perf-density'] || 50;

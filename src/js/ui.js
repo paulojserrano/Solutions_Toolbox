@@ -8,6 +8,7 @@ import {
     userSetbackLeftInput, userSetbackRightInput,
     adjustedLocationsDisplay, solverToteHeightSelect,
     visTabsNav, viewContainerWarehouse, viewContainerElevation, viewContainerDetail,
+    viewContainer3D, 
     leftPanel, rightPanel, runButtonText,
     robotPathACRContainer, solverThroughputReqInput,
     solverFooter,
@@ -15,12 +16,16 @@ import {
     manualLengthValue, manualWidthValue,
     manualSystemConfigSelect, manualToteSizeSelect, manualToteHeightSelect,
     manualClearHeightInput, manualThroughputInput,
-    pdUtilCard, solverResultPDUtil
+    pdUtilCard, solverResultPDUtil,
+    detailViewToggle // Imported detail toggle
 } from './dom.js';
 
 import { drawWarehouse } from './drawing/warehouseView.js';
 import { drawRackDetail } from './drawing/rackDetailView.js';
 import { drawElevationView } from './drawing/elevationView.js';
+// NEW: Import 3D view functions
+import { init3DView, draw3DView, animate3D, stopAnimate3D } from './drawing/3dview.js';
+
 import { parseNumber, formatNumber, formatDecimalNumber } from './utils.js';
 import { configurations } from './config.js';
 import { getViewState } from './viewState.js';
@@ -34,6 +39,7 @@ import {
 let rafId = null;
 let debounceTimer = null;
 let lastContentScaleWarehouse = 1;
+let is3DInitialized = false;
 
 function initializeVisTabs() {
     if (!visTabsNav) return;
@@ -46,11 +52,28 @@ function initializeVisTabs() {
             if (viewContainerWarehouse) viewContainerWarehouse.classList.add('hidden');
             if (viewContainerElevation) viewContainerElevation.classList.add('hidden');
             if (viewContainerDetail) viewContainerDetail.classList.add('hidden');
+            if (viewContainer3D) viewContainer3D.classList.add('hidden'); 
 
             const target = e.target.dataset.target;
+            
+            // Stop 3D animation if not in 3D tab
+            if (target !== '3d') {
+                stopAnimate3D();
+            }
+
             if (target === 'warehouse' && viewContainerWarehouse) viewContainerWarehouse.classList.remove('hidden');
             if (target === 'elevation' && viewContainerElevation) viewContainerElevation.classList.remove('hidden');
             if (target === 'detail' && viewContainerDetail) viewContainerDetail.classList.remove('hidden');
+            
+            // 3D Logic
+            if (target === '3d' && viewContainer3D) {
+                viewContainer3D.classList.remove('hidden');
+                if (!is3DInitialized) {
+                    init3DView(viewContainer3D);
+                    is3DInitialized = true;
+                }
+                animate3D(); // Start animation loop
+            }
 
             requestRedraw(false);
         }
@@ -121,6 +144,24 @@ export function requestRedraw(maintainVisualScale = false) {
         const newContentScale = drawWarehouse(drawL, drawW, sysHeight, drawConfig, selectedSolverResult);
         drawRackDetail(0, 0, sysHeight, drawConfig, selectedSolverResult);
         drawElevationView(0, 0, sysHeight, drawConfig, selectedSolverResult);
+
+        // --- NEW: Update 3D View if active ---
+        // We only redraw geometry if the tab is visible to save resources
+        if (viewContainer3D && !viewContainer3D.classList.contains('hidden')) {
+             const pathSettings = {
+                topAMRLines: robotPathTopLinesInput ? parseNumber(robotPathTopLinesInput.value) : 3,
+                bottomAMRLines: robotPathBottomLinesInput ? parseNumber(robotPathBottomLinesInput.value) : 3,
+                addLeftACR: robotPathAddLeftACRCheckbox ? robotPathAddLeftACRCheckbox.checked : false,
+                addRightACR: robotPathAddRightACRCheckbox ? robotPathAddRightACRCheckbox.checked : false,
+                userSetbackTop: userSetbackTopInput ? parseNumber(userSetbackTopInput.value) : 500,
+                userSetbackBottom: userSetbackBottomInput ? parseNumber(userSetbackBottomInput.value) : 500,
+                userSetbackLeft: userSetbackLeftInput ? parseNumber(userSetbackLeftInput.value) : 500,
+                userSetbackRight: userSetbackRightInput ? parseNumber(userSetbackRightInput.value) : 500
+            };
+            // Pass detail toggle state
+            const isDetailView = detailViewToggle ? detailViewToggle.checked : false;
+            draw3DView(drawL, drawW, sysHeight, drawConfig, selectedSolverResult, pathSettings, isDetailView);
+        }
 
         // --- Alerts for Expansion/Reduction ---
         if (selectedSolverResult.isExpanded || selectedSolverResult.isReduced) {
@@ -394,6 +435,9 @@ export function initializeUI(redrawInputs, numberInputs, decimalInputs = []) {
     if (warehouseCanvas && warehouseCanvas.parentElement) resizeObserver.observe(warehouseCanvas.parentElement);
     if (rackDetailCanvas && rackDetailCanvas.parentElement) resizeObserver.observe(rackDetailCanvas.parentElement);
     if (elevationCanvas && elevationCanvas.parentElement) resizeObserver.observe(elevationCanvas.parentElement);
+    
+    // Resize Observer for 3D container
+    if (viewContainer3D) resizeObserver.observe(viewContainer3D);
 
     if (warehouseCanvas) applyZoomPan(warehouseCanvas, () => requestRedraw(true));
     if (rackDetailCanvas) applyZoomPan(rackDetailCanvas, () => requestRedraw(true));
@@ -439,6 +483,13 @@ export function initializeUI(redrawInputs, numberInputs, decimalInputs = []) {
 
                 requestRedraw(false);
             }
+        });
+    }
+
+    // NEW: Listen to Detail View Toggle for 3D View updates
+    if (detailViewToggle) {
+        detailViewToggle.addEventListener('change', () => {
+            requestRedraw(false);
         });
     }
 

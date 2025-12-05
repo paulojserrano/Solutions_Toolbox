@@ -9,6 +9,16 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Import Map for Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
 </head>
 <body class="bg-slate-50 text-slate-900 font-sans h-screen flex overflow-hidden selection:bg-blue-100 selection:text-blue-700">
 
@@ -60,7 +70,7 @@
                 </nav>
             </div>
             <div class="flex items-center gap-3">
-                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200 uppercase tracking-wide">v2.1.0</span>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200 uppercase tracking-wide">v2.3.0</span>
             </div>
         </header>
 
@@ -240,6 +250,7 @@
                             <button class="vis-tab-button active" data-target="warehouse">Top-Down</button>
                             <button class="vis-tab-button" data-target="elevation">Elevation</button>
                             <button class="vis-tab-button" data-target="detail">Rack Detail</button>
+                            <button class="vis-tab-button" data-target="3d">3D View</button>
                         </nav>
                     </div>
                     <div class="flex items-center gap-2">
@@ -284,6 +295,15 @@
                     </div>
                     <div id="viewContainer-elevation" class="w-full h-full hidden relative"><canvas id="elevationCanvas" class="block w-full h-full"></canvas></div>
                     <div id="viewContainer-detail" class="w-full h-full hidden relative"><canvas id="rackDetailCanvas" class="block w-full h-full"></canvas></div>
+                    <div id="viewContainer-3d" class="w-full h-full hidden relative bg-slate-50">
+                        <!-- BOM Overlay -->
+                        <div id="bomOverlay" class="absolute bottom-6 left-6 z-10 bg-white/90 backdrop-blur-sm p-4 rounded-lg shadow-lg border border-slate-200 w-72 text-xs">
+                            <h4 class="font-bold text-slate-700 uppercase mb-3 border-b border-slate-200 pb-2">Bill of Materials</h4>
+                            <div id="bomList" class="space-y-1.5 font-mono text-slate-600">
+                                <div class="flex justify-between"><span>Loading...</span></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="h-72 border-t border-slate-200 bg-white shrink-0 z-10 shadow-[0_-5px_15px_rgba(0,0,0,0.03)] w-full">

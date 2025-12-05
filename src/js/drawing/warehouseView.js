@@ -302,37 +302,15 @@ function drawRack(x_world, rackDepth_world, rackType, params) {
 
 // --- Main Drawing Function (Top-Down) ---
 export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config, solverResults = null) {
-    const dpr = window.devicePixelRatio || 1;
-    const canvasWidth = warehouseCanvas.clientWidth;
-    const canvasHeight = warehouseCanvas.clientHeight;
-
-    if (canvasWidth === 0 || canvasHeight === 0) return 1;
-
-    warehouseCanvas.width = canvasWidth * dpr;
-    warehouseCanvas.height = canvasHeight * dpr;
-    warehouseCtx.setTransform(1, 0, 0, 1, 0, 0);
-    warehouseCtx.scale(dpr, dpr);
-    warehouseCtx.clearRect(0, 0, canvasWidth, canvasHeight);
-
-    const state = getViewState(warehouseCanvas);
-
-    warehouseCtx.translate(state.offsetX, state.offsetY);
-    warehouseCtx.scale(state.scale, state.scale);
-
     if (!config) return 1;
-    
+
+    // --- 1. DATA PREPARATION & LAYOUT CALCULATION (CRITICAL: Runs before canvas check) ---
     const boundaryL_world = warehouseLength;
     const boundaryW_world = warehouseWidth;
     const layoutL_world = solverResults ? solverResults.L : warehouseLength;
     const layoutW_world = solverResults ? solverResults.W : warehouseWidth;
-    const displayL_world = Math.max(boundaryL_world, layoutL_world);
-    const displayW_world = Math.max(boundaryW_world, layoutW_world);
-
-    if (displayL_world <= 0 || displayW_world <= 0) {
-        showErrorOnCanvas(warehouseCtx, "Invalid dimensions.", canvasWidth, canvasHeight);
-        return 1;
-    }
     
+    // Path Settings
     const pathSettings = {
         topAMRLines: robotPathTopLinesInput ? parseNumber(robotPathTopLinesInput.value) : 3,
         bottomAMRLines: robotPathBottomLinesInput ? parseNumber(robotPathBottomLinesInput.value) : 3,
@@ -344,8 +322,10 @@ export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config
         userSetbackRight: userSetbackRightInput ? parseNumber(userSetbackRightInput.value) : 500 
     };
 
+    // Run Layout Calculation (Independent of Canvas)
     const layout = calculateLayout(layoutL_world, layoutW_world, config, pathSettings);
 
+    // Configuration Variables used for Logic
     const toteWidth = config['tote-width'] || 0;
     const toteLength = config['tote-length'] || 0;
     const toteQtyPerBay = config['tote-qty-per-bay'] || 1;
@@ -360,13 +340,6 @@ export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config
     
     const configBayDepth = (totesDeep * toteWidth) + (Math.max(0, totesDeep - 1) * toteBackToBackDist) + hookAllowance;
     const singleBayDepth = (1 * toteWidth) + (Math.max(0, 1 - 1) * toteBackToBackDist) + hookAllowance;
-
-    const setbackTop = layout.setbackTop;
-    const setbackBottom = layout.setbackBottom;
-    const setbackLeft = layout.setbackLeft;
-    const setbackRight = layout.setbackRight;
-    
-    const isDetailView = detailViewToggle.checked;
 
     let numTunnelLevels;
     if (solverResults && solverResults.maxLevels > 0) {
@@ -390,129 +363,9 @@ export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config
         const tunnelThreshold = 6500;
         numTunnelLevels = allLevels.filter(level => level.beamBottom >= tunnelThreshold).length;
     }
-    
-    const contentPadding = 80;
-    const contentScaleX = (canvasWidth - contentPadding * 2) / displayW_world;
-    const contentScaleY = (canvasHeight - contentPadding * 2) / displayL_world;
-    const contentScale = Math.min(contentScaleX, contentScaleY);
 
-    if (contentScale <= 0 || !isFinite(contentScale)) return 1;
-
-    const drawWidth = displayW_world * contentScale;
-    const drawHeight = displayL_world * contentScale;
-    const drawOffsetX = (canvasWidth - drawWidth) / 2;
-    const drawOffsetY = (canvasHeight - drawHeight) / 2;
-
-    const layoutDrawWidth = layoutW_world * contentScale;
-    const layoutDrawHeight = layoutL_world * contentScale;
-    const layoutDrawX = drawOffsetX + (drawWidth - layoutDrawWidth) / 2;
-    const layoutDrawY = drawOffsetY + (drawHeight - layoutDrawHeight) / 2;
-
-    const { layoutOffsetX_world, layoutOffsetY_world } = layout;
-
-    const offsetX = layoutDrawX + (setbackLeft * contentScale) + (layoutOffsetX_world * contentScale);
-    const offsetY = layoutDrawY;
-    
-    const detailParams = {
-        toteWidth, toteLength, toteToToteDist, toteToUprightDist, toteBackToBackDist,
-        toteQtyPerBay, totesDeep,
-        uprightLength_world: uprightLength,
-        uprightWidth_world: uprightWidth,
-        hookAllowance_world: hookAllowance
-    };
-
-    const drawParams = {
-        ctx: warehouseCtx, scale: contentScale, offsetX, offsetY,
-        bayDepth: configBayDepth,
-        singleBayDepth: singleBayDepth,
-        flueSpace, 
-        setbackTop_world: setbackTop,
-        isDetailView: isDetailView,
-        detailParams: detailParams,
-        verticalBayTemplate: layout.verticalBayTemplate,
-        totalRackLength_world: layout.totalRackLength_world,
-        layoutOffsetY_world: layoutOffsetY_world,
-        numTunnelLevels: numTunnelLevels,
-        clearOpening: layout.clearOpening
-    };
-    
-    layout.layoutItems.forEach(item => {
-        if (item.type === 'rack') {
-            drawRack(item.x, item.width, item.rackType, drawParams);
-        }
-    });
-
-    if (isDetailView && layout.paths && layout.paths.length > 0) { 
-        warehouseCtx.save();
-        warehouseCtx.setLineDash([]); 
-
-        layout.paths.forEach(path => {
-            warehouseCtx.beginPath();
-            
-            if (path.type === 'aisle' || path.type === 'acr') {
-                warehouseCtx.strokeStyle = 'rgba(249, 115, 22, 0.5)'; 
-            } else {
-                warehouseCtx.strokeStyle = 'rgba(168, 85, 247, 0.5)'; 
-            }
-
-            if (path.type === 'cross-aisle') {
-                 warehouseCtx.lineWidth = 1 / state.scale; 
-            } else {
-                 warehouseCtx.lineWidth = 2 / state.scale;
-            }
-            
-            const x1 = layoutDrawX + (path.x1 * contentScale);
-            const y1 = layoutDrawY + (path.y1 * contentScale);
-            const x2 = layoutDrawX + (path.x2 * contentScale);
-            const y2 = layoutDrawY + (path.y2 * contentScale);
-
-            warehouseCtx.moveTo(x1, y1);
-            warehouseCtx.lineTo(x2, y2);
-            warehouseCtx.stroke();
-        });
-        warehouseCtx.restore();
-    }
-
-    if (setbackTop > 0) {
-        warehouseCtx.fillStyle = 'rgba(239, 68, 68, 0.1)';
-        warehouseCtx.fillRect(layoutDrawX, layoutDrawY, layoutDrawWidth, setbackTop * contentScale);
-        warehouseCtx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
-        warehouseCtx.setLineDash([5 / state.scale, 5 / state.scale]);
-        warehouseCtx.strokeRect(layoutDrawX, layoutDrawY, layoutDrawWidth, setbackTop * contentScale);
-        warehouseCtx.setLineDash([]);
-    }
-    if (setbackBottom > 0) {
-        const setbackY_canvas = layoutDrawY + (layoutL_world - setbackBottom) * contentScale;
-        warehouseCtx.fillStyle = 'rgba(239, 68, 68, 0.1)';
-        warehouseCtx.fillRect(layoutDrawX, setbackY_canvas, layoutDrawWidth, setbackBottom * contentScale);
-        warehouseCtx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
-        warehouseCtx.setLineDash([5 / state.scale, 5 / state.scale]);
-        warehouseCtx.strokeRect(layoutDrawX, setbackY_canvas, layoutDrawWidth, setbackBottom * contentScale);
-        warehouseCtx.setLineDash([]);
-    }
-    
-    if (setbackLeft > 0) {
-        warehouseCtx.fillStyle = 'rgba(239, 68, 68, 0.1)';
-        warehouseCtx.fillRect(layoutDrawX, layoutDrawY, setbackLeft * contentScale, layoutDrawHeight);
-        warehouseCtx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
-        warehouseCtx.setLineDash([5 / state.scale, 5 / state.scale]);
-        warehouseCtx.strokeRect(layoutDrawX, layoutDrawY, setbackLeft * contentScale, layoutDrawHeight);
-        warehouseCtx.setLineDash([]);
-    }
-    if (setbackRight > 0) {
-        const setbackX_canvas = layoutDrawX + (layoutW_world - setbackRight) * contentScale;
-        warehouseCtx.fillStyle = 'rgba(239, 68, 68, 0.1)';
-        warehouseCtx.fillRect(setbackX_canvas, layoutDrawY, setbackRight * contentScale, layoutDrawHeight);
-        warehouseCtx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
-        warehouseCtx.setLineDash([5 / state.scale, 5 / state.scale]);
-        warehouseCtx.strokeRect(setbackX_canvas, layoutDrawY, setbackRight * contentScale, layoutDrawHeight);
-        warehouseCtx.setLineDash([]);
-    }
-
-    // --- REMOVED SETBACK DIMENSIONS HERE ---
-    // Kept only the overall dimensions
-    drawDimensions(warehouseCtx, layoutDrawX, layoutDrawY, layoutDrawWidth, layoutDrawHeight, layoutW_world, layoutL_world, state.scale);
-    
+    // --- 2. UPDATE DOM METRICS (Breakdown Table) ---
+    // This block MUST run even if canvasWidth is 0
     try {
         let verticalLevels;
         if (solverResults && solverResults.maxLevels > 0) {
@@ -657,7 +510,9 @@ export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config
         if (debugBayListBody) {
             let bayHtml = '';
             if (layout.allBays.length > 0) {
-                for (const bay of layout.allBays) {
+                // Limit display to 50 for performance
+                const displayBays = layout.allBays.slice(0, 50);
+                for (const bay of displayBays) {
                     bayHtml += `
                         <tr>
                             <td>${bay.id}</td>
@@ -666,6 +521,9 @@ export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config
                             <td>${bay.bayType}</td>
                         </tr>
                     `;
+                }
+                if (layout.allBays.length > 50) {
+                    bayHtml += `<tr><td colspan="4">... ${layout.allBays.length - 50} more bays ...</td></tr>`;
                 }
             } else {
                 bayHtml = '<tr><td colspan="4">No bays generated.</td></tr>';
@@ -679,5 +537,158 @@ export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config
         }
     }
 
+    // --- 3. CANVAS DRAWING (Conditional) ---
+    const dpr = window.devicePixelRatio || 1;
+    const canvasWidth = warehouseCanvas.clientWidth;
+    const canvasHeight = warehouseCanvas.clientHeight;
+
+    if (canvasWidth === 0 || canvasHeight === 0) return 1;
+
+    warehouseCanvas.width = canvasWidth * dpr;
+    warehouseCanvas.height = canvasHeight * dpr;
+    warehouseCtx.setTransform(1, 0, 0, 1, 0, 0);
+    warehouseCtx.scale(dpr, dpr);
+    warehouseCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+    const state = getViewState(warehouseCanvas);
+
+    warehouseCtx.translate(state.offsetX, state.offsetY);
+    warehouseCtx.scale(state.scale, state.scale);
+
+    const displayL_world = Math.max(boundaryL_world, layoutL_world);
+    const displayW_world = Math.max(boundaryW_world, layoutW_world);
+
+    if (displayL_world <= 0 || displayW_world <= 0) {
+        showErrorOnCanvas(warehouseCtx, "Invalid dimensions.", canvasWidth, canvasHeight);
+        return 1;
+    }
+
+    const setbackTop = layout.setbackTop;
+    const setbackBottom = layout.setbackBottom;
+    const setbackLeft = layout.setbackLeft;
+    const setbackRight = layout.setbackRight;
+    
+    const isDetailView = detailViewToggle.checked;
+    
+    const contentPadding = 80;
+    const contentScaleX = (canvasWidth - contentPadding * 2) / displayW_world;
+    const contentScaleY = (canvasHeight - contentPadding * 2) / displayL_world;
+    const contentScale = Math.min(contentScaleX, contentScaleY);
+
+    if (contentScale <= 0 || !isFinite(contentScale)) return 1;
+
+    const drawWidth = displayW_world * contentScale;
+    const drawHeight = displayL_world * contentScale;
+    const drawOffsetX = (canvasWidth - drawWidth) / 2;
+    const drawOffsetY = (canvasHeight - drawHeight) / 2;
+
+    const layoutDrawWidth = layoutW_world * contentScale;
+    const layoutDrawHeight = layoutL_world * contentScale;
+    const layoutDrawX = drawOffsetX + (drawWidth - layoutDrawWidth) / 2;
+    const layoutDrawY = drawOffsetY + (drawHeight - layoutDrawHeight) / 2;
+
+    const { layoutOffsetX_world, layoutOffsetY_world } = layout;
+
+    const offsetX = layoutDrawX + (setbackLeft * contentScale) + (layoutOffsetX_world * contentScale);
+    const offsetY = layoutDrawY;
+    
+    const detailParams = {
+        toteWidth, toteLength, toteToToteDist, toteToUprightDist, toteBackToBackDist,
+        toteQtyPerBay, totesDeep,
+        uprightLength_world: uprightLength,
+        uprightWidth_world: uprightWidth,
+        hookAllowance_world: hookAllowance
+    };
+
+    const drawParams = {
+        ctx: warehouseCtx, scale: contentScale, offsetX, offsetY,
+        bayDepth: configBayDepth,
+        singleBayDepth: singleBayDepth,
+        flueSpace, 
+        setbackTop_world: setbackTop,
+        isDetailView: isDetailView,
+        detailParams: detailParams,
+        verticalBayTemplate: layout.verticalBayTemplate,
+        totalRackLength_world: layout.totalRackLength_world,
+        layoutOffsetY_world: layoutOffsetY_world,
+        numTunnelLevels: numTunnelLevels,
+        clearOpening: layout.clearOpening
+    };
+    
+    layout.layoutItems.forEach(item => {
+        if (item.type === 'rack') {
+            drawRack(item.x, item.width, item.rackType, drawParams);
+        }
+    });
+
+    if (isDetailView && layout.paths && layout.paths.length > 0) { 
+        warehouseCtx.save();
+        warehouseCtx.setLineDash([]); 
+
+        layout.paths.forEach(path => {
+            warehouseCtx.beginPath();
+            
+            if (path.type === 'aisle' || path.type === 'acr') {
+                warehouseCtx.strokeStyle = 'rgba(249, 115, 22, 0.5)'; 
+            } else {
+                warehouseCtx.strokeStyle = 'rgba(168, 85, 247, 0.5)'; 
+            }
+
+            if (path.type === 'cross-aisle') {
+                 warehouseCtx.lineWidth = 1 / state.scale; 
+            } else {
+                 warehouseCtx.lineWidth = 2 / state.scale;
+            }
+            
+            const x1 = layoutDrawX + (path.x1 * contentScale);
+            const y1 = layoutDrawY + (path.y1 * contentScale);
+            const x2 = layoutDrawX + (path.x2 * contentScale);
+            const y2 = layoutDrawY + (path.y2 * contentScale);
+
+            warehouseCtx.moveTo(x1, y1);
+            warehouseCtx.lineTo(x2, y2);
+            warehouseCtx.stroke();
+        });
+        warehouseCtx.restore();
+    }
+
+    if (setbackTop > 0) {
+        warehouseCtx.fillStyle = 'rgba(239, 68, 68, 0.1)';
+        warehouseCtx.fillRect(layoutDrawX, layoutDrawY, layoutDrawWidth, setbackTop * contentScale);
+        warehouseCtx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+        warehouseCtx.setLineDash([5 / state.scale, 5 / state.scale]);
+        warehouseCtx.strokeRect(layoutDrawX, layoutDrawY, layoutDrawWidth, setbackTop * contentScale);
+        warehouseCtx.setLineDash([]);
+    }
+    if (setbackBottom > 0) {
+        const setbackY_canvas = layoutDrawY + (layoutL_world - setbackBottom) * contentScale;
+        warehouseCtx.fillStyle = 'rgba(239, 68, 68, 0.1)';
+        warehouseCtx.fillRect(layoutDrawX, setbackY_canvas, layoutDrawWidth, setbackBottom * contentScale);
+        warehouseCtx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+        warehouseCtx.setLineDash([5 / state.scale, 5 / state.scale]);
+        warehouseCtx.strokeRect(layoutDrawX, setbackY_canvas, layoutDrawWidth, setbackBottom * contentScale);
+        warehouseCtx.setLineDash([]);
+    }
+    
+    if (setbackLeft > 0) {
+        warehouseCtx.fillStyle = 'rgba(239, 68, 68, 0.1)';
+        warehouseCtx.fillRect(layoutDrawX, layoutDrawY, setbackLeft * contentScale, layoutDrawHeight);
+        warehouseCtx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+        warehouseCtx.setLineDash([5 / state.scale, 5 / state.scale]);
+        warehouseCtx.strokeRect(layoutDrawX, layoutDrawY, setbackLeft * contentScale, layoutDrawHeight);
+        warehouseCtx.setLineDash([]);
+    }
+    if (setbackRight > 0) {
+        const setbackX_canvas = layoutDrawX + (layoutW_world - setbackRight) * contentScale;
+        warehouseCtx.fillStyle = 'rgba(239, 68, 68, 0.1)';
+        warehouseCtx.fillRect(setbackX_canvas, layoutDrawY, setbackRight * contentScale, layoutDrawHeight);
+        warehouseCtx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+        warehouseCtx.setLineDash([5 / state.scale, 5 / state.scale]);
+        warehouseCtx.strokeRect(setbackX_canvas, layoutDrawY, setbackRight * contentScale, layoutDrawHeight);
+        warehouseCtx.setLineDash([]);
+    }
+
+    drawDimensions(warehouseCtx, layoutDrawX, layoutDrawY, layoutDrawWidth, layoutDrawHeight, layoutW_world, layoutL_world, state.scale);
+    
     return contentScale;
 }

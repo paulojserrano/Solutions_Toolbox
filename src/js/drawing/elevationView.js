@@ -86,6 +86,10 @@ export function drawElevationView(sysLength, sysWidth, sysHeight, config, solver
     }
     const { levels, N, topToteHeight } = layoutResult;
 
+    // --- FIX: Upright Height Calculation ---
+    // Uprights stop 200mm above the highest tote
+    const rackDrawHeight = topToteHeight + 200;
+
     // Labels (Screen Space - Fixed Size)
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0); 
@@ -114,6 +118,7 @@ export function drawElevationView(sysLength, sysWidth, sysHeight, config, solver
         const totalRackWidthMM = BCO + (2 * UW_front);
 
         const contentScaleX = (frontViewWidth - padding * 2) / totalRackWidthMM;
+        // Use full WH for scaling to keep ceiling context, but draw rack shorter
         const contentScaleY = (viewHeight - 2 * padding) / WH;
         contentScale = Math.min(contentScaleX, contentScaleY);
 
@@ -129,14 +134,19 @@ export function drawElevationView(sysLength, sysWidth, sysHeight, config, solver
 
             const groundY = y_coord(0);
             const ceilingY = y_coord(WH);
+            const rackTopY = y_coord(rackDrawHeight);
 
             // Floor/Ceiling
             ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 2 / state.scale; 
             ctx.beginPath(); ctx.moveTo(frontViewOffsetX, groundY); ctx.lineTo(frontViewOffsetX + frontViewWidth, groundY); ctx.stroke();
+            
+            // Ceiling Line (Building Height)
+            ctx.strokeStyle = '#94a3b8'; ctx.setLineDash([5 / state.scale, 5 / state.scale]);
             ctx.beginPath(); ctx.moveTo(frontViewOffsetX, ceilingY); ctx.lineTo(frontViewOffsetX + frontViewWidth, ceilingY); ctx.stroke();
+            ctx.setLineDash([]);
 
             // Overhead Space
-            ctx.fillStyle = 'rgba(239, 68, 68, 0.1)';
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.05)';
             ctx.fillRect(rackStartX, ceilingY, totalRackWidthPx, OC * contentScale);
 
             let currentX = rackStartX;
@@ -145,7 +155,8 @@ export function drawElevationView(sysLength, sysWidth, sysHeight, config, solver
 
             // Left Upright
             ctx.fillStyle = '#94a3b8'; 
-            ctx.fillRect(currentX, ceilingY, uprightWidthPx, WH * contentScale);
+            // Draw to rackTopY instead of ceilingY
+            ctx.fillRect(currentX, rackTopY, uprightWidthPx, (rackDrawHeight * contentScale));
 
             levels.forEach((level) => {
                 const beamY = y_coord(level.beamTop);
@@ -169,13 +180,11 @@ export function drawElevationView(sysLength, sysWidth, sysHeight, config, solver
 
                 // Level Label
                 ctx.fillStyle = '#1e293b'; 
-                // Fix: Scale font to be the height of a tote (visually)
                 const fontSizePx = TH * contentScale; 
                 ctx.font = `bold ${fontSizePx}px 'Space Mono', monospace`; 
                 ctx.textAlign = 'left';
                 ctx.textBaseline = 'middle';
                 const lastToteRightEdge = currentToteX - toteToToteDistPx;
-                // Offset increased to 200 to clear the rack
                 ctx.fillText(level.levelLabel, lastToteRightEdge + (200 * contentScale), toteY + (toteHeightPx / 2)); 
 
                 if (level.sprinklerAdded > 0) {
@@ -189,44 +198,31 @@ export function drawElevationView(sysLength, sysWidth, sysHeight, config, solver
             currentX += (uprightWidthPx + bayClearOpeningPx);
             // Right Upright
             ctx.fillStyle = '#94a3b8'; 
-            ctx.fillRect(currentX, ceilingY, uprightWidthPx, WH * contentScale);
+            ctx.fillRect(currentX, rackTopY, uprightWidthPx, (rackDrawHeight * contentScale));
             
             if (levels.length > 0) {
                 const firstLevelY = y_coord(levels[0].beamTop);
                 const lastToteY = y_coord(levels[levels.length - 1].toteTop);
                 
-                // Tightened dimension spacing (closer to rack)
-                const dimX_1 = rackStartX - 30; // 1st Beam
-                const dimX_2 = rackStartX - 60; // Top Tote
-                const dimX_3 = rackStartX - 90; // Ceiling
+                const dimX_1 = rackStartX - 30; 
+                const dimX_2 = rackStartX - 60; 
+                const dimX_3 = rackStartX - 90; 
 
-                // Draw Extension Lines (from dimension line to rack edge)
                 ctx.strokeStyle = '#cbd5e1'; 
                 ctx.lineWidth = 1 / state.scale;
                 ctx.beginPath();
 
-                // Ground Extensions (Horizontal line at bottom)
-                ctx.moveTo(dimX_3, groundY);
-                ctx.lineTo(rackStartX, groundY);
-
-                // 1st Beam Extension
-                ctx.moveTo(dimX_1, firstLevelY);
-                ctx.lineTo(rackStartX, firstLevelY);
-
-                // Top Tote Extension
-                ctx.moveTo(dimX_2, lastToteY);
-                ctx.lineTo(rackStartX, lastToteY);
-
-                // Ceiling Extension
-                ctx.moveTo(dimX_3, ceilingY);
-                ctx.lineTo(rackStartX, ceilingY);
+                ctx.moveTo(dimX_3, groundY); ctx.lineTo(rackStartX, groundY);
+                ctx.moveTo(dimX_1, firstLevelY); ctx.lineTo(rackStartX, firstLevelY);
+                ctx.moveTo(dimX_2, lastToteY); ctx.lineTo(rackStartX, lastToteY);
+                ctx.moveTo(dimX_3, rackTopY); ctx.lineTo(rackStartX, rackTopY); // Rack Top Extension
 
                 ctx.stroke();
                 
-                // Draw Dimensions
                 drawVerticalDimension(ctx, dimX_1, groundY, firstLevelY, `${Math.round(levels[0].beamTop)}`, state.scale);
                 drawVerticalDimension(ctx, dimX_2, groundY, lastToteY, `${Math.round(levels[levels.length - 1].toteTop)}`, state.scale);
-                drawVerticalDimension(ctx, dimX_3, groundY, ceilingY, `${Math.round(WH)}`, state.scale);
+                // Draw Rack Height
+                drawVerticalDimension(ctx, dimX_3, groundY, rackTopY, `${Math.round(rackDrawHeight)}`, state.scale);
             }
         }
     }
@@ -253,29 +249,30 @@ export function drawElevationView(sysLength, sysWidth, sysHeight, config, solver
 
             const groundY = y_coord(0);
             const ceilingY = y_coord(WH);
+            const rackTopY = y_coord(rackDrawHeight);
 
             ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 2 / state.scale; 
             ctx.beginPath(); ctx.moveTo(sideViewOffsetX, groundY); ctx.lineTo(sideViewOffsetX + sideViewWidth, groundY); ctx.stroke();
+            
+            ctx.strokeStyle = '#94a3b8'; ctx.setLineDash([5 / state.scale, 5 / state.scale]);
             ctx.beginPath(); ctx.moveTo(sideViewOffsetX, ceilingY); ctx.lineTo(sideViewOffsetX + sideViewWidth, ceilingY); ctx.stroke();
+            ctx.setLineDash([]);
 
-            ctx.fillStyle = 'rgba(239, 68, 68, 0.1)';
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.05)';
             ctx.fillRect(rackStartX, ceilingY, totalRackWidthPx, OC * contentScaleSide);
 
             const toteAreaStartX = rackStartX + uprightWidthPx;
 
             ctx.fillStyle = '#94a3b8'; // Front Upright
-            ctx.fillRect(rackStartX, ceilingY, uprightWidthPx, WH * contentScaleSide);
+            ctx.fillRect(rackStartX, rackTopY, uprightWidthPx, (rackDrawHeight * contentScaleSide));
 
             levels.forEach((level) => {
                 const toteY = y_coord(level.toteTop);
                 const toteHeightPx = TH * contentScaleSide;
-                
-                // --- BEAMS IN SIDE VIEW ---
                 const beamY = y_coord(level.beamTop);
                 const beamHeightPx = BW * contentScaleSide;
                 
-                ctx.fillStyle = '#475569'; // slate-600 for beams
-                // Draw Full Beam Profile across the depth (Visual consistency with Front View)
+                ctx.fillStyle = '#475569'; 
                 ctx.fillRect(rackStartX, beamY, totalRackWidthPx, beamHeightPx);
 
                 ctx.fillStyle = '#60a5fa'; 
@@ -290,15 +287,12 @@ export function drawElevationView(sysLength, sysWidth, sysHeight, config, solver
                     currentToteX += toteDepthPx;
                 }
                 
-                // Side View Labels (Scaled)
                 ctx.fillStyle = '#1e293b'; 
-                // Fix: Scale font to be the height of a tote (visually)
                 const fontSizePx = TH * contentScaleSide;
                 ctx.font = `bold ${fontSizePx}px 'Space Mono', monospace`;
                 ctx.textAlign = 'left';
                 ctx.textBaseline = 'middle';
                 
-                // Position outside the rack to the right
                 const rightOfRackX = rackStartX + totalRackWidthPx;
                 ctx.fillText(level.levelLabel, rightOfRackX + (50 * contentScaleSide), toteY + (toteHeightPx / 2));
 
@@ -313,7 +307,7 @@ export function drawElevationView(sysLength, sysWidth, sysHeight, config, solver
 
             const rightUprightX = rackStartX + totalRackWidthPx - uprightWidthPx;
             ctx.fillStyle = '#94a3b8'; // Back Upright
-            ctx.fillRect(rightUprightX, ceilingY, uprightWidthPx, WH * contentScaleSide);
+            ctx.fillRect(rightUprightX, rackTopY, uprightWidthPx, (rackDrawHeight * contentScaleSide));
         }
     }
 

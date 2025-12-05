@@ -14,6 +14,10 @@ export const rackDetailCtx = rackDetailCanvas.getContext('2d');
 export const elevationCanvas = document.getElementById('elevationCanvas'); 
 export const elevationCtx = elevationCanvas.getContext('2d'); 
 
+// NEW: 3D View Container
+export const viewContainer3D = document.getElementById('viewContainer-3d');
+export const bomList = document.getElementById('bomList'); // NEW
+
 // Get Tab elements
 export const mainViewTabs = document.getElementById('mainViewTabs');
 

@@ -59,7 +59,7 @@ export const configTemplate = {
     "hook-allowance": 0,
     "aisle-width-low": 2400, // < 10m
     "aisle-width-high": 2400, // > 10m
-    "rack-flue-space": 150,
+    "rack-flue-space": 152.4,
     "base-beam-height": 150,
     "beam-width": 127,
     "min-clearance": 100,
@@ -424,7 +424,70 @@ export const configurations = {
         "hook-allowance": 0,
         "aisle-width-low": 900,
         "aisle-width-high": 900,
-        "rack-flue-space": 150,
+        "rack-flue-space": 152.4,
+        "base-beam-height": 840,
+        "beam-width": 60,
+        "min-clearance": 40,
+        "overhead-clearance": 915,
+        "sprinkler-threshold": 4572,
+        "sprinkler-clearance": 200,
+        "max-perf-density": 2.5,
+    },
+    "HPC-DD": {
+        "name": "HPC - Double Deep",
+        "lispExportProps": {
+            "singleRack": { 
+                "base": { "rotation": 90, "xOffset": 0, "yOffset": 0 },
+                "overrides": {
+                    "physicalOddRow": { "rotation": 270, "xOffset": { "type": "calculatedRackDepthNegative" }, "yOffset": { "type": "calculatedBayLength", "add": { "type": "toteToUprightMinus", "value": 25 } } }
+                },
+                "dynamicProps": [
+                    { "name": "Tote width", "configKey": "tote-length" },
+                    { "name": "Tote length", "configKey": "tote-width" },
+                    { "name": "Tote-to-tote spacing", "configKey": "tote-to-tote-dist" },
+                    { "name": "Tote-to-rack spacing", "configKey": "tote-to-upright-dist" },
+                    { "name": "Visibility1", "value": "Single Guide Rail" },
+                    { "name": "Rack width", "type": "calculatedRackWidth" }
+                ],
+                "standard": { "blockName": "Robots-RXLX_1-Single Row Double Deep Rack-3x2", "color": 161, "layer": "RACK-STD-HPC" }
+            },
+            "doubleRack": { 
+                "base": { "rotation": 90, "xOffset": 0, "yOffset": 0 },
+                "overrides": {
+                    "physicalOddRow": { "rotation": 270, "xOffset": { "type": "calculatedRackDepthNegative" }, "yOffset": { "type": "calculatedBayLength", "add": { "type": "toteToUprightMinus", "value": 25 } } }
+                },
+                "dynamicProps": [
+                    { "name": "Tote width", "configKey": "tote-length" },
+                    { "name": "Tote length", "configKey": "tote-width" },
+                    { "name": "Tote-to-tote spacing", "configKey": "tote-to-tote-dist" },
+                    { "name": "Tote-to-rack spacing", "configKey": "tote-to-upright-dist" },
+                    { "name": "Visibility1", "value": "Single Guide Rail" },
+                    { "name": "Rack width", "type": "calculatedRackWidth" }
+                ],
+                "standard": { "blockName": "Robots-RXLX_1-Double Row Double Deep Rack-3x2", "color": 161, "layer": "RACK-STD-HPC" }
+            }
+        },
+        "layout-mode": "s-d-s",
+        "top-setback": 1500,
+        "bottom-setback": 3950,
+        "setback-left": 200,
+        "setback-right": 200,
+        "considerTunnels": false,
+        "considerBackpacks": false,
+        "hasBufferLayer": false,
+        "tote-width": 650,
+        "tote-length": 450,
+        "tote-qty-per-bay": 3,
+        "totes-deep": 2,
+        "tote-to-tote-dist": 140,
+        "tote-to-upright-dist": 25,
+        "tote-back-to-back-dist": 30,
+        "upright-length": 90,
+        "upright-width": 70,
+        "hook-allowance": 0,
+        "aisle-width-low": 900,
+        "aisle-width-high": 900,
+        "rack-flue-space": 152.4,
         "base-beam-height": 840,
         "beam-width": 60,
         "min-clearance": 40,
