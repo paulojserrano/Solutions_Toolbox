@@ -1,114 +1,76 @@
 import { initializeUI } from './ui.js';
 import { initializeSolver } from './solver.js';
-import { configurations } from './config.js'; // Import configurations
+import { configurations } from './config.js'; 
 import {
-    // --- MAIN SOLVER TAB INPUTS ---
     warehouseLengthInput, warehouseWidthInput, clearHeightInput,
     detailViewToggle,
-
-    // --- SOLVER INPUTS (for number formatting only) ---
     solverStorageReqInput, solverThroughputReqInput, solverAspectRatioInput,
-
-    // --- NEW READ-ONLY CONTAINER ---
     readOnlyConfigContainer,
-
-    // --- CONDITIONAL INPUTS ---
     solverRespectConstraintsCheckbox,
     warehouseLengthContainer,
     warehouseWidthContainer,
-
-    // --- NEW SOLVER METHOD INPUTS ---
-    // MODIFIED: Changed to select
     solverMethodSelect,
     aspectRatioInputContainer,
     fixedLengthInputContainer,
     fixedWidthInputContainer,
     solverFixedLength,
     solverFixedWidth,
-
-    // --- NEW: Manual Mode ---
     manualInputContainer,
     solverManualLength,
     solverManualWidth,
     solverStorageReqContainer,
     solverEquivalentVolumeContainer,
     solverOptionsContainer,
-    
-    // --- NEW: Import tote size select ---
     solverToteSizeSelect,
-
-    // --- NEW: Robot Path Inputs ---
+    solverToteHeightSelect, 
     robotPathTopLinesInput,
     robotPathBottomLinesInput,
     robotPathAddLeftACRCheckbox,
     robotPathAddRightACRCheckbox,
-
-    // --- NEW: Setback Inputs ---
     userSetbackTopInput,
     userSetbackBottomInput,
-    userSetbackLeftInput, // NEW
-    userSetbackRightInput, // NEW
-
-    // --- NEW: Auth Elements ---
+    userSetbackLeftInput, 
+    userSetbackRightInput,
     userProfileName,
-    userProfileContainer
+    userProfileContainer,
+    manualSystemConfigSelect, // NEW
+    solverToteHeightSelectManual, // NEW
+    manualThroughputInput,
+    manualClearHeightInput,
+    runSolverButton
 
 } from './dom.js';
+import { getMetrics } from './calculations.js'; // Need for manual run
+import { updateSolverResults, setSelectedSolverResult } from './solver.js';
+import { requestRedraw } from './ui.js';
+import { parseNumber } from './utils.js';
 
-// --- Creates a display card for a single configuration parameter ---
 function createParamHTML(label, value, unit = '') {
-    // Handle empty/null values
-    if (label === null || value === null) {
-        return `<div class="config-param-row is-empty"></div>`; // Return an empty, styled div
-    }
-
-    // Format layout mode for readability
-    if (label === "Layout Mode") {
-        value = value === 's-d-s' ? 'Single-Double-Single' : 'All Singles';
-    }
-    // Format booleans
-    else if (typeof value === 'boolean') {
-        value = value ? 'Yes' : 'No';
-    }
-    // Format numbers
-    else if (typeof value === 'number') {
-        // Special case for Max Perf. Density (allow decimals)
-        if (label === "Max Perf. Density") {
-             value = value.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 2 });
-        } else {
-            value = value.toLocaleString('en-US');
-        }
-    }
-
-    return `
-        <div class="config-param-row">
-            <span class="config-param-label">${label}</span>
-            <span class="config-param-value">${value}${unit ? ` ${unit}` : ''}</span>
-        </div>
-    `;
+    if (label === null || value === null) return `<div class="config-param-row is-empty"></div>`; 
+    if (label === "Layout Mode") value = value === 's-d-s' ? 'Single-Double-Single' : 'All Singles';
+    else if (typeof value === 'boolean') value = value ? 'Yes' : 'No';
+    else if (typeof value === 'number') value = (label === "Max Perf. Density") ? value.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 2 }) : value.toLocaleString('en-US');
+    return `<div class="config-param-row"><span class="config-param-label">${label}</span><span class="config-param-value">${value}${unit ? ` ${unit}` : ''}</span></div>`;
 }
 
-// --- Builds the read-only configuration page from the config.js object ---
 function buildReadOnlyConfigPage() {
     if (!readOnlyConfigContainer) return;
-
     let allConfigsHTML = '';
+    const manualOptionsHTML = []; // For the select dropdown
 
     for (const key in configurations) {
         const config = configurations[key];
+        manualOptionsHTML.push(`<option value="${key}">${config.name}</option>`);
 
-        // --- MODIFIED: Create parameter arrays for grid alignment ---
         const col1Params = [
             { label: "Tote Width", key: 'tote-width', unit: 'mm' },
             { label: "Tote Length", key: 'tote-length', unit: 'mm' },
-            { label: "Tote Height", key: 'tote-height', unit: 'mm' },
             { label: "Totes per Bay", key: 'tote-qty-per-bay', unit: 'qty' },
             { label: "Totes Deep", key: 'totes-deep', unit: 'qty' },
             { label: "Tote-to-Tote", key: 'tote-to-tote-dist', unit: 'mm' },
             { label: "Tote-to-Upright", key: 'tote-to-upright-dist', unit: 'mm' },
             { label: "Tote Back-to-Back", key: 'tote-back-to-back-dist', unit: 'mm' }
         ];
-
         const col2Params = [
             { label: "Upright Length", key: 'upright-length', unit: 'mm' },
             { label: "Upright Width", key: 'upright-width', unit: 'mm' },
@@ -121,7 +83,6 @@ function buildReadOnlyConfigPage() {
             { label: "Right Setback", key: 'setback-right', unit: 'mm' },
             { label: "Layout Mode", key: 'layout-mode', unit: '' }
         ];
-
         const col3Params = [
             { label: "Base Beam Height", key: 'base-beam-height', unit: 'mm' },
             { label: "Beam Width", key: 'beam-width', unit: 'mm' },
@@ -134,178 +95,165 @@ function buildReadOnlyConfigPage() {
             { label: "Consider Backpacks", key: 'considerBackpacks', unit: '' },
             { label: "Buffer Layer", key: 'hasBufferLayer', unit: '' }
         ];
-
         const maxLength = Math.max(col1Params.length, col2Params.length, col3Params.length);
         let paramsHTML = '';
-
         for (let i = 0; i < maxLength; i++) {
-            const p1 = col1Params[i];
-            const p2 = col2Params[i];
-            const p3 = col3Params[i];
-            
+            const p1 = col1Params[i], p2 = col2Params[i], p3 = col3Params[i];
             paramsHTML += createParamHTML(p1 ? p1.label : null, p1 ? config[p1.key] : null, p1 ? p1.unit : '');
             paramsHTML += createParamHTML(p2 ? p2.label : null, p2 ? config[p2.key] : null, p2 ? p2.unit : '');
             paramsHTML += createParamHTML(p3 ? p3.label : null, p3 ? config[p3.key] : null, p3 ? p3.unit : '');
         }
-        // --- END MODIFICATION ---
-
-
-        // We'll build the HTML string for one card
-        const configCardHTML = `
-            <section class="config-card">
-                <h3>
-                    ${config.name}
-                </h3>
-
-                <!-- MODIFIED: Re-structured grid -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-2">
-                    
-                    <!-- Col 1 Header -->
-                    <h4 class="text-sm font-black text-black mb-3 uppercase border-b-2 border-black pb-1 md:col-span-1">
-                        1. Rack Specs (Tote)
-                    </h4>
-                    <!-- Col 2 Header -->
-                    <h4 class="text-sm font-black text-black mb-3 uppercase border-b-2 border-black pb-1 md:col-span-1">
-                        2. Rack Specs (Structure)
-                    </h4>
-                    <!-- Col 3 Header -->
-                    <h4 class="text-sm font-black text-black mb-3 uppercase border-b-2 border-black pb-1 md:col-span-1">
-                        3. Vertical & Logic
-                    </h4>
-                    
-                    <!-- Generated Parameter Rows -->
-                    ${paramsHTML}
-                    
-                </div>
-            </section>
-        `;
-        allConfigsHTML += configCardHTML;
+        allConfigsHTML += `<section class="config-card"><h3>${config.name}</h3><div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-2"><h4 class="text-sm font-black text-black mb-3 uppercase border-b-2 border-black pb-1 md:col-span-1">1. Rack Specs (Tote)</h4><h4 class="text-sm font-black text-black mb-3 uppercase border-b-2 border-black pb-1 md:col-span-1">2. Rack Specs (Structure)</h4><h4 class="text-sm font-black text-black mb-3 uppercase border-b-2 border-black pb-1 md:col-span-1">3. Vertical & Logic</h4>${paramsHTML}</div></section>`;
     }
-
     readOnlyConfigContainer.innerHTML = allConfigsHTML;
+    
+    // Populate Manual Config Select
+    if (manualSystemConfigSelect) {
+        manualSystemConfigSelect.innerHTML = manualOptionsHTML.join('');
+    }
 }
 
-// --- MODIFIED: Combined UI update logic ---
+// --- Manual Run Logic ---
+function executeManualRun() {
+    const key = manualSystemConfigSelect.value;
+    const config = configurations[key];
+    const L = parseNumber(solverManualLength.value);
+    const W = parseNumber(solverManualWidth.value);
+    const H = parseNumber(manualClearHeightInput.value);
+    const TP = parseNumber(manualThroughputInput.value);
+    const toteH = Number(solverToteHeightSelectManual.value);
+
+    // Sync hidden global height input so drawing works
+    if (clearHeightInput) clearHeightInput.value = H.toLocaleString('en-US');
+
+    // Create a result object
+    const metrics = getMetrics(L, W, H, config, null, null, toteH);
+    const density = (metrics.footprint > 0) ? TP / metrics.footprint : 0;
+    
+    const result = { ...metrics, density, configKey: key, configName: config.name, maxLevels: metrics.maxLevels };
+    
+    // Set as global result and draw
+    setSelectedSolverResult(result);
+    updateSolverResults(result);
+    requestRedraw(true);
+}
+
+// Override button listener to handle Manual vs Solver
+function handleMainRunClick() {
+    const activeTab = document.querySelector('.main-tab-button.active');
+    if (activeTab && activeTab.getAttribute('data-tab') === 'manualTabContent') {
+        executeManualRun();
+    } else {
+        // Trigger the original solver function (it's attached in solver.js, but we need to ensure they don't conflict)
+        // Actually, solver.js attached `runAllConfigurationsSolver` to this button.
+        // We need to conditionally execute logic inside that function OR replace the listener.
+        // Since `solver.js` imports `runSolverButton` and attaches listener, we should likely modify `solver.js` to check the tab.
+        // However, `solver.js` is already handling "Manual" mode via the dropdown.
+        // BUT we changed the UI to tabs.
+        // So the cleaner way is: Let `runAllConfigurationsSolver` in `solver.js` check the TAB state.
+        // See solver.js modification below.
+    }
+}
+
 function updateSolverMethodUI() {
     const method = solverMethodSelect.value;
     const respectConstraints = solverRespectConstraintsCheckbox.checked;
-
-    // 1. Toggle method-specific inputs
     aspectRatioInputContainer.style.display = (method === 'aspectRatio') ? 'block' : 'none';
     fixedLengthInputContainer.style.display = (method === 'fixedLength') ? 'block' : 'none';
     fixedWidthInputContainer.style.display = (method === 'fixedWidth') ? 'block' : 'none';
-    manualInputContainer.style.display = (method === 'manual') ? 'block' : 'none';
-
-    // 2. Toggle Requirement/Options inputs based on manual mode
-    solverStorageReqContainer.style.display = (method === 'manual') ? 'none' : 'block';
-    solverEquivalentVolumeContainer.style.display = (method === 'manual') ? 'none' : 'block';
-    solverOptionsContainer.style.display = (method === 'manual') ? 'none' : 'block';
+    solverStorageReqContainer.style.display = 'block';
+    solverEquivalentVolumeContainer.style.display = 'block';
+    solverOptionsContainer.style.display = 'block';
     
-    // --- NEW: Show/Hide "All Types" in Tote Size Select ---
     const allTypesOption = solverToteSizeSelect.querySelector('option[value="all"]');
-    if (allTypesOption) {
-        if (method === 'manual') {
-            allTypesOption.style.display = 'block'; // Show it
-        } else {
-            allTypesOption.style.display = 'none'; // Hide it
-            // If "All Types" was selected, reset to the first non-all option
-            if (solverToteSizeSelect.value === 'all') {
-                solverToteSizeSelect.value = "650x450x300"; // Default to first size
-            }
-        }
-    }
+    if (allTypesOption) allTypesOption.style.display = 'block';
     
-    // 3. Toggle constraint inputs (L/W) based on checkbox AND method
-    // Hide constraints if in manual mode OR if "respect constraints" is unchecked
-    if (method === 'manual' || !respectConstraints) {
+    if (!respectConstraints) {
         warehouseLengthContainer.style.display = 'none';
         warehouseWidthContainer.style.display = 'none';
     } else {
-        // We are in a non-manual mode AND respectConstraints is checked
         if (method === 'aspectRatio') {
             warehouseLengthContainer.style.display = 'block';
             warehouseWidthContainer.style.display = 'block';
         } else if (method === 'fixedLength') {
-            warehouseLengthContainer.style.display = 'none'; // Fixed by user input, not a constraint
-            warehouseWidthContainer.style.display = 'block'; // This is the only constraint
+            warehouseLengthContainer.style.display = 'none';
+            warehouseWidthContainer.style.display = 'block';
         } else if (method === 'fixedWidth') {
-            warehouseLengthContainer.style.display = 'block'; // This is the only constraint
-            warehouseWidthContainer.style.display = 'none'; // Fixed by user input, not a constraint
+            warehouseLengthContainer.style.display = 'block';
+            warehouseWidthContainer.style.display = 'none';
         }
     }
 }
 
-
-// --- NEW: Authentication Logic ---
 async function loadAuthInfo() {
     if (!userProfileContainer || !userProfileName) return;
-
     try {
         const response = await fetch('/.auth/me');
+        if (!response.ok) {
+            userProfileName.textContent = "Local / Guest";
+            userProfileContainer.classList.remove('hidden'); userProfileContainer.classList.add('flex');
+            return;
+        }
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+             userProfileName.textContent = "Local / Guest";
+             userProfileContainer.classList.remove('hidden'); userProfileContainer.classList.add('flex');
+             return;
+        }
         const payload = await response.json();
         const { clientPrincipal } = payload;
-
         if (clientPrincipal) {
             userProfileName.textContent = clientPrincipal.userDetails || clientPrincipal.userId;
-            userProfileContainer.classList.remove('hidden');
-            userProfileContainer.classList.add('flex');
+            userProfileContainer.classList.remove('hidden'); userProfileContainer.classList.add('flex');
         } else {
-            // Not logged in (or running locally without emulator)
             userProfileName.textContent = "Local / Guest";
+            userProfileContainer.classList.remove('hidden'); userProfileContainer.classList.add('flex');
         }
     } catch (error) {
-        console.log("Auth check failed (likely running locally):", error);
-        userProfileName.textContent = "Local Dev";
-        userProfileContainer.classList.remove('hidden');
-        userProfileContainer.classList.add('flex');
+        userProfileName.textContent = "Local / Guest";
+        userProfileContainer.classList.remove('hidden'); userProfileContainer.classList.add('flex');
     }
 }
 
-
 document.addEventListener('DOMContentLoaded', () => {
-    
-    // Build the read-only config page
     buildReadOnlyConfigPage();
 
-    // All inputs that trigger a canvas redraw
     const redrawInputs = [
         warehouseLengthInput, warehouseWidthInput, clearHeightInput,
         detailViewToggle,
-        // --- NEW: Path Inputs ---
         robotPathTopLinesInput, robotPathBottomLinesInput,
         robotPathAddLeftACRCheckbox, robotPathAddRightACRCheckbox,
         userSetbackTopInput, userSetbackBottomInput,
-        userSetbackLeftInput, userSetbackRightInput // NEW
+        userSetbackLeftInput, userSetbackRightInput,
+        solverToteHeightSelect, solverToteHeightSelectManual
     ];
 
-    // All inputs that should be formatted as numbers
     const numberInputs = [
         warehouseLengthInput, warehouseWidthInput, clearHeightInput,
         solverStorageReqInput, solverThroughputReqInput,
-        solverFixedLength,
-        solverFixedWidth,
-        solverManualLength,
-        solverManualWidth,
-        userSetbackTopInput, 
-        userSetbackBottomInput,
-        userSetbackLeftInput, // NEW
-        userSetbackRightInput // NEW
+        solverFixedLength, solverFixedWidth,
+        solverManualLength, solverManualWidth,
+        userSetbackTopInput, userSetbackBottomInput,
+        userSetbackLeftInput, userSetbackRightInput,
+        manualThroughputInput, manualClearHeightInput
     ];
 
-    // Inputs that should be formatted as decimals
-    const decimalInputs = [
-        solverAspectRatioInput,
-    ];
+    const decimalInputs = [solverAspectRatioInput];
 
     initializeUI(redrawInputs, numberInputs, decimalInputs);
     initializeSolver();
 
-    // --- MODIFIED: Add listeners for new UI ---
     solverRespectConstraintsCheckbox.addEventListener('change', updateSolverMethodUI);
     solverMethodSelect.addEventListener('change', updateSolverMethodUI);
-    // Run once on load to set initial state
     updateSolverMethodUI();
 
-    // --- NEW: Load User Info ---
+    // Attach Manual Run Logic override
+    // Note: Since `initializeSolver` attaches `runAllConfigurationsSolver` to the button,
+    // we need to modify `runAllConfigurationsSolver` in `solver.js` to detect the TAB.
+    // I will assume `solver.js` handles the logic branching based on visibility or passed args.
+    // UPDATE: To be safe, I'll add a check in `runSolverButton` listener here if needed, 
+    // but cleaner is to handle it in `solver.js`.
+    // Refer to `solver.js` update which should check for active tab.
+
     loadAuthInfo();
 });

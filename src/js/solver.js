@@ -1,7 +1,8 @@
 import {
     // Solver Tab
     solverStorageReqInput, solverThroughputReqInput,
-    solverToteSizeSelect, solverEquivalentVolumeCheckbox, // NEW
+    solverToteSizeSelect, solverToteHeightSelect, 
+    solverEquivalentVolumeCheckbox,
     runSolverButton,
     solverConfigStatus,
     solverConfigResultsContainer,
@@ -19,7 +20,6 @@ import {
     solverResultLengthWarning, solverResultWidthWarning,
 
     // --- NEW SOLVER METHOD IMPORTS ---
-    // MODIFIED: Changed to select
     solverMethodSelect,
     solverAspectRatioInput,
     solverFixedLength,
@@ -42,8 +42,8 @@ import {
     robotPathAddRightACRCheckbox,
     userSetbackTopInput,
     userSetbackBottomInput,
-    userSetbackLeftInput, // NEW
-    userSetbackRightInput // NEW
+    userSetbackLeftInput, 
+    userSetbackRightInput
 
 } from './dom.js';
 import { parseNumber, formatNumber } from './utils.js';
@@ -61,251 +61,6 @@ export function setSelectedSolverResult(result) {
 
 export function getSolverResultByKey(key) {
     return allSolverResults.find(r => r.configKey === key);
-}
-
-// --- Update Results Panel (Main Tab) ---
-export function updateSolverResults(results) {
-    if (!results) {
-        solverResultsSection.style.display = 'none';
-        exportResultsButton.style.display = 'none';
-        return;
-    }
-
-    solverResultLength.textContent = formatNumber(results.L);
-    solverResultWidth.textContent = formatNumber(results.W);
-    solverResultFootprint.textContent = results.footprint.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-    solverResultLocations.textContent = formatNumber(results.totalLocations);
-    solverResultPerfDensity.textContent = (results.density || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    
-    const grossVolume = results.toteVolume_m3 * results.totalLocations;
-    const capacityUtil = (results.density > 0 && results.maxPerfDensity > 0) ? (results.density / results.maxPerfDensity) * 100 : 0;
-    
-    solverResultGrossVolume.textContent = grossVolume.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-    solverResultTotalBays.textContent = formatNumber(results.totalBays);
-    solverResultCapacityUtil.textContent = capacityUtil.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %';
-    solverResultRowsAndBays.textContent = `${formatNumber(results.numRows)} x ${formatNumber(results.baysPerRack)}`;
-
-    const warehouseL = parseNumber(warehouseLengthInput.value);
-    const warehouseW = parseNumber(warehouseWidthInput.value);
-    
-    // MODIFIED: Only check constraint if the checkbox is checked
-    // MODIFIED: Do not check in manual mode
-    const solverMethod = solverMethodSelect.value;
-    const respectConstraints = solverRespectConstraintsCheckbox.checked;
-    const lengthBroken = (solverMethod !== 'manual') && respectConstraints && warehouseL > 0 && results.L > warehouseL;
-    const widthBroken = (solverMethod !== 'manual') && respectConstraints && warehouseW > 0 && results.W > warehouseW;
-
-    solverResultLengthWarning.style.display = lengthBroken ? 'inline' : 'none';
-    solverResultWidthWarning.style.display = widthBroken ? 'inline' : 'none';
-
-    exportResultsButton.style.display = 'block';
-    solverResultsSection.style.display = 'block';
-}
-
-// --- Headless Solver for a Single Config ---
-/**
- * Runs a non-blocking, promise-based solver for a single configuration.
- */
-function findSolutionForConfig(storageReq, throughputReq, sysHeight, config, configKey, expandForPerformance, reduceLevels, warehouseL, warehouseW, respectConstraints, options, pathSettings) {
-    return new Promise((resolve) => {
-        
-        let currentL = 10000;
-        let currentW = 10000;
-        const step = 1000;
-        const safetyBreak = 1000; // 1000m
-        let storageMetResults = null;
-        let metrics;
-
-        // --- This entire block is now a switch based on solver method ---
-        switch (options.method) {
-            
-            // --- CASE 1: ASPECT RATIO (EXISTING LOGIC) ---
-            case 'aspectRatio':
-                currentL = 10000; // L increments
-                // Loop 1: Find Storage
-                while (currentL <= (safetyBreak * 1000)) {
-                    currentW = currentL / options.value;
-                    
-                    if (respectConstraints && (currentL > warehouseL || currentW > warehouseW)) {
-                        break; // Hit constraint
-                    }
-
-                    currentL += step;
-                    currentW = currentL / options.value;
-                    // NEW: Pass pathSettings
-                    metrics = getMetrics(currentL, currentW, sysHeight, config, pathSettings);
-
-                    if (metrics.totalLocations >= storageReq) {
-                        const density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
-                        storageMetResults = { ...metrics, density: density };
-                        break; // Found storage
-                    }
-                }
-
-                if (!storageMetResults) {
-                    resolve(null); return;
-                }
-
-                if (storageMetResults.density <= storageMetResults.maxPerfDensity || !expandForPerformance) {
-                    resolve({ ...storageMetResults, configKey, configName: config.name });
-                    return;
-                }
-
-                // Loop 2: Find Performance
-                while (currentL <= (safetyBreak * 1000)) {
-                    currentW = currentL / options.value;
-                    if (respectConstraints && (currentL > warehouseL || currentW > warehouseW)) {
-                        break; // Hit constraint
-                    }
-                    
-                    currentL += step;
-                    currentW = currentL / options.value;
-                    // NEW: Pass pathSettings
-                    metrics = getMetrics(currentL, currentW, sysHeight, config, pathSettings);
-                    let density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
-
-                    if (density <= metrics.maxPerfDensity) {
-                        storageMetResults = { ...metrics, density: density }; // Update storageMetResults to this new valid solution
-                        break;
-                    }
-                }
-                
-                // After Loop 2, storageMetResults is either the performance-met solution
-                // or (if loop broke) the original storage-met solution. Both are valid to proceed.
-                break; // Exit switch, proceed to reduction logic
-
-            // --- CASE 2: FIXED LENGTH (NEW LOGIC) ---
-            case 'fixedLength':
-                currentL = options.value; // L is fixed
-                currentW = 10000; // W increments
-
-                // Loop 1: Find Storage
-                while (currentW <= (safetyBreak * 1000)) {
-                    if (respectConstraints && (currentW > warehouseW)) {
-                        break; // Hit constraint
-                    }
-
-                    currentW += step;
-                    // NEW: Pass pathSettings
-                    metrics = getMetrics(currentL, currentW, sysHeight, config, pathSettings);
-
-                    if (metrics.totalLocations >= storageReq) {
-                        const density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
-                        storageMetResults = { ...metrics, density: density };
-                        break; // Found storage
-                    }
-                }
-
-                if (!storageMetResults) {
-                    resolve(null); return;
-                }
-
-                if (storageMetResults.density <= storageMetResults.maxPerfDensity || !expandForPerformance) {
-                    resolve({ ...storageMetResults, configKey, configName: config.name });
-                    return;
-                }
-
-                // Loop 2: Find Performance
-                while (currentW <= (safetyBreak * 1000)) {
-                    if (respectConstraints && (currentW > warehouseW)) {
-                        break; // Hit constraint
-                    }
-                    
-                    currentW += step;
-                    // NEW: Pass pathSettings
-                    metrics = getMetrics(currentL, currentW, sysHeight, config, pathSettings);
-                    let density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
-
-                    if (density <= metrics.maxPerfDensity) {
-                        storageMetResults = { ...metrics, density: density };
-                        break;
-                    }
-                }
-                break; // Exit switch, proceed to reduction logic
-
-            // --- CASE 3: FIXED WIDTH (NEW LOGIC) ---
-            case 'fixedWidth':
-                currentW = options.value; // W is fixed
-                currentL = 10000; // L increments
-
-                // Loop 1: Find Storage
-                while (currentL <= (safetyBreak * 1000)) {
-                    if (respectConstraints && (currentL > warehouseL)) {
-                        break; // Hit constraint
-                    }
-
-                    currentL += step;
-                    // NEW: Pass pathSettings
-                    metrics = getMetrics(currentL, currentW, sysHeight, config, pathSettings);
-
-                    if (metrics.totalLocations >= storageReq) {
-                        const density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
-                        storageMetResults = { ...metrics, density: density };
-                        break; // Found storage
-                    }
-                }
-
-                if (!storageMetResults) {
-                    resolve(null); return;
-                }
-
-                if (storageMetResults.density <= storageMetResults.maxPerfDensity || !expandForPerformance) {
-                    resolve({ ...storageMetResults, configKey, configName: config.name });
-                    return;
-                }
-
-                // Loop 2: Find Performance
-                while (currentL <= (safetyBreak * 1000)) {
-                    if (respectConstraints && (currentL > warehouseL)) {
-                        break; // Hit constraint
-                    }
-                    
-                    currentL += step;
-                    // NEW: Pass pathSettings
-                    metrics = getMetrics(currentL, currentW, sysHeight, config, pathSettings);
-                    let density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
-
-                    if (density <= metrics.maxPerfDensity) {
-                        storageMetResults = { ...metrics, density: density };
-                        break;
-                    }
-                }
-                break; // Exit switch, proceed to reduction logic
-            
-            // --- CASE 4: MANUAL (This function shouldn't be called, but as a safeguard) ---
-            case 'manual':
-                // This mode bypasses findSolutionForConfig
-                resolve(null);
-                return;
-        }
-
-        // --- Reduction Logic (Applies to all cases) ---
-        // At this point, storageMetResults is the best solution found (either storage-met or performance-met)
-        if (storageMetResults && reduceLevels && storageMetResults.totalLocations > storageReq) {
-            let bestMetrics = storageMetResults;
-            const perfL = storageMetResults.L;
-            const perfW = storageMetResults.W;
-            const perfDensity = storageMetResults.density;
-
-            for (let levels = storageMetResults.calculatedMaxLevels - 1; levels > 0; levels--) {
-                // NEW: Pass pathSettings
-                const reducedMetrics = getMetrics(perfL, perfW, sysHeight, config, pathSettings, levels);
-                
-                if (reducedMetrics.totalLocations >= storageReq) {
-                    bestMetrics = { ...reducedMetrics, density: perfDensity };
-                } else {
-                    break; // Went too low
-                }
-            }
-            resolve({ ...bestMetrics, configKey, configName: config.name });
-        } else if (storageMetResults) {
-            // Don't reduce, just return the best solution found
-            resolve({ ...storageMetResults, configKey, configName: config.name });
-        } else {
-            // This can happen if the switch completes with no storageMetResults (e.g., initial constraints failed)
-            resolve(null);
-        }
-    });
 }
 
 // --- HTML Card Generator ---
@@ -363,26 +118,202 @@ function createResultCard(result) {
     `;
 }
 
+// --- Update Results Panel (Main Tab) ---
+export function updateSolverResults(results) {
+    if (!results) {
+        if (solverResultsSection) solverResultsSection.style.display = 'none';
+        if (exportResultsButton) exportResultsButton.style.display = 'none';
+        return;
+    }
+
+    if (solverResultLength) solverResultLength.textContent = formatNumber(results.L);
+    if (solverResultWidth) solverResultWidth.textContent = formatNumber(results.W);
+    if (solverResultFootprint) solverResultFootprint.textContent = results.footprint.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    if (solverResultLocations) solverResultLocations.textContent = formatNumber(results.totalLocations);
+    if (solverResultPerfDensity) solverResultPerfDensity.textContent = (results.density || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    
+    const grossVolume = results.toteVolume_m3 * results.totalLocations;
+    const capacityUtil = (results.density > 0 && results.maxPerfDensity > 0) ? (results.density / results.maxPerfDensity) * 100 : 0;
+    
+    if (solverResultGrossVolume) solverResultGrossVolume.textContent = grossVolume.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    if (solverResultTotalBays) solverResultTotalBays.textContent = formatNumber(results.totalBays);
+    if (solverResultCapacityUtil) solverResultCapacityUtil.textContent = capacityUtil.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %';
+    if (solverResultRowsAndBays) solverResultRowsAndBays.textContent = `${formatNumber(results.numRows)} x ${formatNumber(results.baysPerRack)}`;
+
+    const warehouseL = parseNumber(warehouseLengthInput.value);
+    const warehouseW = parseNumber(warehouseWidthInput.value);
+    
+    const solverMethod = solverMethodSelect.value;
+    const respectConstraints = solverRespectConstraintsCheckbox.checked;
+    const lengthBroken = (solverMethod !== 'manual') && respectConstraints && warehouseL > 0 && results.L > warehouseL;
+    const widthBroken = (solverMethod !== 'manual') && respectConstraints && warehouseW > 0 && results.W > warehouseW;
+
+    if (solverResultLengthWarning) solverResultLengthWarning.style.display = lengthBroken ? 'inline' : 'none';
+    if (solverResultWidthWarning) solverResultWidthWarning.style.display = widthBroken ? 'inline' : 'none';
+
+    if (exportResultsButton) exportResultsButton.style.display = 'block';
+    if (solverResultsSection) solverResultsSection.style.display = 'block';
+}
+
+// --- Headless Solver for a Single Config ---
+function findSolutionForConfig(storageReq, throughputReq, sysHeight, config, configKey, expandForPerformance, reduceLevels, warehouseL, warehouseW, respectConstraints, options, pathSettings, toteHeight) {
+    return new Promise((resolve) => {
+        
+        let currentL = 10000;
+        let currentW = 10000;
+        const step = 1000;
+        const safetyBreak = 1000; // 1000m
+        let storageMetResults = null;
+        let metrics;
+
+        switch (options.method) {
+            case 'aspectRatio':
+                currentL = 10000;
+                while (currentL <= (safetyBreak * 1000)) {
+                    currentW = currentL / options.value;
+                    if (respectConstraints && (currentL > warehouseL || currentW > warehouseW)) break;
+
+                    currentL += step;
+                    currentW = currentL / options.value;
+                    metrics = getMetrics(currentL, currentW, sysHeight, config, pathSettings, null, toteHeight);
+
+                    if (metrics.totalLocations >= storageReq) {
+                        const density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
+                        storageMetResults = { ...metrics, density: density };
+                        break; 
+                    }
+                }
+                if (!storageMetResults) { resolve(null); return; }
+
+                if (storageMetResults.density <= storageMetResults.maxPerfDensity || !expandForPerformance) {
+                    resolve({ ...storageMetResults, configKey, configName: config.name });
+                    return;
+                }
+
+                while (currentL <= (safetyBreak * 1000)) {
+                    currentW = currentL / options.value;
+                    if (respectConstraints && (currentL > warehouseL || currentW > warehouseW)) break;
+                    
+                    currentL += step;
+                    currentW = currentL / options.value;
+                    metrics = getMetrics(currentL, currentW, sysHeight, config, pathSettings, null, toteHeight);
+                    let density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
+
+                    if (density <= metrics.maxPerfDensity) {
+                        storageMetResults = { ...metrics, density: density };
+                        break;
+                    }
+                }
+                break;
+
+            case 'fixedLength':
+                currentL = options.value;
+                currentW = 10000;
+                while (currentW <= (safetyBreak * 1000)) {
+                    if (respectConstraints && (currentW > warehouseW)) break;
+                    currentW += step;
+                    metrics = getMetrics(currentL, currentW, sysHeight, config, pathSettings, null, toteHeight);
+                    if (metrics.totalLocations >= storageReq) {
+                        const density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
+                        storageMetResults = { ...metrics, density: density };
+                        break;
+                    }
+                }
+                if (!storageMetResults) { resolve(null); return; }
+                if (storageMetResults.density <= storageMetResults.maxPerfDensity || !expandForPerformance) {
+                    resolve({ ...storageMetResults, configKey, configName: config.name });
+                    return;
+                }
+                while (currentW <= (safetyBreak * 1000)) {
+                    if (respectConstraints && (currentW > warehouseW)) break;
+                    currentW += step;
+                    metrics = getMetrics(currentL, currentW, sysHeight, config, pathSettings, null, toteHeight);
+                    let density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
+                    if (density <= metrics.maxPerfDensity) {
+                        storageMetResults = { ...metrics, density: density };
+                        break;
+                    }
+                }
+                break;
+
+            case 'fixedWidth':
+                currentW = options.value;
+                currentL = 10000;
+                while (currentL <= (safetyBreak * 1000)) {
+                    if (respectConstraints && (currentL > warehouseL)) break;
+                    currentL += step;
+                    metrics = getMetrics(currentL, currentW, sysHeight, config, pathSettings, null, toteHeight);
+                    if (metrics.totalLocations >= storageReq) {
+                        const density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
+                        storageMetResults = { ...metrics, density: density };
+                        break;
+                    }
+                }
+                if (!storageMetResults) { resolve(null); return; }
+                if (storageMetResults.density <= storageMetResults.maxPerfDensity || !expandForPerformance) {
+                    resolve({ ...storageMetResults, configKey, configName: config.name });
+                    return;
+                }
+                while (currentL <= (safetyBreak * 1000)) {
+                    if (respectConstraints && (currentL > warehouseL)) break;
+                    currentL += step;
+                    metrics = getMetrics(currentL, currentW, sysHeight, config, pathSettings, null, toteHeight);
+                    let density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
+                    if (density <= metrics.maxPerfDensity) {
+                        storageMetResults = { ...metrics, density: density };
+                        break;
+                    }
+                }
+                break;
+            
+            case 'manual':
+                resolve(null);
+                return;
+        }
+
+        if (storageMetResults && reduceLevels && storageMetResults.totalLocations > storageReq) {
+            let bestMetrics = storageMetResults;
+            const perfL = storageMetResults.L;
+            const perfW = storageMetResults.W;
+            const perfDensity = storageMetResults.density;
+
+            for (let levels = storageMetResults.calculatedMaxLevels - 1; levels > 0; levels--) {
+                const reducedMetrics = getMetrics(perfL, perfW, sysHeight, config, pathSettings, levels, toteHeight);
+                if (reducedMetrics.totalLocations >= storageReq) {
+                    bestMetrics = { ...reducedMetrics, density: perfDensity };
+                } else {
+                    break;
+                }
+            }
+            resolve({ ...bestMetrics, configKey, configName: config.name });
+        } else if (storageMetResults) {
+            resolve({ ...storageMetResults, configKey, configName: config.name });
+        } else {
+            resolve(null);
+        }
+    });
+}
+
 // --- Main Solver Function ---
 async function runAllConfigurationsSolver() {
-    // --- 1. Common Setup ---
-    runSolverButton.disabled = true;
-    solverConfigStatus.textContent = "Running all configurations...";
-    solverConfigResultsScroller.innerHTML = '';
-    solverConfigResultsContainer.style.display = 'none';
-    solverResultsSection.style.display = 'none';
-    solverVisualizationsSection.style.display = 'none';
-    exportResultsButton.style.display = 'none';
+    if (runSolverButton) runSolverButton.disabled = true;
+    if (solverConfigStatus) solverConfigStatus.textContent = "Running all configurations...";
+    if (solverConfigResultsScroller) solverConfigResultsScroller.innerHTML = '';
+    
+    if (solverConfigResultsContainer) solverConfigResultsContainer.style.display = 'none';
+    if (solverResultsSection) solverResultsSection.style.display = 'none';
+    if (solverVisualizationsSection) solverVisualizationsSection.style.display = 'none';
+    if (exportResultsButton) exportResultsButton.style.display = 'none';
+    
     allSolverResults = [];
     setSelectedSolverResult(null);
-    requestRedraw();
+    requestRedraw(); // Clear canvas
 
-    // --- 2. Get Common Inputs ---
-    const solverMethod = solverMethodSelect.value;
-    const throughputReq = parseNumber(solverThroughputReqInput.value);
-    const sysHeight = parseNumber(clearHeightInput.value);
+    const solverMethod = solverMethodSelect ? solverMethodSelect.value : 'aspectRatio';
+    const throughputReq = solverThroughputReqInput ? parseNumber(solverThroughputReqInput.value) : 0;
+    const sysHeight = clearHeightInput ? parseNumber(clearHeightInput.value) : 0;
+    const toteHeight = solverToteHeightSelect ? Number(solverToteHeightSelect.value) : 300;
 
-    // --- NEW: Get Path Settings from DOM ---
     const pathSettings = {
         topAMRLines: robotPathTopLinesInput ? parseNumber(robotPathTopLinesInput.value) : 3,
         bottomAMRLines: robotPathBottomLinesInput ? parseNumber(robotPathBottomLinesInput.value) : 3,
@@ -390,131 +321,76 @@ async function runAllConfigurationsSolver() {
         addRightACR: robotPathAddRightACRCheckbox ? robotPathAddRightACRCheckbox.checked : false,
         userSetbackTop: userSetbackTopInput ? parseNumber(userSetbackTopInput.value) : 500,
         userSetbackBottom: userSetbackBottomInput ? parseNumber(userSetbackBottomInput.value) : 500,
-        userSetbackLeft: userSetbackLeftInput ? parseNumber(userSetbackLeftInput.value) : 500, // NEW
-        userSetbackRight: userSetbackRightInput ? parseNumber(userSetbackRightInput.value) : 500 // NEW
+        userSetbackLeft: userSetbackLeftInput ? parseNumber(userSetbackLeftInput.value) : 500,
+        userSetbackRight: userSetbackRightInput ? parseNumber(userSetbackRightInput.value) : 500
     };
 
-    // --- 3. Get Selected Configurations (Common) ---
     const tasksToRun = [];
-    const selectedToteSize = solverToteSizeSelect.value;
-    const isEquivalentVolume = solverEquivalentVolumeCheckbox.checked;
+    const selectedToteSize = solverToteSizeSelect ? solverToteSizeSelect.value : 'all';
+    const isEquivalentVolume = solverEquivalentVolumeCheckbox ? solverEquivalentVolumeCheckbox.checked : false;
 
-    const vol650 = (650 / 1000) * (450 / 1000) * (300 / 1000); // 0.08775
-    const vol850 = (850 / 1000) * (650 / 1000) * (400 / 1000); // 0.221
+    // Volume calculation
+    const vol650 = (650 / 1000) * (450 / 1000) * (toteHeight / 1000); 
+    const vol850 = (850 / 1000) * (650 / 1000) * (toteHeight / 1000);
     
     let selectedKeys = [];
     let otherKeys = [];
     let selectedVolume = 0;
     let otherVolume = 0;
 
-    const size650String = "650x450x300";
-    const size850String = "850x650x400";
+    const is650Tote = (config) => (config['tote-width'] === 650 && config['tote-length'] === 450);
+    const is850Tote = (config) => (config['tote-width'] === 850 && config['tote-length'] === 650);
 
-    const is650Tote = (config) => (
-        config['tote-width'] === 650 &&
-        config['tote-length'] === 450 &&
-        config['tote-height'] === 300
-    );
-
-    const is850Tote = (config) => (
-        config['tote-width'] === 850 &&
-        config['tote-length'] === 650 &&
-        config['tote-height'] === 400
-    );
+    const size650String = "650x450x300"; 
+    const size850String = "850x650x400"; 
 
     if (selectedToteSize === size650String) {
         selectedKeys = Object.keys(configurations).filter(k => is650Tote(configurations[k]));
         otherKeys = Object.keys(configurations).filter(k => is850Tote(configurations[k]));
         selectedVolume = vol650;
-        otherVolume = vol850;
-    } else if (selectedToteSize === size850String) { // <-- MODIFIED to else if
+        otherVolume = vol850; 
+    } else if (selectedToteSize === size850String) {
         selectedKeys = Object.keys(configurations).filter(k => is850Tote(configurations[k]));
         otherKeys = Object.keys(configurations).filter(k => is650Tote(configurations[k]));
         selectedVolume = vol850;
         otherVolume = vol650;
-    } else { // --- NEW: Handle 'all' ---
+    } else {
         selectedKeys = Object.keys(configurations);
         otherKeys = [];
-        selectedVolume = 0; // Not applicable
-        otherVolume = 0; // Not applicable
     }
     
-    // --- 4. Build Promise List (MODIFIED) ---
     const promises = [];
     
     if (solverMethod === 'manual') {
-        // --- MANUAL MODE ---
-        const manualL = parseNumber(solverManualLength.value);
-        const manualW = parseNumber(solverManualWidth.value);
-
-        if (manualL === 0 || manualW === 0 || sysHeight === 0) {
-            solverConfigStatus.textContent = "Error: Please check manual L/W and height inputs.";
-            runSolverButton.disabled = false;
-            return;
-        }
-
-        // Add tasks for the selected tote size
-        selectedKeys.forEach(configKey => {
-            tasksToRun.push({ configKey: configKey });
-        });
-        // (Equivalent volume is ignored in manual mode)
-
-        for (const task of tasksToRun) {
-            const config = configurations[task.configKey];
-            if (!config) continue;
-            
-            // Create a self-resolving promise that just runs getMetrics
-            promises.push(Promise.resolve().then(() => {
-                // NEW: Pass pathSettings
-                const metrics = getMetrics(manualL, manualW, sysHeight, config, pathSettings);
-                const density = (metrics.footprint > 0) ? throughputReq / metrics.footprint : 0;
-                return { ...metrics, density, configKey: task.configKey, configName: config.name };
-            }));
-        }
-
+        // Manual mode is handled in app.js via active tab check now
+        // This block effectively unreachable if tabs are used correctly
+        resolve(null);
     } else {
-        // --- ITERATIVE SOLVER MODES (Existing Logic) ---
-        const originalStorageReq = parseNumber(solverStorageReqInput.value);
-        const expandForPerformance = solverExpandPDCheckbox.checked;
-        const reduceLevels = solverReduceLevelsCheckbox.checked;
-        const respectConstraints = solverRespectConstraintsCheckbox.checked;
-        const warehouseL = parseNumber(warehouseLengthInput.value);
-        const warehouseW = parseNumber(warehouseWidthInput.value);
+        const originalStorageReq = solverStorageReqInput ? parseNumber(solverStorageReqInput.value) : 0;
+        const expandForPerformance = solverExpandPDCheckbox ? solverExpandPDCheckbox.checked : true;
+        const reduceLevels = solverReduceLevelsCheckbox ? solverReduceLevelsCheckbox.checked : true;
+        const respectConstraints = solverRespectConstraintsCheckbox ? solverRespectConstraintsCheckbox.checked : false;
+        const warehouseL = warehouseLengthInput ? parseNumber(warehouseLengthInput.value) : 0;
+        const warehouseW = warehouseWidthInput ? parseNumber(warehouseWidthInput.value) : 0;
 
         let solverOptions = {};
         if (solverMethod === 'aspectRatio') {
             solverOptions.method = 'aspectRatio';
-            solverOptions.value = parseNumber(solverAspectRatioInput.value);
-            if (solverOptions.value <= 0) {
-                solverConfigStatus.textContent = "Error: Aspect Ratio must be a positive number.";
-                runSolverButton.disabled = false;
-                return;
-            }
+            solverOptions.value = solverAspectRatioInput ? parseNumber(solverAspectRatioInput.value) : 1;
         } else if (solverMethod === 'fixedLength') {
             solverOptions.method = 'fixedLength';
-            solverOptions.value = parseNumber(solverFixedLength.value);
-            if (solverOptions.value <= 0) {
-                solverConfigStatus.textContent = "Error: Fixed Length must be a positive number.";
-                runSolverButton.disabled = false;
-                return;
-            }
+            solverOptions.value = solverFixedLength ? parseNumber(solverFixedLength.value) : 0;
         } else if (solverMethod === 'fixedWidth') {
             solverOptions.method = 'fixedWidth';
-            solverOptions.value = parseNumber(solverFixedWidth.value);
-            if (solverOptions.value <= 0) {
-                solverConfigStatus.textContent = "Error: Fixed Width must be a positive number.";
-                runSolverButton.disabled = false;
-                return;
-            }
+            solverOptions.value = solverFixedWidth ? parseNumber(solverFixedWidth.value) : 0;
         }
 
         if (originalStorageReq === 0 || throughputReq === 0 || sysHeight === 0) {
-            solverConfigStatus.textContent = "Error: Please check solver inputs.";
-            runSolverButton.disabled = false;
+            if (solverConfigStatus) solverConfigStatus.textContent = "Error: Please check solver inputs.";
+            if (runSolverButton) runSolverButton.disabled = false;
             return;
         }
         
-        // 1. Add tasks for the selected tote size
         selectedKeys.forEach(configKey => {
             tasksToRun.push({
                 configKey: configKey,
@@ -523,27 +399,24 @@ async function runAllConfigurationsSolver() {
             });
         });
 
-        // 2. Add tasks for the equivalent volume
-        // --- MODIFIED: Check for 'all' ---
         if (isEquivalentVolume && selectedToteSize !== 'all' && otherVolume > 0 && selectedVolume > 0) {
             const equivalentStorageReq = Math.round((originalStorageReq * selectedVolume) / otherVolume);
             
             otherKeys.forEach(configKey => {
                 tasksToRun.push({
                     configKey: configKey,
-                    storageReq: equivalentStorageReq, // Use the adjusted storage requirement
+                    storageReq: equivalentStorageReq,
                     isEquivalent: true
                 });
             });
         }
         
-        // Build promises
         for (const task of tasksToRun) {
             const config = configurations[task.configKey];
             if (!config) continue;
             
             promises.push(findSolutionForConfig(
-                task.storageReq, // MODIFIED
+                task.storageReq,
                 throughputReq,
                 sysHeight,
                 config,
@@ -554,13 +427,12 @@ async function runAllConfigurationsSolver() {
                 warehouseW,
                 respectConstraints,
                 solverOptions,
-                pathSettings // NEW
+                pathSettings,
+                toteHeight 
             ));
         }
     }
 
-
-    // --- 5. Process Results (Common) ---
     try {
         const allResults = await Promise.all(promises);
         
@@ -569,24 +441,23 @@ async function runAllConfigurationsSolver() {
         allSolverResults = validResults;
 
         if (validResults.length === 0) {
-            solverConfigResultsScroller.innerHTML = '<p class="text-black font-mono font-bold col-span-full bg-white border border-black p-2 inline-block">No valid solutions found for any configuration.</p>';
+            if (solverConfigResultsScroller) solverConfigResultsScroller.innerHTML = '<p class="text-black font-mono font-bold p-2">No valid solutions found.</p>';
         } else {
-            solverConfigResultsScroller.innerHTML = validResults.map(createResultCard).join('');
+            if (solverConfigResultsScroller) solverConfigResultsScroller.innerHTML = validResults.map(createResultCard).join('');
         }
 
-        solverConfigStatus.textContent = `Complete. Found ${validResults.length} valid solutions. Select one to view details.`;
-        solverConfigResultsContainer.style.display = 'block';
-        runSolverButton.disabled = false;
+        if (solverConfigStatus) solverConfigStatus.textContent = `Found ${validResults.length} solutions.`;
+        if (solverConfigResultsContainer) solverConfigResultsContainer.style.display = 'block';
+        if (runSolverButton) runSolverButton.disabled = false;
 
     } catch (error) {
-        console.error("Error during comparison solve:", error);
-        solverConfigStatus.textContent = "An error occurred. Check console for details.";
-        runSolverButton.disabled = false;
+        console.error(error);
+        if (solverConfigStatus) solverConfigStatus.textContent = "Error.";
+        if (runSolverButton) runSolverButton.disabled = false;
     }
 }
 
-// --- Main Initialization ---
 export function initializeSolver() {
-    runSolverButton.addEventListener('click', runAllConfigurationsSolver);
-    exportResultsButton.addEventListener('click', exportLayout);
+    if (runSolverButton) runSolverButton.addEventListener('click', runAllConfigurationsSolver);
+    if (exportResultsButton) exportResultsButton.addEventListener('click', exportLayout);
 }

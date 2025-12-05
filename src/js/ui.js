@@ -1,80 +1,114 @@
 import {
-    mainViewTabs,
-    warehouseCanvas, rackDetailCanvas, elevationCanvas,
-    
-    // --- NEW IMPORTS ---
-    // MODIFIED: Renamed
+    mainViewTabs, warehouseCanvas, rackDetailCanvas, elevationCanvas,
     warehouseLengthInput, warehouseWidthInput, clearHeightInput,
-    
-    // MODIFIED: Added new DOM elements
-    solverConfigResultsScroller,
-    solverResultsSection,
-    solverVisualizationsSection,
-    robotPathACRContainer,
-    // --- NEW: Path Inputs Needed for Redraw Calculation ---
-    robotPathTopLinesInput,
-    robotPathBottomLinesInput,
-    robotPathAddLeftACRCheckbox,
-    robotPathAddRightACRCheckbox,
-    userSetbackTopInput,
-    userSetbackBottomInput,
-    userSetbackLeftInput, // NEW
-    userSetbackRightInput, // NEW
-    adjustedLocationsDisplay
-
+    solverConfigResultsScroller, solverResultsSection, solverVisualizationsSection,
+    robotPathTopLinesInput, robotPathBottomLinesInput,
+    robotPathAddLeftACRCheckbox, robotPathAddRightACRCheckbox,
+    userSetbackTopInput, userSetbackBottomInput,
+    userSetbackLeftInput, userSetbackRightInput,
+    adjustedLocationsDisplay, solverToteHeightSelect,
+    visTabsNav, viewContainerWarehouse, viewContainerElevation, viewContainerDetail,
+    leftPanel, rightPanel, runButtonText,
+    robotPathACRContainer
 } from './dom.js';
-// MODIFIED: Import new drawing files
+
 import { drawWarehouse } from './drawing/warehouseView.js';
 import { drawRackDetail } from './drawing/rackDetailView.js';
 import { drawElevationView } from './drawing/elevationView.js';
-import { parseNumber, formatNumber, formatDecimalNumber } from './utils.js'; // MODIFIED
+import { parseNumber, formatNumber, formatDecimalNumber } from './utils.js';
 import { configurations } from './config.js';
 import { getViewState } from './viewState.js';
-import { getMetrics } from './calculations.js'; // NEW: Import for live recalc
+import { getMetrics } from './calculations.js';
+import { selectedSolverResult, setSelectedSolverResult, getSolverResultByKey, updateSolverResults } from './solver.js';
 
-// MODIFIED: Import new state/functions
-import {
-    selectedSolverResult,
-    setSelectedSolverResult,
-    getSolverResultByKey,
-    updateSolverResults
-} from './solver.js';
+let rafId = null;
 
-let rafId = null; // Single RAF ID for debouncing all draw calls
+function initializeVisTabs() {
+    if (!visTabsNav) return;
+    visTabsNav.addEventListener('click', (e) => {
+        if (e.target.classList.contains('vis-tab-button')) {
+            const buttons = visTabsNav.querySelectorAll('.vis-tab-button');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            e.target.classList.add('active');
 
-// --- Debounced Draw Function ---
-export function requestRedraw() {
-    if (rafId) {
-        cancelAnimationFrame(rafId);
-    }
+            if (viewContainerWarehouse) viewContainerWarehouse.classList.add('hidden');
+            if (viewContainerElevation) viewContainerElevation.classList.add('hidden');
+            if (viewContainerDetail) viewContainerDetail.classList.add('hidden');
+
+            const target = e.target.dataset.target;
+            if (target === 'warehouse' && viewContainerWarehouse) viewContainerWarehouse.classList.remove('hidden');
+            if (target === 'elevation' && viewContainerElevation) viewContainerElevation.classList.remove('hidden');
+            if (target === 'detail' && viewContainerDetail) viewContainerDetail.classList.remove('hidden');
+
+            // Force immediate redraw when tab switches
+            requestRedraw(false);
+        }
+    });
+}
+
+function resetCanvasView(canvas) {
+    if (!canvas) return;
+    const state = getViewState(canvas);
+    state.scale = 1.0;
+    state.offsetX = 0;
+    state.offsetY = 0;
+}
+
+export function requestRedraw(shouldResetView = false) {
+    if (rafId) cancelAnimationFrame(rafId);
     rafId = requestAnimationFrame(() => {
-        // --- Get selected config ---
-        // MODIFIED: Get config from selected result, or default to first
-        const configKey = selectedSolverResult ? selectedSolverResult.configKey : Object.keys(configurations)[0];
-        const config = configurations[configKey] || null;
+        if (!warehouseCanvas || !rackDetailCanvas || !elevationCanvas) return;
 
-        if (!config) {
-            console.warn("Redraw requested but no config is available.");
+        const warehouseCtx = warehouseCanvas.getContext('2d');
+        const rackCtx = rackDetailCanvas.getContext('2d');
+        const elevCtx = elevationCanvas.getContext('2d');
+        
+        if (shouldResetView) {
+            resetCanvasView(warehouseCanvas);
+            resetCanvasView(rackDetailCanvas);
+            resetCanvasView(elevationCanvas);
+        }
+
+        if (!selectedSolverResult) {
+            const w = warehouseCanvas.clientWidth, h = warehouseCanvas.clientHeight;
+            warehouseCtx.clearRect(0, 0, w, h);
+            rackCtx.clearRect(0, 0, rackDetailCanvas.clientWidth, rackDetailCanvas.clientHeight);
+            elevCtx.clearRect(0, 0, elevationCanvas.clientWidth, elevationCanvas.clientHeight);
+            
+            warehouseCtx.save();
+            warehouseCtx.setTransform(1, 0, 0, 1, 0, 0); 
+            warehouseCtx.textAlign = 'center'; warehouseCtx.textBaseline = 'middle';
+            warehouseCtx.fillStyle = '#94a3b8'; 
+            warehouseCtx.font = 'bold 16px Inter, sans-serif';
+            warehouseCtx.fillText('Run Analysis or Manual Layout', w / 2, h / 2);
+            warehouseCtx.restore();
             return;
         }
 
-        // --- Get global inputs ---
-        // MODIFIED: Use new inputs
-        // Use solver result dimensions if available, otherwise input dimensions
-        let drawL = selectedSolverResult ? selectedSolverResult.L : parseNumber(warehouseLengthInput.value);
-        let drawW = selectedSolverResult ? selectedSolverResult.W : parseNumber(warehouseWidthInput.value);
+        const config = configurations[selectedSolverResult.configKey];
+        if (!config) return;
+
+        let drawL = selectedSolverResult.L;
+        let drawW = selectedSolverResult.W;
         const sysHeight = parseNumber(clearHeightInput.value);
-
-        // --- Pass config to all draw functions ---
-        // MODIFIED: Pass selectedSolverResult
-        drawWarehouse(drawL, drawW, sysHeight, config, selectedSolverResult);
+        const toteHeight = solverToteHeightSelect ? Number(solverToteHeightSelect.value) : 300;
         
-        drawRackDetail(0, 0, sysHeight, config, selectedSolverResult);
-        drawElevationView(0, 0, sysHeight, config, selectedSolverResult);
+        // Re-calc aisle width for accurate drawing
+        const metrics = getMetrics(drawL, drawW, sysHeight, config, null, selectedSolverResult.maxLevels, toteHeight);
+        
+        // Create a temporary config object for drawing that includes the resolved properties
+        const drawConfig = { 
+            ...config, 
+            'tote-height': toteHeight, 
+            'aisle-width': metrics.resolvedAisleWidth 
+        };
 
-        // --- NEW: Real-time Recalculation for "Adjusted Locations" ---
+        drawWarehouse(drawL, drawW, sysHeight, drawConfig, selectedSolverResult);
+        drawRackDetail(0, 0, sysHeight, drawConfig, selectedSolverResult);
+        drawElevationView(0, 0, sysHeight, drawConfig, selectedSolverResult);
+
+        // Update Live Metrics in Toolbar
         if (adjustedLocationsDisplay) {
-            // Gather current path settings from UI
             const pathSettings = {
                 topAMRLines: robotPathTopLinesInput ? parseNumber(robotPathTopLinesInput.value) : 3,
                 bottomAMRLines: robotPathBottomLinesInput ? parseNumber(robotPathBottomLinesInput.value) : 3,
@@ -82,77 +116,60 @@ export function requestRedraw() {
                 addRightACR: robotPathAddRightACRCheckbox ? robotPathAddRightACRCheckbox.checked : false,
                 userSetbackTop: userSetbackTopInput ? parseNumber(userSetbackTopInput.value) : 500,
                 userSetbackBottom: userSetbackBottomInput ? parseNumber(userSetbackBottomInput.value) : 500,
-                userSetbackLeft: userSetbackLeftInput ? parseNumber(userSetbackLeftInput.value) : 500, // NEW
-                userSetbackRight: userSetbackRightInput ? parseNumber(userSetbackRightInput.value) : 500 // NEW
+                userSetbackLeft: userSetbackLeftInput ? parseNumber(userSetbackLeftInput.value) : 500,
+                userSetbackRight: userSetbackRightInput ? parseNumber(userSetbackRightInput.value) : 500
             };
-
-            // Calculate metrics using current inputs and selected/default dimensions
-            // We use the Solver Result's "maxLevels" if available to respect level reduction logic
             const levelOverride = selectedSolverResult ? selectedSolverResult.maxLevels : null;
-
-            const currentMetrics = getMetrics(drawL, drawW, sysHeight, config, pathSettings, levelOverride);
+            const currentMetrics = getMetrics(drawL, drawW, sysHeight, config, pathSettings, levelOverride, toteHeight);
             
             adjustedLocationsDisplay.textContent = formatNumber(currentMetrics.totalLocations);
             
-            // --- NEW: Also update Detailed Results if a solution is selected ---
-            // This keeps the main metrics box in sync with the adjustments
-            if (selectedSolverResult) {
-                 // We need to manually update the DOM elements in the "Detailed Results" section
-                 // to reflect the *current* metric calculation, not the original solved one.
-                 // Note: We are NOT updating selectedSolverResult itself to preserve the original "solved" state
-                 // until re-solved. But for UI feedback, updating the text is good.
-                 
-                 const locationsEl = document.getElementById('solverResultLocations');
-                 const totalBaysEl = document.getElementById('solverResultTotalBays');
-                 const rowsBaysEl = document.getElementById('solverResultRowsAndBays');
-                 const grossVolEl = document.getElementById('solverResultGrossVolume');
-                 
-                 if (locationsEl) locationsEl.textContent = formatNumber(currentMetrics.totalLocations);
-                 if (totalBaysEl) totalBaysEl.textContent = formatNumber(currentMetrics.totalBays);
-                 if (rowsBaysEl) rowsBaysEl.textContent = `${formatNumber(currentMetrics.numRows)} x ${formatNumber(currentMetrics.baysPerRack)}`;
-                 if (grossVolEl) {
-                     const grossVol = currentMetrics.toteVolume_m3 * currentMetrics.totalLocations;
-                     grossVolEl.textContent = grossVol.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-                 }
-                 
-                 // Also update the metric table (this happens inside drawWarehouse, but good to be explicit if logic moves)
+            // Sync bottom panel metrics
+            const locEl = document.getElementById('solverResultLocations');
+            const bayEl = document.getElementById('solverResultTotalBays');
+            const rowEl = document.getElementById('solverResultRowsAndBays');
+            const volEl = document.getElementById('solverResultGrossVolume');
+            const pdUtilEl = document.getElementById('solverResultPDUtil'); 
+
+            if (locEl) locEl.textContent = formatNumber(currentMetrics.totalLocations);
+            if (bayEl) bayEl.textContent = formatNumber(currentMetrics.totalBays);
+            if (rowEl) rowEl.textContent = `${formatNumber(currentMetrics.numRows)} x ${formatNumber(currentMetrics.baysPerRack)}`;
+            if (volEl) {
+                const vol = currentMetrics.toteVolume_m3 * currentMetrics.totalLocations;
+                volEl.textContent = vol.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+            }
+            if (pdUtilEl && currentMetrics.maxPerfDensity > 0) {
+                const pdUtil = (currentMetrics.density / currentMetrics.maxPerfDensity) * 100;
+                pdUtilEl.textContent = pdUtil.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %';
             }
         }
-
         rafId = null;
     });
 }
 
-// --- Zoom & Pan Logic ---
 function applyZoomPan(canvas, drawFunction) {
+    if (!canvas) return;
     const state = getViewState(canvas);
-
     const wheelHandler = (event) => {
         event.preventDefault();
         const rect = canvas.getBoundingClientRect();
         const mouseX = event.clientX - rect.left;
         const mouseY = event.clientY - rect.top;
-
         const worldX_before = (mouseX - state.offsetX) / state.scale;
         const worldY_before = (mouseY - state.offsetY) / state.scale;
-
         const zoomFactor = 1.1;
         const newScale = event.deltaY < 0 ? state.scale * zoomFactor : state.scale / zoomFactor;
-        state.scale = Math.max(0.1, Math.min(newScale, 50)); // Clamp scale
-
+        state.scale = Math.max(0.1, Math.min(newScale, 50));
         state.offsetX = mouseX - worldX_before * state.scale;
         state.offsetY = mouseY - worldY_before * state.scale;
-
         drawFunction();
     };
-
     const mouseDownHandler = (event) => {
         state.isPanning = true;
         state.lastPanX = event.clientX;
         state.lastPanY = event.clientY;
         canvas.style.cursor = 'grabbing';
     };
-
     const mouseMoveHandler = (event) => {
         if (!state.isPanning) return;
         const dx = event.clientX - state.lastPanX;
@@ -163,148 +180,101 @@ function applyZoomPan(canvas, drawFunction) {
         state.lastPanY = event.clientY;
         drawFunction();
     };
+    const mouseUpHandler = () => { state.isPanning = false; canvas.style.cursor = 'grab'; };
+    const mouseLeaveHandler = () => { state.isPanning = false; canvas.style.cursor = 'default'; };
 
-    const mouseUpHandler = () => {
-        state.isPanning = false;
-        canvas.style.cursor = 'grab';
-    };
-    
-    const mouseLeaveHandler = () => {
-        state.isPanning = false;
-        canvas.style.cursor = 'default';
-    };
-
-
-    // Add event listeners
     canvas.addEventListener('wheel', wheelHandler);
     canvas.addEventListener('mousedown', mouseDownHandler);
     canvas.addEventListener('mousemove', mouseMoveHandler);
     canvas.addEventListener('mouseup', mouseUpHandler);
     canvas.addEventListener('mouseleave', mouseLeaveHandler);
-
 }
 
-// --- NEW: Click handler for solution cards ---
 function handleConfigCardClick(e) {
     const card = e.target.closest('.comparison-card');
     if (!card) return;
 
-    // Remove active state from all siblings
-    const allCards = solverConfigResultsScroller.querySelectorAll('.comparison-card');
-    allCards.forEach(c => c.classList.remove('active'));
-    
-    // Add active state to clicked card
+    if (solverConfigResultsScroller) {
+        const allCards = solverConfigResultsScroller.querySelectorAll('.comparison-card');
+        allCards.forEach(c => c.classList.remove('active'));
+    }
     card.classList.add('active');
 
     const key = card.dataset.configKey;
     const result = getSolverResultByKey(key);
+    if (!result) return;
 
-    if (!result) {
-        console.error("Could not find result for key:", key);
-        return;
-    }
-
-    // Set the global selected result
     setSelectedSolverResult(result);
-    
-    // Populate the "Results" (Box 2)
     updateSolverResults(result);
 
-    // Show the results and visualization sections
-    solverResultsSection.style.display = 'block';
-    solverVisualizationsSection.style.display = 'flex'; // This is a flex container
-
-    // --- NEW: Toggle ACR visibility based on config ---
-    // Guard clause in case container is missing
+    // FIX: Check if robotPathACRContainer exists before accessing style
     if (robotPathACRContainer) {
-        if (key.includes('HPC')) {
-            robotPathACRContainer.style.display = 'none';
-        } else {
-            robotPathACRContainer.style.display = 'block';
-        }
+        robotPathACRContainer.style.display = key.includes('HPC') ? 'none' : 'flex';
     }
 
-    // Redraw everything with the new selection
-    requestRedraw();
+    // Force redraw immediately with view reset
+    requestRedraw(true);
 }
 
-
-export function initializeUI(redrawInputs, numberInputs, decimalInputs = []) { // MODIFIED
-    // Redraw on input change
-    redrawInputs.forEach(input => {
-        if (input) { // SAFETY CHECK: Ignore null inputs
-            input.addEventListener('input', requestRedraw);
-        }
-    });
+export function initializeUI(redrawInputs, numberInputs, decimalInputs = []) {
+    redrawInputs.forEach(input => { if (input) input.addEventListener('input', () => requestRedraw(false)); });
     
-    // Apply number formatting on 'blur'
     numberInputs.forEach(input => {
-        if (input) { // SAFETY CHECK: Ignore null inputs
-            // Don't format <select> elements
-            if (input.tagName.toLowerCase() === 'select') return;
-
-            input.value = formatNumber(input.value); // Format initial
-            input.addEventListener('blur', () => {
-                input.value = formatNumber(input.value);
-            });
+        if (input && input.tagName.toLowerCase() !== 'select') {
+            input.value = formatNumber(input.value); 
+            input.addEventListener('blur', () => { input.value = formatNumber(input.value); });
         }
     });
 
-    // NEW: Apply decimal formatting on 'blur'
     decimalInputs.forEach(input => {
-        if (input) { // SAFETY CHECK: Ignore null inputs
-            // Don't format <select> elements
-            if (input.tagName.toLowerCase() === 'select') return;
-
-            input.value = formatDecimalNumber(input.value, 2); // Format initial
-            input.addEventListener('blur', () => {
-                input.value = formatDecimalNumber(input.value, 2);
-            });
+        if (input) {
+            input.value = formatDecimalNumber(input.value, 2); 
+            input.addEventListener('blur', () => { input.value = formatDecimalNumber(input.value, 2); });
         }
     });
 
-    // Redraw on window resize
-    const resizeObserver = new ResizeObserver(requestRedraw);
-    if (warehouseCanvas && warehouseCanvas.parentElement) {
-        resizeObserver.observe(warehouseCanvas.parentElement);
-    }
-    if (rackDetailCanvas && rackDetailCanvas.parentElement) {
-        resizeObserver.observe(rackDetailCanvas.parentElement);
-    }
-    if (elevationCanvas && elevationCanvas.parentElement) {
-        resizeObserver.observe(elevationCanvas.parentElement);
-    }
+    const resizeObserver = new ResizeObserver(() => requestRedraw(false));
+    if (warehouseCanvas && warehouseCanvas.parentElement) resizeObserver.observe(warehouseCanvas.parentElement);
+    if (rackDetailCanvas && rackDetailCanvas.parentElement) resizeObserver.observe(rackDetailCanvas.parentElement);
+    if (elevationCanvas && elevationCanvas.parentElement) resizeObserver.observe(elevationCanvas.parentElement);
 
-    // --- ADDED: Apply Zoom/Pan controls ---
-    if (warehouseCanvas) applyZoomPan(warehouseCanvas, requestRedraw);
-    if (rackDetailCanvas) applyZoomPan(rackDetailCanvas, requestRedraw);
-    if (elevationCanvas) applyZoomPan(elevationCanvas, requestRedraw);
+    if (warehouseCanvas) applyZoomPan(warehouseCanvas, () => requestRedraw(false));
+    if (rackDetailCanvas) applyZoomPan(rackDetailCanvas, () => requestRedraw(false));
+    if (elevationCanvas) applyZoomPan(elevationCanvas, () => requestRedraw(false));
 
-    // --- Main Tab Navigation ---
     if (mainViewTabs) {
         mainViewTabs.addEventListener('click', (e) => {
-            // MODIFIED: Check for disabled
             if (e.target.classList.contains('main-tab-button') && !e.target.disabled) {
-                // Deactivate all main tabs
                 mainViewTabs.querySelectorAll('.main-tab-button').forEach(btn => btn.classList.remove('active'));
-                document.querySelectorAll('.main-tab-content').forEach(content => content.classList.remove('active'));
-
-                // Activate clicked
+                document.querySelectorAll('.main-tab-content').forEach(content => {
+                    content.classList.remove('active');
+                    content.style.display = 'none';
+                });
                 e.target.classList.add('active');
                 const tabId = e.target.getAttribute('data-tab');
                 const tabContent = document.getElementById(tabId);
-                if (tabContent) tabContent.classList.add('active');
-
-                // Request a redraw to ensure the newly visible canvas is drawn
-                requestRedraw();
+                if (tabContent) {
+                    tabContent.classList.add('active');
+                    tabContent.style.display = 'block';
+                }
+                
+                if (leftPanel && rightPanel) {
+                    if (tabId === 'configTabContent' || tabId === 'debugTabContent') {
+                        leftPanel.classList.remove('w-[420px]'); leftPanel.classList.add('w-full'); rightPanel.style.display = 'none';
+                    } else {
+                        leftPanel.classList.remove('w-full'); leftPanel.classList.add('w-[420px]'); rightPanel.style.display = 'flex';
+                    }
+                }
+                if (runButtonText) {
+                    runButtonText.textContent = (tabId === 'manualTabContent') ? "Visualize Layout" : "Run Analysis";
+                }
+                requestRedraw(false);
             }
         });
     }
 
-    // --- NEW: Add click listener for config cards ---
-    if (solverConfigResultsScroller) {
-        solverConfigResultsScroller.addEventListener('click', handleConfigCardClick);
-    }
+    if (solverConfigResultsScroller) solverConfigResultsScroller.addEventListener('click', handleConfigCardClick);
+    if (solverToteHeightSelect) solverToteHeightSelect.addEventListener('change', () => requestRedraw(false));
 
-    // Initial draw is handled by the ResizeObservers
+    initializeVisTabs();
 }

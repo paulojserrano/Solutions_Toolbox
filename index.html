@@ -4,517 +4,296 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Layout Builder</title>
-    <!-- Load Tailwind CSS (for layout utilities mainly) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="src/css/style.css">
-    <!-- Import Inter Font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 </head>
-<!-- Default theme set to engineering -->
-<body class="min-h-screen flex flex-col" data-theme="engineering">
+<body class="bg-slate-50 text-slate-900 font-sans h-screen flex overflow-hidden selection:bg-blue-100 selection:text-blue-700">
 
-    <header class="z-10">
-        <div class="w-full max-w-screen-2xl mx-auto p-4 flex items-center gap-4">
-            <div class="logo-box p-2">
-                <svg class="h-8 w-8" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                    <path stroke-linecap="square" stroke-linejoin="miter" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25L3 7.5m18 0v9l-9 5.25L3 16.5v-9m9 5.25v9l-9-5.25m9 5.25v-9l9-5.25" />
-                </svg>
-            </div>
-            <h1 class="text-2xl md:text-3xl font-black uppercase tracking-tight">
-                Layout Builder
-            </h1>
-
-            <!-- Right Side Utilities -->
-            <div class="ml-auto flex items-center gap-4">
-                <!-- User Profile Display -->
-                <div id="userProfileContainer" class="hidden md:flex flex-col items-end text-right">
-                    <span id="userProfileName" class="text-xs font-bold uppercase opacity-70">Not Logged In</span>
-                    <a href="/.auth/logout" class="text-[10px] underline hover:text-red-600 font-mono">Logout</a>
-                </div>
-            </div>
-
+    <aside class="w-64 bg-[#0f172a] text-slate-300 flex-shrink-0 flex flex-col z-20 shadow-xl">
+        <div class="h-14 flex items-center px-5 border-b border-slate-800/50 bg-[#0f172a]">
+            <div class="w-6 h-6 rounded bg-blue-600 mr-3 flex items-center justify-center"><span class="text-white font-bold text-xs">E</span></div>
+            <h1 class="text-white font-bold tracking-wide text-sm">ENG Toolbox</h1>
         </div>
-    </header>
-
-    <!-- Main Content Area -->
-    <main class="flex-1 w-full max-w-screen-2xl mx-auto p-4 md:p-8 flex flex-col gap-0">
-
-        <!-- 1. Main Tab Navigation -->
-        <nav class="pl-2 -mb-[2px] z-20 relative">
-            <div class="flex items-end" id="mainViewTabs">
-                <button class="main-tab-button active" data-tab="solverTabContent">Solver</button>
-                <button class="main-tab-button" data-tab="configTabContent">Configuration</button>
-                <button class="main-tab-button" data-tab="debugTabContent">Debug</button>
-                <button class="main-tab-button" data-tab="roadmapTabContent">Roadmap</button>
+        <nav class="flex-1 overflow-y-auto py-6 px-3 space-y-6">
+            <div>
+                <div class="px-3 mb-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Overview</div>
+                <a href="#" class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md hover:text-white hover:bg-white/5 transition-colors group">
+                    <svg class="w-5 h-5 opacity-50 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>Dashboard
+                </a>
+            </div>
+            <div>
+                <div class="px-3 mb-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Engineering Tools</div>
+                <div class="space-y-0.5">
+                    <a href="#" class="flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md hover:text-white hover:bg-white/5 transition-colors group">
+                       <svg class="w-5 h-5 opacity-50 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>Tote Pack Analysis
+                    </a>
+                    <a href="#" class="flex items-center gap-3 px-3 py-2 text-sm font-medium text-white bg-blue-600 shadow-[0_0_15px_rgba(37,99,235,0.3)] rounded-md border border-blue-500">
+                        <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/></svg>Layout Tool
+                    </a>
+                </div>
             </div>
         </nav>
+        <div id="userProfileContainer" class="p-4 bg-[#0b1120]/50 border-t border-slate-800">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-xs font-bold text-white shadow-lg">U</div>
+                <div class="flex-1 min-w-0">
+                    <p id="userProfileName" class="text-sm font-medium text-white truncate">Guest User</p>
+                    <a href="/.auth/logout" class="text-xs text-slate-500 hover:text-blue-400 transition-colors">Log out</a>
+                </div>
+            </div>
+        </div>
+    </aside>
 
-        <!-- 2. Main Tab Content: Solver -->
-        <div id="solverTabContent" class="main-tab-content active space-y-8">
+    <div class="flex-1 flex flex-col min-w-0 bg-white">
+        <header class="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-10 shrink-0">
+            <div class="flex items-center gap-4">
+                <h2 class="text-lg font-bold text-slate-800 tracking-tight">Layout Builder</h2>
+                <div class="h-4 w-px bg-slate-200"></div>
+                <nav class="flex gap-1" id="mainViewTabs">
+                    <button class="main-tab-button active" data-tab="solverTabContent">Solver</button>
+                    <button class="main-tab-button" data-tab="manualTabContent">Manual</button>
+                    <button class="main-tab-button" data-tab="configTabContent">Configs</button>
+                    <button class="main-tab-button" data-tab="debugTabContent">Debug</button>
+                </nav>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200 uppercase tracking-wide">v2.1.0</span>
+            </div>
+        </header>
+
+        <main class="flex-1 flex overflow-hidden relative">
             
-            <!-- Box 1: Inputs -->
-            <section id="solverParametersSection" class="nb-box p-6">
-                <h2 class="nb-title text-xl">
-                    Solver Parameters
-                </h2>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6">
+            <div id="leftPanel" class="w-[420px] flex-shrink-0 flex flex-col border-r border-slate-200 bg-slate-50/50 z-10 transition-all duration-300">
+                <div class="flex-1 overflow-y-auto p-5 custom-scrollbar">
                     
-                    <!-- Col 1: Solver Settings -->
-                    <div class="space-y-5">
-                        <h3 class="font-bold text-lg border-l-4 border-black pl-2 bg-yellow-300 text-black inline-block pr-2">Solver Settings</h3>
-                        
-                        <div>
-                            <label for="solverMethodSelect" class="block text-sm font-bold mb-1 uppercase">Solver Method</label>
-                            <div>
-                                <select id="solverMethodSelect" class="w-full">
-                                    <option value="aspectRatio" selected>Aspect Ratio</option>
-                                    <option value="fixedLength">Fixed Length</option>
-                                    <option value="fixedWidth">Fixed Width</option>
-                                    <option value="manual">Manual Mode</option>
-                                </select>
+                    <!-- TAB 1: SOLVER -->
+                    <div id="solverTabContent" class="main-tab-content active space-y-5">
+                        <section class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+                            <div class="px-4 py-3 border-b border-slate-100 bg-white"><h3 class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">1. Configuration</h3></div>
+                            <div class="p-4 space-y-5">
+                                <div>
+                                    <label for="solverMethodSelect" class="input-label">Solver Method</label>
+                                    <select id="solverMethodSelect" class="input-field">
+                                        <option value="aspectRatio" selected>Aspect Ratio</option>
+                                        <option value="fixedLength">Fixed Length</option>
+                                        <option value="fixedWidth">Fixed Width</option>
+                                    </select>
+                                    <div class="mt-3 pl-3 border-l-2 border-blue-100 space-y-3">
+                                        <div id="aspectRatioInputContainer">
+                                            <label for="solverAspectRatio" class="input-label">Target Ratio (L / W)</label>
+                                            <input type="text" id="solverAspectRatio" value="1.0" class="input-field">
+                                        </div>
+                                        <div id="fixedLengthInputContainer" style="display: none;">
+                                            <label for="solverFixedLength" class="input-label">Fixed Length (mm)</label>
+                                            <input type="text" id="solverFixedLength" value="50,000" class="input-field">
+                                        </div>
+                                        <div id="fixedWidthInputContainer" style="display: none;">
+                                            <label for="solverFixedWidth" class="input-label">Fixed Width (mm)</label>
+                                            <input type="text" id="solverFixedWidth" value="30,000" class="input-field">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="space-y-2 pt-2" id="solverOptionsContainer">
+                                    <label class="flex items-center cursor-pointer group"><input type="checkbox" id="solverRespectConstraintsCheckbox" class="rounded text-blue-600 border-slate-300 w-4 h-4"><span class="ml-2 text-xs font-medium text-slate-600">Enforce limits</span></label>
+                                    <label class="flex items-center cursor-pointer group"><input type="checkbox" id="solverExpandPDCheckbox" checked class="rounded text-blue-600 border-slate-300 w-4 h-4"><span class="ml-2 text-xs font-medium text-slate-600">Auto-expand for density</span></label>
+                                    <label class="flex items-center cursor-pointer group"><input type="checkbox" id="solverReduceLevelsCheckbox" checked class="rounded text-blue-600 border-slate-300 w-4 h-4"><span class="ml-2 text-xs font-medium text-slate-600">Reduce levels if feasible</span></label>
+                                </div>
                             </div>
-                            
-                            <div class="mt-4">
-                                <div id="aspectRatioInputContainer">
-                                    <label for="solverAspectRatio" class="block text-sm font-bold mb-1 uppercase">Aspect Ratio (L / W)</label>
-                                    <input type="text" id="solverAspectRatio" value="1.0" class="w-full">
-                                    <p class="helper-text">L = 1.0 * W</p>
-                                </div>
-                                <div id="fixedLengthInputContainer" style="display: none;">
-                                    <label for="solverFixedLength" class="block text-sm font-bold mb-1 uppercase">Fixed Length (mm)</label>
-                                    <input type="text" id="solverFixedLength" value="50,000" class="w-full">
-                                </div>
-                                <div id="fixedWidthInputContainer" style="display: none;">
-                                    <label for="solverFixedWidth" class="block text-sm font-bold mb-1 uppercase">Fixed Width (mm)</label>
-                                    <input type="text" id="solverFixedWidth" value="30,000" class="w-full">
-                                </div>
-                                <div id="manualInputContainer" style="display: none;">
-                                    <div class="space-y-4">
+                        </section>
+
+                        <section class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+                            <div class="px-4 py-3 border-b border-slate-100 bg-white"><h3 class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">2. Requirements</h3></div>
+                            <div class="p-4 space-y-4">
+                                <div id="solverRequirementsContainer" class="space-y-4">
+                                    <div id="solverStorageReqContainer">
+                                        <label for="solverStorageReq" class="input-label">Required Storage (Locations)</label>
+                                        <input type="text" id="solverStorageReq" value="30,000" class="input-field">
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div><label for="solverThroughputReq" class="input-label">Throughput</label><input type="text" id="solverThroughputReq" value="2,000" class="input-field"></div>
+                                        <!-- New: Solver Tote Height -->
                                         <div>
-                                            <label for="solverManualLength" class="block text-sm font-bold mb-1 uppercase">Manual Length (mm)</label>
-                                            <input type="text" id="solverManualLength" value="50,000" class="w-full">
-                                        </div>
-                                        <div>
-                                            <label for="solverManualWidth" class="block text-sm font-bold mb-1 uppercase">Manual Width (mm)</label>
-                                            <input type="text" id="solverManualWidth" value="30,000" class="w-full">
+                                            <label for="solverToteHeightSelect" class="input-label">Tote Height</label>
+                                            <select id="solverToteHeightSelect" class="input-field">
+                                                <option value="300" selected>300 mm</option>
+                                                <option value="400">400 mm</option>
+                                            </select>
                                         </div>
                                     </div>
+                                    <div>
+                                        <label for="solverToteSizeSelect" class="input-label">Tote Size (W x L)</label>
+                                        <select id="solverToteSizeSelect" class="input-field">
+                                            <option value="all" selected>All</option>
+                                            <option value="650x450x300">650 x 450</option>
+                                            <option value="850x650x400">850 x 650</option>
+                                        </select>
+                                    </div>
+                                    <div id="solverEquivalentVolumeContainer">
+                                        <label class="flex items-center cursor-pointer group"><input type="checkbox" id="solverEquivalentVolumeCheckbox" class="rounded text-blue-600 border-slate-300 w-4 h-4"><span class="ml-2 text-xs font-medium text-slate-600">Match equivalent volume</span></label>
+                                    </div>
+                                </div>
+                                <div class="pt-4 border-t border-slate-100">
+                                    <div class="flex items-center mb-3"><div class="h-px bg-slate-200 flex-1"></div><span class="px-2 text-[10px] font-bold text-slate-400 uppercase">System Limits</span><div class="h-px bg-slate-200 flex-1"></div></div>
+                                    <div class="grid grid-cols-2 gap-3 mb-3">
+                                        <div id="warehouseLengthContainer"><label for="warehouseLength" class="input-label">Max Length</label><input type="text" id="warehouseLength" value="30,000" class="input-field bg-slate-50/50"></div>
+                                        <div id="warehouseWidthContainer"><label for="warehouseWidth" class="input-label">Max Width</label><input type="text" id="warehouseWidth" value="25,000" class="input-field bg-slate-50/50"></div>
+                                    </div>
+                                    <div><label for="clearHeight" class="input-label">Clear Height</label><input type="text" id="clearHeight" value="10,000" class="input-field bg-slate-50/50"></div>
                                 </div>
                             </div>
-                        </div>
-
-                        <div class="pt-2 space-y-2" id="solverOptionsContainer">
-                            <div class="flex items-center">
-                                <input type="checkbox" id="solverRespectConstraintsCheckbox">
-                                <label for="solverRespectConstraintsCheckbox" class="ml-1 block text-sm font-bold">Respect footprint constraints</label>
-                            </div>
-
-                            <div class="flex items-center">
-                                <input type="checkbox" id="solverExpandPDCheckbox" checked>
-                                <label for="solverExpandPDCheckbox" class="ml-1 block text-sm font-bold">Expand system if PD > Limit</label>
-                            </div>
-                            
-                            <div class="flex items-center">
-                                <input type="checkbox" id="solverReduceLevelsCheckbox" checked>
-                                <label for="solverReduceLevelsCheckbox" class="ml-1 block text-sm font-bold">Reduce levels if expanded</label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Col 2: Requirements -->
-                    <div class="space-y-5" id="solverRequirementsContainer">
-                        <h3 class="font-bold text-lg border-l-4 border-black pl-2 bg-blue-300 text-black inline-block pr-2">Requirements</h3>
-                        <div id="solverStorageReqContainer">
-                            <label for="solverStorageReq" class="block text-sm font-bold mb-1 uppercase">Storage Requirement</label>
-                            <input type="text" id="solverStorageReq" value="30,000" class="w-full">
-                        </div>
-                        <div>
-                            <label for="solverToteSizeSelect" class="block text-sm font-bold mb-1 uppercase">Tote Size (WxLxH)</label>
-                            <select id="solverToteSizeSelect" class="w-full">
-                                <option value="all" selected>All Types</option>
-                                <option value="650x450x300">650 x 450 x 300 mm</option>
-                                <option value="850x650x400">850 x 650 x 400 mm</option>
-                            </select>
-                        </div>
-                        <div class="pt-2" id="solverEquivalentVolumeContainer">
-                            <div class="flex items-center">
-                                <input type="checkbox" id="solverEquivalentVolumeCheckbox">
-                                <label for="solverEquivalentVolumeCheckbox" class="ml-1 block text-sm font-bold">Consider equivalent gross volume</label>
-                            </div>
-                        </div>
-                        <div>
-                            <label for="solverThroughputReq" class="block text-sm font-bold mb-1 uppercase">Throughput Req (PPH)</label>
-                            <input type="text" id="solverThroughputReq" value="2,000" class="w-full">
-                        </div>
-                    </div>
-
-                    <!-- Col 3: Constraints -->
-                    <div class="space-y-5">
-                        <h3 class="font-bold text-lg border-l-4 border-black pl-2 bg-red-300 text-black inline-block pr-2">Constraints</h3>
-                        <div id="warehouseLengthContainer">
-                            <label for="warehouseLength" class="block text-sm font-bold mb-1 uppercase">Warehouse Length (mm)</label>
-                            <input type="text" id="warehouseLength" value="30,000" class="w-full">
-                        </div>
-                        <div id="warehouseWidthContainer">
-                            <label for="warehouseWidth" class="block text-sm font-bold mb-1 uppercase">Warehouse Width (mm)</label>
-                            <input type="text" id="warehouseWidth" value="25,000" class="w-full">
-                        </div>
-                        <div>
-                            <label for="clearHeight" class="block text-sm font-bold mb-1 uppercase">Clear Height (mm)</label>
-                            <input type="text" id="clearHeight" value="10,000" class="w-full">
-                        </div>
-                    </div>
-                    
-                </div>
-                <div class="mt-8">
-                    <button id="runSolverButton" class="w-full nb-btn text-lg">
-                        Find Solutions
-                    </button>
-                    <p id="solverConfigStatus" class="text-center font-mono mt-3 h-5 font-bold"></p>
-                </div>
-            </section>
-
-            <!-- Horizontal Configuration Results -->
-            <section id="solverConfigResultsContainer" class="w-full" style="display: none;">
-                <h2 class="nb-title text-xl mb-2">
-                    Select a Solution
-                </h2>
-                <p class="text-sm font-mono mb-4 helper-text">Click a card to view detailed results.</p>
-                <div id="solverConfigResultsScroller" class="flex overflow-x-auto gap-6 pb-6 pt-2 px-2">
-                    <!-- Config cards will be injected here -->
-                </div>
-            </section>
-
-            <!-- Visualizations -->
-            <section id="solverVisualizationsSection" class="nb-box p-6" style="display: none;">
-
-                <div class="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-hidden">
-                    <div class="vis-container flex flex-col h-full lg:col-span-2 lg:row-span-1">
-                        <div class="vis-header flex justify-between items-center">
-                            <span>Top-Down View</span>
-                            <div class="flex items-center gap-2">
-                                <input type="checkbox" id="detailViewToggle" class="h-5 w-5 !shadow-none border-2">
-                                <label for="detailViewToggle" class="text-sm font-bold uppercase">Show Detail</label>
-                            </div>
-                        </div>
+                        </section>
                         
-                        <!-- Split View for Canvas & Fine Tune Controls -->
-                        <div class="flex-1 w-full h-full overflow-hidden relative flex flex-col md:flex-row">
-                            
-                            <!-- 1. Canvas Wrapper -->
-                            <div class="flex-1 relative overflow-hidden h-full bg-white order-2 md:order-1">
-                                <canvas id="warehouseCanvas"></canvas>
-                            </div>
-                            
-                            <!-- 2. Fine Tune Sidebar -->
-                            <div class="fine-tune-sidebar w-full md:w-1/4 p-4 overflow-y-auto order-1 md:order-2 border-b-2 md:border-b-0 md:border-l-2 border-[var(--nb-border-color)]">
-                                <h3 class="text-sm font-black uppercase border-b-2 border-[var(--nb-border-color)] pb-2 mb-4 text-[var(--accent-primary)]">
-                                    Fine Tune
-                                </h3>
-                                
-                                <div class="space-y-4">
-                                    <!-- Robot Paths Block -->
-                                    <div class="bg-[var(--content-bg)] border-2 border-[var(--nb-border-color)] p-3">
-                                        <h4 class="text-xs font-bold uppercase mb-3 opacity-70 border-b border-[var(--nb-border-color)] pb-1">Robot Paths</h4>
-                                        
-                                        <!-- AMR Lines -->
-                                        <div class="grid grid-cols-2 gap-2 mb-3">
-                                            <div>
-                                                <label for="robotPathTopLines" class="block text-[10px] font-bold mb-1 uppercase">Top AMR</label>
-                                                <input type="number" id="robotPathTopLines" value="3" min="0" class="w-full text-sm p-1">
-                                            </div>
-                                            <div>
-                                                <label for="robotPathBottomLines" class="block text-[10px] font-bold mb-1 uppercase">Btm AMR</label>
-                                                <input type="number" id="robotPathBottomLines" value="3" min="0" class="w-full text-sm p-1">
-                                            </div>
-                                        </div>
+                        <section id="solverConfigResultsContainer" style="display: none;" class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+                            <div class="px-4 py-3 border-b border-slate-100 bg-white"><h3 class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">3. Select Solution</h3></div>
+                            <div class="p-4 bg-slate-50"><div id="solverConfigResultsScroller" class="flex flex-col gap-3"></div></div>
+                        </section>
+                    </div>
 
-                                        <!-- Top/Bottom Setbacks -->
-                                        <div class="space-y-2 mb-3 pb-3 border-b border-[var(--nb-border-color)] border-dashed">
-                                            <div>
-                                                <label for="userSetbackTop" class="block text-[10px] font-bold mb-1 uppercase">Add. Top Setback (mm)</label>
-                                                <input type="text" id="userSetbackTop" value="500" class="w-full text-sm p-1">
-                                            </div>
-                                            <div>
-                                                <label for="userSetbackBottom" class="block text-[10px] font-bold mb-1 uppercase">Add. Btm Setback (mm)</label>
-                                                <input type="text" id="userSetbackBottom" value="500" class="w-full text-sm p-1">
-                                            </div>
-                                        </div>
-
-                                        <!-- ACR Paths (Conditional) -->
-                                        <div id="robotPathACRContainer" class="space-y-2">
-                                            <div class="flex items-center">
-                                                <input type="checkbox" id="robotPathAddLeftACR" class="h-4 w-4">
-                                                <label for="robotPathAddLeftACR" class="ml-2 block text-xs font-bold">Add Left ACR</label>
-                                            </div>
-                                            <div class="flex items-center mb-2">
-                                                <input type="checkbox" id="robotPathAddRightACR" class="h-4 w-4">
-                                                <label for="robotPathAddRightACR" class="ml-2 block text-xs font-bold">Add Right ACR</label>
-                                            </div>
-                                            
-                                            <!-- Left/Right Setbacks -->
-                                            <div class="pt-2 border-t border-[var(--nb-border-color)] border-dashed">
-                                                <div class="mb-2">
-                                                    <label for="userSetbackLeft" class="block text-[10px] font-bold mb-1 uppercase">Add. Left Setback (mm)</label>
-                                                    <input type="text" id="userSetbackLeft" value="500" class="w-full text-sm p-1">
-                                                </div>
-                                                <div>
-                                                    <label for="userSetbackRight" class="block text-[10px] font-bold mb-1 uppercase">Add. Right Setback (mm)</label>
-                                                    <input type="text" id="userSetbackRight" value="500" class="w-full text-sm p-1">
-                                                </div>
-                                            </div>
-                                        </div>
+                    <!-- TAB 2: MANUAL -->
+                    <div id="manualTabContent" class="main-tab-content space-y-6" style="display: none;">
+                        <section class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+                            <div class="px-4 py-3 border-b border-slate-100 bg-white"><h3 class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Manual Setup</h3></div>
+                            <div class="p-4 space-y-5">
+                                <div>
+                                    <label for="manualSystemConfigSelect" class="input-label">System Type</label>
+                                    <select id="manualSystemConfigSelect" class="input-field">
+                                        <!-- Populated by JS -->
+                                    </select>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label for="solverToteHeightSelectManual" class="input-label">Tote Height</label>
+                                        <select id="solverToteHeightSelectManual" class="input-field">
+                                            <option value="300" selected>300 mm</option>
+                                            <option value="400">400 mm</option>
+                                        </select>
                                     </div>
-
-                                    <!-- Live Metrics Block -->
-                                    <div class="bg-[var(--content-bg)] border-2 border-[var(--nb-border-color)] p-3">
-                                        <h4 class="text-xs font-bold uppercase mb-3 opacity-70 border-b border-[var(--nb-border-color)] pb-1">Live Metrics</h4>
-                                        
-                                        <div class="flex justify-between items-center">
-                                            <span class="text-[10px] font-bold uppercase">Adj. Locations:</span>
-                                            <span id="adjustedLocationsDisplay" class="text-lg font-black text-[var(--accent-primary)]">0</span>
-                                        </div>
+                                    <div>
+                                        <label for="manualThroughputInput" class="input-label">Throughput</label>
+                                        <input type="text" id="manualThroughputInput" value="2,000" class="input-field">
                                     </div>
-                                    
+                                </div>
+                                <div>
+                                    <label for="manualClearHeightInput" class="input-label">Clear Height</label>
+                                    <input type="text" id="manualClearHeightInput" value="10,000" class="input-field">
+                                </div>
+                                <div id="manualInputContainer" class="pt-3 border-t border-slate-100">
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <div><label for="solverManualLength" class="input-label">Length (mm)</label><input type="text" id="solverManualLength" value="50,000" class="input-field"></div>
+                                        <div><label for="solverManualWidth" class="input-label">Width (mm)</label><input type="text" id="solverManualWidth" value="30,000" class="input-field"></div>
+                                    </div>
                                 </div>
                             </div>
-
-                        </div>
-                    </div>
-                    
-                    <div class="vis-container flex flex-col h-full lg:col-span-1 lg:row-span-1">
-                        <div class="vis-header">Elevation View</div>
-                        <div class="flex-1 w-full h-full overflow-hidden relative vis-canvas-wrapper">
-                             <canvas id="elevationCanvas"></canvas>
-                        </div>
-                    </div>
-    
-                    <div class="vis-container flex flex-col h-full lg:col-span-1 lg:row-span-1">
-                         <div class="vis-header">Rack Detail View</div>
-                        <div class="flex-1 w-full h-full overflow-hidden relative vis-canvas-wrapper">
-                             <canvas id="rackDetailCanvas"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Detailed Results -->
-            <section id="solverResultsSection" class="nb-box p-6" style="display: none;">
-                <h2 class="nb-title text-xl mb-6">
-                    Detailed Results
-                </h2>
-                <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-8 font-mono">
-                    <!-- Row 1 -->
-                    <div>
-                        <span class="block text-xs font-bold opacity-70 uppercase mb-1">Solved Length</span>
-                        <div class="flex items-baseline gap-2">
-                            <span id="solverResultLength" class="text-3xl font-black">0</span>
-                            <span class="text-sm font-bold">mm</span>
-                            <svg id="solverResultLengthWarning" style="display: none;" class="h-6 w-6 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M8.485 2.495c.646-1.136 2.384-1.136 3.03 0l6.29 11.007a1.75 1.75 0 01-1.515 2.498H3.71c-1.266 0-2.028-1.23-1.515-2.498l6.29-11.007zM9 11a1 1 0 112 0v1a1 1 0 11-2 0v-1zm1-6.99a.99.99 0 00-1 .99v3.01a1 1 0 102 0V5a.99.99 0 00-1-.99z" clip-rule="evenodd" />
-                            </svg>
-                        </div>
-                    </div>
-                    <div>
-                        <span class="block text-xs font-bold opacity-70 uppercase mb-1">Solved Width</span>
-                         <div class="flex items-baseline gap-2">
-                            <span id="solverResultWidth" class="text-3xl font-black">0</span>
-                            <span class="text-sm font-bold">mm</span>
-                            <svg id="solverResultWidthWarning" style="display: none;" class="h-6 w-6 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M8.485 2.495c.646-1.136 2.384-1.136 3.03 0l6.29 11.007a1.75 1.75 0 01-1.515 2.498H3.71c-1.266 0-2.028-1.23-1.515-2.498l6.29-11.007zM9 11a1 1 0 112 0v1a1 1 0 11-2 0v-1zm1-6.99a.99.99 0 00-1 .99v3.01a1 1 0 102 0V5a.99.99 0 00-1-.99z" clip-rule="evenodd" />
-                            </svg>
-                        </div>
-                    </div>
-                    <div>
-                        <span class="block text-xs font-bold opacity-70 uppercase mb-1">Footprint</span>
-                        <span id="solverResultFootprint" class="text-3xl font-black">0</span>
-                        <span class="text-sm font-bold">m²</span>
-                    </div>
-                    
-                    <!-- Row 2 -->
-                    <div>
-                        <span class="block text-xs font-bold opacity-70 uppercase mb-1">Locations</span>
-                        <span id="solverResultLocations" class="text-3xl font-black text-blue-600">0</span>
-                    </div>
-                    <div>
-                        <span class="block text-xs font-bold opacity-70 uppercase mb-1">Gross Volume</span>
-                        <span id="solverResultGrossVolume" class="text-3xl font-black">0.0</span>
-                        <span class="text-sm font-bold">m³</span>
-                    </div>
-                    <div>
-                        <span class="block text-xs font-bold opacity-70 uppercase mb-1">Total Bays</span>
-                        <span id="solverResultTotalBays" class="text-3xl font-black">0</span>
+                        </section>
                     </div>
 
-                    <!-- Row 3 -->
-                    <div>
-                        <span class="block text-xs font-bold opacity-70 uppercase mb-1">Perf. Density</span>
-                        <span id="solverResultPerfDensity" class="text-3xl font-black">0.0</span>
-                    </div>
-                    <div>
-                        <span class="block text-xs font-bold opacity-70 uppercase mb-1">Cap. Utilization</span>
-                        <span id="solverResultCapacityUtil" class="text-3xl font-black">0.0 %</span>
-                    </div>
-                    <div>
-                        <span class="block text-xs font-bold opacity-70 uppercase mb-1">Rows x Bays/Row</span>
-                        <span id="solverResultRowsAndBays" class="text-3xl font-black">0 x 0</span>
-                    </div>
-                </div>
-                
-                <h2 class="nb-title text-xl mt-8 mb-4">
-                    Layout Metrics
-                </h2>
-                <div class="space-y-4">
-                    <table class="metric-table">
-                        <thead>
-                            <tr>
-                                <th>Bay Type</th>
-                                <th>Locs / Level</th>
-                                <th>Levels</th>
-                                <th>Num. Bays</th>
-                                <th class="total-col">Total Locs</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr id="metric-row-std-config" style="display: none;">
-                                <td id="metric-std-config-label">Standard (Config)</td>
-                                <td><span id="metric-std-config-locs-lvl">0</span></td>
-                                <td><span id="metric-std-config-levels">0</span></td>
-                                <td><span id="metric-std-config-bays">0</span></td>
-                                <td class="total-col"><span id="metric-std-config-locs-total">0</span></td>
-                            </tr>
-                            <tr id="metric-row-std-single" style="display: none;">
-                                <td id="metric-std-single-label">Standard (Single)</td>
-                                <td><span id="metric-std-single-locs-lvl">0</span></td>
-                                <td><span id="metric-std-single-levels">0</span></td>
-                                <td><span id="metric-std-single-bays">0</span></td>
-                                <td class="total-col"><span id="metric-std-single-locs-total">0</span></td>
-                            </tr>
-                            <tr id="metric-row-bp-config" style="display: none;">
-                                <td id="metric-bp-config-label">Backpack (Config)</td>
-                                <td><span id="metric-bp-config-locs-lvl">0</span></td>
-                                <td><span id="metric-bp-config-levels">0</span></td>
-                                <td><span id="metric-bp-config-bays">0</span></td>
-                                <td class="total-col"><span id="metric-bp-config-locs-total">0</span></td>
-                            </tr>
-                            <tr id="metric-row-tun-config" style="display: none;">
-                                <td id="metric-tun-config-label">Tunnel (Config)</td>
-                                <td><span id="metric-tun-config-locs-lvl">0</span></td>
-                                <td><span id="metric-tun-config-levels">0</span></td>
-                                <td><span id="metric-tun-config-bays">0</span></td>
-                                <td class="total-col"><span id="metric-tun-config-locs-total">0</span></td>
-                            </tr>
-                             <tr class="total-row">
-                                <td>Total</td>
-                                <td>—</td>
-                                <td>—</td>
-                                <td><span id="metric-tot-bays">0</span></td>
-                                <td><span id="metric-tot-locs-total">0</span></td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <!-- TAB 3 & 4 (Unchanged structure) -->
+                    <div id="configTabContent" class="main-tab-content space-y-6" style="display: none;"><div id="readOnlyConfigContainer" class="space-y-4"></div></div>
+                    <div id="debugTabContent" class="main-tab-content space-y-6" style="display: none;"><div class="bg-white rounded border border-slate-200 overflow-hidden"><table class="w-full text-xs text-left"><thead class="bg-slate-100 font-bold uppercase border-b border-slate-200 text-slate-500"><tr><th class="px-3 py-2">ID</th><th class="px-3 py-2">X</th><th class="px-3 py-2">Y</th><th class="px-3 py-2">Type</th></tr></thead><tbody id="debugBayListBody" class="divide-y divide-slate-100 font-mono text-slate-600"></tbody></table></div></div>
+                    <div class="h-20"></div>
                 </div>
 
-                <div class="mt-8">
-                     <button id="exportResultsButton" class="w-full nb-btn nb-btn-secondary text-lg" style="display: none;">
-                        Export Layout (LISP)
+                <div class="p-4 bg-white border-t border-slate-200 sticky bottom-0 z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                    <button id="runSolverButton" class="w-full nb-btn py-3 text-sm shadow-lg shadow-blue-500/20 flex justify-center items-center gap-2">
+                        <span id="runButtonText">Run Analysis</span>
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                     </button>
+                    <p id="solverConfigStatus" class="text-center text-[10px] font-mono mt-2 h-4 text-slate-400 truncate"></p>
                 </div>
-            </section>
-            
-        </div>
-
-        <!-- 3. Main Tab Content: Configuration -->
-        <div id="configTabContent" class="main-tab-content overflow-y-auto space-y-8">
-            
-            <h2 class="nb-title text-xl mb-2">
-                Available System Configurations
-            </h2>
-            <p class="font-mono mb-6 opacity-80">
-                These are the read-only parameter sets used by the solver.
-            </p>
-
-            <div id="readOnlyConfigContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <!-- Config cards will be injected here -->
             </div>
 
-        </div>
-        
-        <!-- 4. Main Tab Content: Debug -->
-        <div id="debugTabContent" class="main-tab-content space-y-8">
-            <h2 class="nb-title text-xl mt-8 mb-4">
-                Master Bay List
-            </h2>
-            <div class="space-y-4 h-[600px] overflow-auto nb-box p-2">
-                <table class="metric-table">
-                    <thead>
-                        <tr>
-                            <th>Bay ID</th>
-                            <th>X Coord (Center)</th>
-                            <th>Y Coord (Center)</th>
-                            <th>Bay Type</th>
-                        </tr>
-                    </thead>
-                    <tbody id="debugBayListBody">
-                        <!-- Bay data will be injected here -->
-                    </tbody>
-                </table>
+            <div id="rightPanel" class="flex-1 flex flex-col bg-[#fdfdfd] relative border-l border-slate-200">
+                <div class="h-12 border-b border-slate-200 flex items-center justify-between px-4 bg-white shrink-0">
+                    <div class="flex items-center gap-6 h-full">
+                        <nav class="flex h-full" id="visTabsNav">
+                            <button class="vis-tab-button active" data-target="warehouse">Top-Down</button>
+                            <button class="vis-tab-button" data-target="elevation">Elevation</button>
+                            <button class="vis-tab-button" data-target="detail">Rack Detail</button>
+                        </nav>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="flex items-center border border-slate-200 rounded-md bg-white p-0.5 shadow-sm">
+                             <label class="flex items-center gap-2 px-2 py-1 cursor-pointer select-none rounded hover:bg-slate-50 transition-colors">
+                                <input type="checkbox" id="detailViewToggle" class="w-3.5 h-3.5 text-blue-600 rounded border-slate-300 focus:ring-0">
+                                <span class="text-xs font-bold text-slate-600">Show Detail</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex-1 relative overflow-hidden bg-dot-pattern">
+                    <div id="viewContainer-warehouse" class="w-full h-full relative">
+                        <canvas id="warehouseCanvas" class="block w-full h-full"></canvas>
+                        <div class="absolute bottom-6 right-6 flex flex-col gap-2 z-10">
+                            <div class="bg-white p-2 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.1)] border border-slate-200 w-64 space-y-3">
+                                <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                                    <span class="text-[10px] font-bold uppercase text-slate-400">Layout Metrics</span>
+                                    <div id="adjustedLocationsDisplay" class="text-sm font-black text-blue-600">0</div>
+                                </div>
+                                <div class="space-y-2">
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div><label class="text-[10px] text-slate-500 font-bold">Top Path</label><input type="number" id="robotPathTopLines" value="3" class="w-full text-xs border border-slate-200 rounded p-1"></div>
+                                        <div><label class="text-[10px] text-slate-500 font-bold">Btm Path</label><input type="number" id="robotPathBottomLines" value="3" class="w-full text-xs border border-slate-200 rounded p-1"></div>
+                                    </div>
+                                    <div id="robotPathACRContainer" class="flex gap-2">
+                                        <label class="flex items-center gap-1.5 cursor-pointer bg-slate-50 px-2 py-1 rounded border border-slate-100 w-full justify-center hover:border-blue-200"><input type="checkbox" id="robotPathAddLeftACR" class="rounded text-blue-600 w-3 h-3 border-slate-300"><span class="text-[10px] font-bold text-slate-600">Left ACR</span></label>
+                                        <label class="flex items-center gap-1.5 cursor-pointer bg-slate-50 px-2 py-1 rounded border border-slate-100 w-full justify-center hover:border-blue-200"><input type="checkbox" id="robotPathAddRightACR" class="rounded text-blue-600 w-3 h-3 border-slate-300"><span class="text-[10px] font-bold text-slate-600">Right ACR</span></label>
+                                    </div>
+                                </div>
+                                <div class="pt-2 border-t border-slate-100">
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div><input type="text" id="userSetbackTop" placeholder="Top" class="w-full text-[10px] border-slate-200 rounded p-1"></div>
+                                        <div><input type="text" id="userSetbackBottom" placeholder="Btm" class="w-full text-[10px] border-slate-200 rounded p-1"></div>
+                                        <div><input type="text" id="userSetbackLeft" placeholder="Left" class="w-full text-[10px] border-slate-200 rounded p-1"></div>
+                                        <div><input type="text" id="userSetbackRight" placeholder="Right" class="w-full text-[10px] border-slate-200 rounded p-1"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="viewContainer-elevation" class="w-full h-full hidden relative"><canvas id="elevationCanvas" class="block w-full h-full"></canvas></div>
+                    <div id="viewContainer-detail" class="w-full h-full hidden relative"><canvas id="rackDetailCanvas" class="block w-full h-full"></canvas></div>
+                </div>
+
+                <!-- BOTTOM PANEL (Increased Height) -->
+                <div class="h-72 border-t border-slate-200 bg-white shrink-0 z-10 shadow-[0_-5px_15px_rgba(0,0,0,0.03)] w-full">
+                    <div id="solverResultsSection" class="p-4 overflow-y-auto custom-scrollbar h-full w-full" style="display: none;">
+                        <div class="flex flex-col md:flex-row gap-6 h-full">
+                            <div class="w-full md:w-1/3 flex flex-col gap-3">
+                                <div class="flex justify-between items-center"><h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Key Metrics</h4><button id="exportResultsButton" class="text-[10px] font-bold text-blue-600 hover:underline">Export LISP</button></div>
+                                <div class="grid grid-cols-2 gap-3 flex-1">
+                                     <div class="p-3 bg-slate-50 rounded border border-slate-100 flex flex-col justify-center"><div class="text-[10px] text-slate-400 font-bold uppercase">Locations</div><div id="solverResultLocations" class="text-xl font-black text-slate-800 leading-tight">0</div></div>
+                                     <div class="p-3 bg-slate-50 rounded border border-slate-100 flex flex-col justify-center"><div class="text-[10px] text-slate-400 font-bold uppercase">Footprint</div><div class="flex items-baseline gap-1"><span id="solverResultFootprint" class="text-xl font-black text-slate-800 leading-tight">0</span><span class="text-sm font-medium text-slate-500">m²</span></div></div>
+                                     <!-- New Cards -->
+                                     <div class="p-3 bg-slate-50 rounded border border-slate-100 flex flex-col justify-center"><div class="text-[10px] text-slate-400 font-bold uppercase">PD Utilization</div><div class="flex items-baseline gap-1"><span id="solverResultPDUtil" class="text-xl font-black text-slate-800 leading-tight">0</span><span class="text-sm font-medium text-slate-500">%</span></div></div>
+                                     <div class="p-3 bg-slate-50 rounded border border-slate-100 flex flex-col justify-center"><div class="text-[10px] text-slate-400 font-bold uppercase">Gross Vol.</div><div class="flex items-baseline gap-1"><span id="solverResultGrossVolume" class="text-xl font-black text-slate-800 leading-tight">0</span><span class="text-sm font-medium text-slate-500">m³</span></div></div>
+                                </div>
+                            </div>
+                            <div class="flex-1 border-l border-slate-100 pl-6">
+                                <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Breakdown</h4>
+                                <table class="w-full text-xs">
+                                    <thead class="border-b border-slate-100 text-slate-500"><tr><th class="py-1 text-left font-semibold">Bay Type</th><th class="py-1 text-right font-semibold">Locs/Lvl</th><th class="py-1 text-right font-semibold">Levels</th><th class="py-1 text-right font-semibold">Bays</th><th class="py-1 text-right font-semibold">Total</th></tr></thead>
+                                    <tbody class="divide-y divide-slate-50">
+                                        <tr id="metric-row-std-config" style="display:none"><td id="metric-std-config-label" class="py-2 text-slate-600 font-medium">Std</td><td id="metric-std-config-locs-lvl" class="text-right text-slate-400 font-mono">0</td><td id="metric-std-config-levels" class="text-right text-slate-400 font-mono">0</td><td id="metric-std-config-bays" class="text-right text-slate-400 font-mono">0</td><td id="metric-std-config-locs-total" class="py-2 text-right font-mono text-slate-700 font-bold">0</td></tr>
+                                        <tr id="metric-row-std-single" style="display:none"><td id="metric-std-single-label" class="py-2 text-slate-600 font-medium">Sgl</td><td id="metric-std-single-locs-lvl" class="text-right text-slate-400 font-mono">0</td><td id="metric-std-single-levels" class="text-right text-slate-400 font-mono">0</td><td id="metric-std-single-bays" class="text-right text-slate-400 font-mono">0</td><td id="metric-std-single-locs-total" class="py-2 text-right font-mono text-slate-700 font-bold">0</td></tr>
+                                        <tr id="metric-row-bp-config" style="display:none"><td id="metric-bp-config-label" class="py-2 text-slate-600 font-medium">BP</td><td id="metric-bp-config-locs-lvl" class="text-right text-slate-400 font-mono">0</td><td id="metric-bp-config-levels" class="text-right text-slate-400 font-mono">0</td><td id="metric-bp-config-bays" class="text-right text-slate-400 font-mono">0</td><td id="metric-bp-config-locs-total" class="py-2 text-right font-mono text-slate-700 font-bold">0</td></tr>
+                                        <tr id="metric-row-tun-config" style="display:none"><td id="metric-tun-config-label" class="py-2 text-slate-600 font-medium">Tun</td><td id="metric-tun-config-locs-lvl" class="text-right text-slate-400 font-mono">0</td><td id="metric-tun-config-levels" class="text-right text-slate-400 font-mono">0</td><td id="metric-tun-config-bays" class="text-right text-slate-400 font-mono">0</td><td id="metric-tun-config-locs-total" class="py-2 text-right font-mono text-slate-700 font-bold">0</td></tr>
+                                    </tbody>
+                                    <tfoot><tr class="bg-yellow-50/50"><td colspan="4" class="py-2 text-slate-900 font-bold pl-2">System Total</td><td id="metric-tot-locs-total" class="py-2 text-right font-mono font-bold pr-1 text-slate-900">0</td></tr></tfoot>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="hidden">
+                             <span id="solverResultLength"></span><span id="solverResultWidth"></span><span id="solverResultLengthWarning"></span><span id="solverResultWidthWarning"></span><span id="solverResultTotalBays"></span><span id="solverResultRowsAndBays"></span><span id="solverResultPerfDensity"></span><span id="solverResultCapacityUtil"></span><span id="metric-tot-bays"></span>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
-
-        <!-- 5. Roadmap Tab Content -->
-        <div id="roadmapTabContent" class="main-tab-content space-y-8">
-            <h2 class="nb-title text-xl mb-2">Development Roadmap</h2>
-            <p class="font-mono mb-6 opacity-80">Tracking future features and priorities.</p>
-
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                
-                <!-- Priority 1 -->
-                <section class="nb-box p-6">
-                    <h3 class="font-bold text-lg border-b-2 border-black/20 mb-4 pb-2">Priority 1: AutoCAD Export</h3>
-                    <ul class="space-y-2 font-mono text-sm">
-                        <li class="flex items-center"><input type="checkbox" disabled checked class="mr-2"> Add Robot Paths</li>
-                        <li class="flex items-center"><input type="checkbox" disabled class="mr-2"> Add Fencing</li>
-                        <li class="flex items-center"><input type="checkbox" disabled class="mr-2"> Rack Details Table</li>
-                        <li class="flex items-center"><input type="checkbox" disabled class="mr-2"> Elevation Views (Export)</li>
-                    </ul>
-                </section>
-
-                <!-- Visuals -->
-                <section class="nb-box p-6">
-                    <h3 class="font-bold text-lg border-b-2 border-black/20 mb-4 pb-2">Visual Previews</h3>
-                    <ul class="space-y-2 font-mono text-sm">
-                        <li class="flex items-center"><input type="checkbox" disabled class="mr-2"> Improve Dimension Scaling</li>
-                        <li class="flex items-center"><input type="checkbox" disabled class="mr-2"> Fix Rack Detail View Bugs</li>
-                    </ul>
-                </section>
-
-                <!-- Fine Tuning -->
-                <section class="nb-box p-6">
-                    <h3 class="font-bold text-lg border-b-2 border-black/20 mb-4 pb-2">Fine Tuning & Logic</h3>
-                    <ul class="space-y-2 font-mono text-sm">
-                        <li class="flex items-center"><input type="checkbox" disabled class="mr-2"> Add Workstations & Chargers</li>
-                        <li class="flex items-center"><input type="checkbox" disabled class="mr-2"> Custom Tote Height Input</li>
-                        <li class="flex items-center"><input type="checkbox" disabled class="mr-2"> Logic: Aisle Width > 10m Height</li>
-                    </ul>
-                </section>
-
-                <!-- Future -->
-                <section class="nb-box p-6">
-                    <h3 class="font-bold text-lg border-b-2 border-black/20 mb-4 pb-2">Future / Advanced</h3>
-                    <ul class="space-y-2 font-mono text-sm">
-                         <li class="flex items-center"><input type="checkbox" disabled class="mr-2"> Generate Solutions Deck (PDF)</li>
-                         <li class="flex items-center"><input type="checkbox" disabled class="mr-2"> Building Column Handling</li>
-                    </ul>
-                </section>
-            </div>
-        </div>
-        
-    </main>
-
-    <!-- JavaScript -->
+        </main>
+    </div>
     <script type="module" src="src/js/app.js"></script>
 </body>
 </html>
