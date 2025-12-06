@@ -4,7 +4,7 @@ import {
     calculatorStatus
 } from './dom.js';
 import { selectedSolverResult } from './solver.js';
-import { formatNumber } from './utils.js';
+import { formatNumber } from '../../core/utils/utils.js';
 
 /**
  * Handles the file upload and processing

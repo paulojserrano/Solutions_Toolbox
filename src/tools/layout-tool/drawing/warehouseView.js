@@ -17,7 +17,7 @@ import {
     userSetbackLeftInput,
     userSetbackRightInput
 } from '../dom.js';
-import { formatNumber, parseNumber } from '../utils.js';
+import { formatNumber, parseNumber } from '../../../core/utils/utils.js';
 import { calculateLayout, calculateElevationLayout } from '../calculations.js';
 import { getViewState } from '../viewState.js';
 import {

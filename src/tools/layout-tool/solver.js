@@ -50,7 +50,7 @@ import {
     pdUtilCard 
 
 } from './dom.js';
-import { parseNumber, formatNumber } from './utils.js';
+import { parseNumber, formatNumber } from '../../core/utils/utils.js';
 import { getMetrics, calculateLayout, calculateElevationLayout } from './calculations.js';
 import { requestRedraw } from './ui.js';
 import { configurations } from './config.js';

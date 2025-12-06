@@ -1,6 +1,8 @@
 import { initializeUI } from './ui.js';
 import { initializeSolver } from './solver.js';
 import { configurations } from './config.js'; 
+import { renderHeader } from '../../core/components/header.js';
+import { renderSidebar } from '../../core/components/sidebar.js';
 import {
     warehouseLengthInput, warehouseWidthInput, clearHeightInput,
     detailViewToggle,
@@ -31,12 +33,11 @@ import {
     userSetbackBottomInput,
     userSetbackLeftInput, 
     userSetbackRightInput,
-    userProfileName,
-    userProfileContainer,
+    refreshDOMElements,
     solverExpandPDCheckbox,
     solverReduceLevelsCheckbox,
     manualSystemConfigSelect,
-    manualToteSizeSelect // NEW
+    manualToteSizeSelect
 
 } from './dom.js';
 
@@ -174,42 +175,24 @@ function updateSolverMethodUI() {
     }
 }
 
-async function loadAuthInfo() {
-    if (!userProfileContainer || !userProfileName) return;
-    try {
-        const response = await fetch('/.auth/me');
-        if (!response.ok) {
-            userProfileName.textContent = "Local / Guest";
-            userProfileContainer.classList.remove('hidden');
-            userProfileContainer.classList.add('flex');
-            return;
-        }
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-             userProfileName.textContent = "Local / Guest";
-             userProfileContainer.classList.remove('hidden');
-             userProfileContainer.classList.add('flex');
-             return;
-        }
-        const payload = await response.json();
-        const { clientPrincipal } = payload;
-        if (clientPrincipal) {
-            userProfileName.textContent = clientPrincipal.userDetails || clientPrincipal.userId;
-            userProfileContainer.classList.remove('hidden');
-            userProfileContainer.classList.add('flex');
-        } else {
-            userProfileName.textContent = "Local / Guest";
-            userProfileContainer.classList.remove('hidden');
-            userProfileContainer.classList.add('flex');
-        }
-    } catch (error) {
-        userProfileName.textContent = "Local / Guest";
-        userProfileContainer.classList.remove('hidden');
-        userProfileContainer.classList.add('flex');
-    }
-}
+document.addEventListener('DOMContentLoaded', async () => {
+    // 1. Render Header and Sidebar first
+    const headerTabs = `
+        <nav class="flex gap-1" id="mainViewTabs">
+            <button class="main-tab-button active" data-tab="solverTabContent">Solver</button>
+            <button class="main-tab-button" data-tab="manualTabContent">Manual</button>
+            <button class="main-tab-button" data-tab="configTabContent">Configs</button>
+            <button class="main-tab-button" data-tab="debugTabContent">Debug</button>
+        </nav>
+    `;
 
-document.addEventListener('DOMContentLoaded', () => {
+    await renderHeader('global-header', 'Layout Builder', headerTabs);
+    renderSidebar('global-sidebar', 'layout');
+
+    // 2. Refresh DOM elements now that Header/Sidebar are injected
+    refreshDOMElements();
+
+    // 3. Continue initialization
     buildReadOnlyConfigPage();
 
     if (manualSystemConfigSelect) {
@@ -239,6 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
         manualSystemConfigSelect.dispatchEvent(new Event('change'));
     }
 
+    // Moved inside DOMContentLoaded after refreshDOMElements()
     const redrawInputs = [
         warehouseLengthInput, warehouseWidthInput, clearHeightInput,
         detailViewToggle,
@@ -269,11 +253,9 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeUI(redrawInputs, numberInputs, decimalInputs);
     initializeSolver();
 
-    solverRespectConstraintsCheckbox.addEventListener('change', updateSolverMethodUI);
-    solverMethodSelect.addEventListener('change', updateSolverMethodUI);
-    solverExpandPDCheckbox.addEventListener('change', updateSolverMethodUI);
+    if (solverRespectConstraintsCheckbox) solverRespectConstraintsCheckbox.addEventListener('change', updateSolverMethodUI);
+    if (solverMethodSelect) solverMethodSelect.addEventListener('change', updateSolverMethodUI);
+    if (solverExpandPDCheckbox) solverExpandPDCheckbox.addEventListener('change', updateSolverMethodUI);
 
     updateSolverMethodUI();
-
-    loadAuthInfo();
 });

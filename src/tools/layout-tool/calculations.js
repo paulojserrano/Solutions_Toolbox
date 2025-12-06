@@ -1,4 +1,4 @@
-import { roundUpTo50 } from './utils.js';
+import { roundUpTo50 } from '../../core/utils/utils.js';
 
 // --- Helper function to add bays (No changes here, just passing through) ---
 function addBaysToMasterList(allBays, rowItem, verticalBayTemplate, config, layoutOffsetX_world, layoutOffsetY_world) {
