@@ -26,7 +26,7 @@ import { drawElevationView } from './drawing/elevationView.js';
 // NEW: Import 3D view functions
 import { init3DView, draw3DView, animate3D, stopAnimate3D } from './drawing/3dview.js';
 
-import { parseNumber, formatNumber, formatDecimalNumber } from './utils.js';
+import { parseNumber, formatNumber, formatDecimalNumber } from '../../core/utils/utils.js';
 import { configurations } from './config.js';
 import { getViewState } from './viewState.js';
 import { getMetrics } from './calculations.js';

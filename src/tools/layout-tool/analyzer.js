@@ -14,7 +14,7 @@ import {
     clearHeightInput, // <-- FIXED: Added this import
     solverThroughputReqInput // <-- FIXED: Added this import
 } from './dom.js';
-import { parseNumber, formatNumber } from './utils.js';
+import { parseNumber, formatNumber } from '../../core/utils/utils.js';
 import { configurations } from './config.js';
 import { findSolutionForConfig } from './solver.js';
 

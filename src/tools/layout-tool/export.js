@@ -1,6 +1,6 @@
 import { selectedSolverResult } from './solver.js';
 import { configurations } from './config.js';
-import { parseNumber } from './utils.js';
+import { parseNumber } from '../../core/utils/utils.js';
 import { 
     clearHeightInput,
     // --- NEW: Path Inputs ---
