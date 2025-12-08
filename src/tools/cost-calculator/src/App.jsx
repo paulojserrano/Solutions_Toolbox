@@ -243,12 +243,10 @@ export default function App() {
   };
 
   const handleWheel = (e) => {
-    if (e.ctrlKey || e.metaKey) {
-      e.preventDefault();
-      const zoomSensitivity = 0.001;
-      const newK = Math.min(Math.max(0.1, transform.k - e.deltaY * zoomSensitivity), 5);
-      setTransform(t => ({ ...t, k: newK }));
-    }
+    e.preventDefault();
+    const zoomSensitivity = 0.001;
+    const newK = Math.min(Math.max(0.1, transform.k - e.deltaY * zoomSensitivity), 5);
+    setTransform(t => ({ ...t, k: newK }));
   };
 
   const zoomIn = () => setTransform(t => ({ ...t, k: Math.min(t.k * 1.2, 5) }));
