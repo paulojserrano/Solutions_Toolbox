@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOST Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="src/core/css/style.css">
+    <link rel="stylesheet" href="src/tools/most-calculator/styles.css">
+</head>
+<body class="bg-app text-slate-900 font-sans h-screen flex overflow-hidden">
+
+    <!-- Shared Sidebar -->
+    <div id="global-sidebar"></div>
+
+    <!-- Main Workspace -->
+    <div class="flex-1 flex flex-col min-w-0 bg-app relative">
+
+        <!-- Top Navigation Bar -->
+        <header class="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between shrink-0 z-20">
+            <div class="flex items-center gap-4">
+                <div class="p-2 bg-blue-600 rounded-lg text-white shadow-sm">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-900 leading-tight">MOST Analysis Tool</h1>
+                    <p class="text-xs text-slate-500 font-medium">Standard Time & Method Generator</p>
+                </div>
+            </div>
+
+            <div class="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200">
+                <button id="nav-calc" class="main-tab-button active">Calculator</button>
+                <button id="nav-theory" class="main-tab-button">Theory</button>
+            </div>
+        </header>
+
+        <!-- Content Area -->
+        <main class="flex-1 overflow-hidden relative">
+
+            <!-- View: Calculator -->
+            <div id="view-calc" class="flex flex-col lg:flex-row h-full">
+
+                <!-- Left Panel: Process Builder -->
+                <div class="flex flex-col border-r border-slate-200 bg-white lg:w-5/12 h-full z-10 shadow-sm relative">
+                    <!-- Toolbar -->
+                    <div class="p-4 border-b border-slate-100 bg-white z-20 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Process Sequence</span>
+                            <div class="flex items-center gap-2">
+                                <select id="templateSelector" class="text-xs border-slate-200 rounded py-1 pl-2 pr-6 text-slate-600 bg-slate-50 hover:bg-white focus:ring-blue-500 focus:border-blue-500">
+                                    <option value="">Load Template...</option>
+                                    <option value="putwall">GTP with Putwall</option>
+                                </select>
+                                <button id="resetBtn" class="text-xs text-red-500 hover:text-red-700 font-medium px-2 py-1 rounded hover:bg-red-50 transition-colors">Reset</button>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-2">
+                            <div class="relative flex-grow">
+                                <select id="stepSelector" class="w-full text-sm border-slate-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 py-2 pl-3 pr-10 appearance-none bg-slate-50 hover:bg-white transition-colors cursor-pointer">
+                                    <!-- Options injected by JS -->
+                                </select>
+                                <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-slate-500">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                </div>
+                            </div>
+                            <button id="addStepBtn" class="nb-btn px-4 gap-2 shadow-sm">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                Add Step
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Builder Container -->
+                    <div id="builderContainer" class="flex-1 overflow-y-auto p-4 bg-slate-50 custom-scrollbar space-y-2">
+                        <!-- Dynamic Content -->
+                    </div>
+                </div>
+
+                <!-- Right Panel: Inputs & Results -->
+                <div class="flex flex-col flex-1 bg-app h-full overflow-hidden relative">
+                    <div class="flex-1 overflow-y-auto p-6 lg:p-8 custom-scrollbar">
+                        <div class="max-w-4xl mx-auto space-y-6">
+
+                            <!-- Order Profile Card -->
+                            <section class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                                <h3 class="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                                    Order Profile
+                                </h3>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label class="input-label">Lines per Order</label>
+                                        <input type="number" id="linesPerOrder" value="1.5" step="0.1" min="1" class="input-field">
+                                    </div>
+                                    <div>
+                                        <label class="input-label">Units per Line</label>
+                                        <input type="number" id="unitsPerLine" value="1.2" step="0.1" min="1" class="input-field">
+                                    </div>
+                                    <div>
+                                        <label class="input-label">Avg Units / Grasp</label>
+                                        <input type="number" id="unitsPerGrasp" value="1" step="0.1" min="1" class="input-field font-semibold text-blue-600 bg-blue-50 border-blue-200 focus:border-blue-500">
+                                    </div>
+                                </div>
+                            </section>
+
+                            <!-- Analysis Output -->
+                            <section class="grid grid-cols-1 gap-6">
+                                <!-- DOO Card -->
+                                <div class="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
+                                    <div class="px-5 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                                        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider">Description of Operations (DOO)</h3>
+                                        <button id="copyDooBtn" class="text-xs text-blue-600 font-medium hover:underline flex items-center gap-1">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg> Copy
+                                        </button>
+                                    </div>
+                                    <div id="dooOutput" class="p-5 text-sm text-slate-600 font-mono leading-relaxed whitespace-pre-wrap"></div>
+                                </div>
+
+                                <!-- Table Card -->
+                                <div class="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
+                                    <div class="px-5 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                                        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider">MOST Analysis Detail</h3>
+                                        <button id="copyMostBtn" class="text-xs text-blue-600 font-medium hover:underline flex items-center gap-1">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg> Copy
+                                        </button>
+                                    </div>
+                                    <div class="overflow-x-auto">
+                                        <table class="w-full text-sm text-left">
+                                            <thead class="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-100">
+                                                <tr>
+                                                    <th class="px-5 py-3 font-semibold">Activity</th>
+                                                    <th class="px-5 py-3 font-semibold text-center">Freq</th>
+                                                    <th class="px-5 py-3 font-semibold font-mono">Sequence Model</th>
+                                                    <th class="px-5 py-3 font-semibold text-right">TMU</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="mostOutput" class="divide-y divide-slate-100"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+                        <div class="h-24"></div> <!-- Spacer for footer -->
+                    </div>
+
+                    <!-- Footer Stats Bar -->
+                    <div class="absolute bottom-6 left-6 right-6 lg:left-8 lg:right-8 bg-slate-900 text-white rounded-xl shadow-2xl border border-slate-700 p-4 grid grid-cols-3 gap-4 z-30 backdrop-blur-sm bg-opacity-95">
+                        <div class="flex flex-col items-center justify-center border-r border-slate-700">
+                            <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Orders / Hr</span>
+                            <span id="totalOPH" class="text-2xl font-bold font-mono tracking-tight text-white">0</span>
+                        </div>
+                        <div class="flex flex-col items-center justify-center border-r border-slate-700">
+                            <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Lines / Hr</span>
+                            <span id="totalLPH" class="text-2xl font-bold font-mono tracking-tight text-blue-400">0</span>
+                        </div>
+                        <div class="flex flex-col items-center justify-center">
+                            <span class="text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-1">Units / Hr</span>
+                            <span id="totalPPH" class="text-2xl font-bold font-mono tracking-tight text-emerald-400">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- View: Theory -->
+            <div id="view-theory" class="hidden h-full overflow-y-auto bg-white p-8 lg:p-12 custom-scrollbar">
+                <article class="prose prose-slate max-w-3xl mx-auto">
+                    <h2 class="text-2xl font-bold text-slate-900 mb-6 pb-2 border-b border-slate-200">Maynard Operation Sequence Technique (MOST)</h2>
+                    <p class="text-slate-600 leading-relaxed mb-6">
+                        This tool utilizes <strong>BasicMOST</strong> concepts to calculate standard times. The calculations are based on the
+                        <span class="font-semibold text-slate-900">General Move</span> sequence model, which accounts for approximately 60-70% of all manual work in logistics.
+                    </p>
+
+                    <h3 class="text-lg font-bold text-slate-800 mt-8 mb-4">Sequence Model: A B G P</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                        <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                            <strong class="block text-slate-900 mb-1">A (Action Distance)</strong>
+                            <span class="text-sm text-slate-600">Horizontal movement (walking, reaching).</span>
+                        </div>
+                        <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                            <strong class="block text-slate-900 mb-1">B (Body Motion)</strong>
+                            <span class="text-sm text-slate-600">Vertical movement (bending, sitting).</span>
+                        </div>
+                        <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                            <strong class="block text-slate-900 mb-1">G (Gain Control)</strong>
+                            <span class="text-sm text-slate-600">Manual control (grasping).</span>
+                        </div>
+                        <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                            <strong class="block text-slate-900 mb-1">P (Placement)</strong>
+                            <span class="text-sm text-slate-600">Positioning the object (laying aside, fitting).</span>
+                        </div>
+                    </div>
+
+                    <h3 class="text-lg font-bold text-slate-800 mt-8 mb-4">Index Value Reference</h3>
+                    <div class="overflow-hidden rounded-lg border border-slate-200 mb-8">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-slate-50 text-xs text-slate-500 uppercase font-semibold">
+                                <tr>
+                                    <th class="px-4 py-3 border-b border-slate-200">Index</th>
+                                    <th class="px-4 py-3 border-b border-slate-200">Action Distance (A)</th>
+                                    <th class="px-4 py-3 border-b border-slate-200">Body Motion (B)</th>
+                                    <th class="px-4 py-3 border-b border-slate-200">Placement (P)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr><td class="px-4 py-2 font-mono font-bold text-slate-900">0</td><td class="px-4 py-2 text-slate-600">≤ 2 in (5 cm)</td><td class="px-4 py-2 text-slate-600">None</td><td class="px-4 py-2 text-slate-600">Hold / Toss</td></tr>
+                                <tr><td class="px-4 py-2 font-mono font-bold text-slate-900">1</td><td class="px-4 py-2 text-slate-600">Within Reach</td><td class="px-4 py-2 text-slate-600">None</td><td class="px-4 py-2 text-slate-600">Lay Aside / Loose Fit</td></tr>
+                                <tr><td class="px-4 py-2 font-mono font-bold text-slate-900">3</td><td class="px-4 py-2 text-slate-600">1 - 2 Steps</td><td class="px-4 py-2 text-slate-600">Bend (50%)</td><td class="px-4 py-2 text-slate-600">Loose Fit Blind</td></tr>
+                                <tr><td class="px-4 py-2 font-mono font-bold text-slate-900">6</td><td class="px-4 py-2 text-slate-600">3 - 4 Steps</td><td class="px-4 py-2 text-slate-600">Bend (100%)</td><td class="px-4 py-2 text-slate-600">Heavy Pressure</td></tr>
+                                <tr><td class="px-4 py-2 font-mono font-bold text-slate-900">10</td><td class="px-4 py-2 text-slate-600">5 - 7 Steps</td><td class="px-4 py-2 text-slate-600">Sit & Stand</td><td class="px-4 py-2 text-slate-600">Careful Fit</td></tr>
+                                <tr><td class="px-4 py-2 font-mono font-bold text-slate-900">16</td><td class="px-4 py-2 text-slate-600">8 - 10 Steps</td><td class="px-4 py-2 text-slate-600">-</td><td class="px-4 py-2 text-slate-600">Tight Fit</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="bg-blue-50 border border-blue-100 rounded-lg p-4 text-sm text-blue-800">
+                        <strong class="block mb-1">Calculation Formula</strong>
+                        Index Sum (A + B + G + P) × 10 = TMU (Time Measurement Unit)<br>
+                        1 TMU = 0.00001 hour = 0.036 seconds.
+                    </div>
+                </article>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module">
+        import { renderSidebar } from './src/core/components/sidebar.js';
+        renderSidebar('global-sidebar', 'most-calculator');
+    </script>
+    <script type="module" src="src/tools/most-calculator/app.js"></script>
+</body>
+</html>
