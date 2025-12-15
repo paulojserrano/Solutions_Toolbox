@@ -6,7 +6,8 @@ export function renderSidebar(containerId, activePageKey) {
         'engineering': [
             { key: 'tote-pack', label: 'Tote Pack Analysis', href: '#' },
             { key: 'layout', label: 'Layout Tool', href: '/layout-tool.html' },
-            { key: 'cpu-tool', label: 'CPU Tool', href: '/cpu-tool.html' }
+            { key: 'cpu-tool', label: 'CPU Tool', href: '/cpu-tool.html' },
+            { key: 'most-calculator', label: 'MOST Calculator', href: '/most-calculator.html' }
         ],
         'training': [
             { key: 'sc-101', label: 'Supply Chain 101', href: '/training/supply-chain-101.html' },

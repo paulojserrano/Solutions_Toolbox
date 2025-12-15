@@ -1,0 +1,161 @@
+/* Scoped Styles for MOST Calculator */
+
+/* --- Step Item (Timeline / Card Style) --- */
+.struct-step {
+    background-color: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease-in-out;
+    position: relative;
+    overflow: hidden;
+}
+
+.struct-step:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    transform: translateY(-1px);
+    z-index: 10;
+}
+
+/* Header of the Step Card */
+.struct-step-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background-color: #fff;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+/* Step Number/Handle */
+.struct-step-handle {
+    width: 1.5rem;
+    height: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.25rem;
+    background-color: #f1f5f9;
+    color: #94a3b8;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: grab;
+}
+
+/* Controls Area (TMU and Inputs) */
+.struct-step-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 1rem;
+    background-color: #f8fafc;
+}
+
+/* The TMU Badge */
+.tmu-badge {
+    font-family: 'Space Mono', monospace;
+    font-weight: 700;
+    font-size: 0.75rem;
+    color: #475569;
+    background-color: #e2e8f0;
+    padding: 0.125rem 0.5rem;
+    border-radius: 0.25rem;
+    min-width: 4rem;
+    text-align: center;
+}
+
+/* Parameter Selectors Grid */
+.param-grid {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.param-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 2rem;
+}
+
+.param-label {
+    font-size: 0.625rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-transform: uppercase;
+    margin-bottom: 0.125rem;
+}
+
+.param-select {
+    width: 100%;
+    text-align: center;
+    text-align-last: center; /* For Firefox */
+    font-family: 'Space Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #334155;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    padding: 0;
+    appearance: none; /* Hide default arrow */
+}
+.param-select:hover {
+    background-color: #fff;
+    border-color: #cbd5e1;
+}
+.param-select:focus {
+    outline: none;
+    border-color: #3b82f6;
+    background-color: #fff;
+}
+
+/* Frequency Badges */
+.freq-select {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.15s;
+}
+
+/* Variant styles for Frequency Select handled via classes dynamically or just generic styled here */
+.freq-select.freq-Order { background-color: #f0f9ff; color: #0369a1; border-color: #bae6fd; }
+.freq-select.freq-Line { background-color: #fdf2f8; color: #be185d; border-color: #fbcfe8; }
+.freq-select.freq-Unit { background-color: #ecfdf5; color: #047857; border-color: #6ee7b7; }
+
+/* Empty State */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 300px;
+    border: 2px dashed #cbd5e1;
+    border-radius: 0.75rem;
+    background-color: #fff;
+    color: #94a3b8;
+    text-align: center;
+    padding: 2rem;
+}
+
+/* Delete Button */
+.delete-btn {
+    opacity: 0;
+    transition: opacity 0.2s, color 0.2s;
+    color: #94a3b8;
+    padding: 0.25rem;
+    border-radius: 0.25rem;
+}
+.struct-step:hover .delete-btn {
+    opacity: 1;
+}
+.delete-btn:hover {
+    color: #ef4444;
+    background-color: #fef2f2;
+}
