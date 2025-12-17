@@ -7,24 +7,20 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     
-    <!-- Custom Styles -->
-    <link rel="stylesheet" href="src/core/css/style.css">
-    <link rel="stylesheet" href="src/tools/most-calculator/styles.css">
+    <!-- Custom Styles - Using absolute paths to ensure loading -->
+    <!-- Core style.css is loaded FIRST to establish layout defaults -->
+    <link rel="stylesheet" href="/src/core/css/style.css">
+    <link rel="stylesheet" href="/src/tools/most-calculator/styles.css">
 
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js"></script>
+    <!-- Core Scripts - Using absolute paths -->
+    <script type="module" src="/src/core/utils/utils.js"></script>
+    <script type="module" src="/src/core/components/header.js"></script>
+    <script type="module" src="/src/core/components/sidebar.js"></script>
 
-    <!-- Core Scripts -->
-    <script type="module" src="src/core/utils/utils.js"></script>
-    <script type="module" src="src/core/components/header.js"></script>
-    <script type="module" src="src/core/components/sidebar.js"></script>
-
-    <!-- MOST Calculator Data and App -->
+    <!-- MOST Calculator Data and App - Using absolute paths -->
     <!-- Not loaded as modules to ensure global window access for inline events -->
-    <script src="src/tools/most-calculator/most_data.js"></script>
-    <script src="src/tools/most-calculator/app.js"></script>
+    <script src="/src/tools/most-calculator/most_data.js"></script>
+    <script src="/src/tools/most-calculator/app.js"></script>
 </head>
 <body class="bg-slate-50">
 
@@ -136,11 +132,11 @@
                 
                 <!-- Proposal Text -->
                 <div class="px-6 py-5 border-b border-slate-100">
-                     <div class="flex justify-between items-center mb-3">
+                      <div class="flex justify-between items-center mb-3">
                         <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Description of Operations</h3>
                         <button onclick="window.mostApp.copyDoo()" class="text-xs text-blue-600 hover:underline font-medium">Copy Text</button>
-                     </div>
-                     <div id="dooTextContainer" class="bg-white border border-slate-200 rounded p-4 text-sm text-slate-600 leading-relaxed font-medium mb-2"></div>
+                      </div>
+                      <div id="dooTextContainer" class="bg-white border border-slate-200 rounded p-4 text-sm text-slate-600 leading-relaxed font-medium mb-2"></div>
                 </div>
 
                 <!-- Table -->
