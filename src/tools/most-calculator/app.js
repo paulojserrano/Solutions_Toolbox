@@ -1,7 +1,15 @@
+import { renderHeader } from '../../core/components/header.js';
+import { renderSidebar } from '../../core/components/sidebar.js';
+import { MOST_DATA, STANDARD_ACTIVITIES, TEMPLATES } from './most_data.js';
+
 let state = { steps: [], profile: { linesPerOrder: 1.5, unitsPerLine: 1.2, unitsPerGrasp: 1, pfdAllowance: 10 }, uom: 'tmu', dragSrcIdx: null };
 const els = {};
 
-function init() {
+async function init() {
+    // Render Header and Sidebar
+    await renderHeader('header-container', 'MOST Analysis Tool');
+    renderSidebar('sidebar-container', 'most-calculator');
+
     ['builderContainer', 'mostOutput', 'mostFooter', 'dooTextContainer', 'inputs', 'stats'].forEach(id => els[id] = document.getElementById(id));
     els.inputs = {
         linesPerOrder: document.getElementById('linesPerOrder'),
@@ -431,4 +439,4 @@ function drop(e, idx) {
 
 // Expose
 window.mostApp = { openActionModal, openImportModal, selectAction, processImportText, updateStep, removeStep, openParam, selectParam, cycleModel, copyJSON, copyDoo, copyTable, dragOver, drop };
-window.onload = init;
+document.addEventListener('DOMContentLoaded', init);
