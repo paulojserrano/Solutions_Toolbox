@@ -38,7 +38,10 @@ export async function renderHeader(containerId, pageTitle, customHtml = '') {
                     const payload = await response.json();
                     const { clientPrincipal } = payload;
                     if (clientPrincipal) {
-                        userProfileName.textContent = clientPrincipal.userDetails || clientPrincipal.userId;
+                        // Attempt to find First/Last Name claim
+                        const nameClaim = clientPrincipal.claims.find(c => c.typ === "name");
+                        userProfileName.textContent = nameClaim ? nameClaim.val : (clientPrincipal.userDetails || clientPrincipal.userId);
+                        
                         userProfileContainer.classList.remove('hidden');
                         userProfileContainer.classList.add('flex');
                         return;
