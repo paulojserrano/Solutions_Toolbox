@@ -15,166 +15,172 @@
     <!-- MOST Calculator Data and App - Using relative paths and module type -->
     <script type="module" src="src/tools/most-calculator/app.js"></script>
 </head>
-<body class="bg-slate-50">
+<body class="bg-slate-50 h-screen flex overflow-hidden">
 
-    <!-- Header & Sidebar Containers -->
+    <!-- Sidebar Container (Flex Item 1) -->
     <div id="sidebar-container"></div>
-    <div id="header-container"></div>
 
-    <!-- Main Content Area (Offset for Sidebar/Header) -->
-    <main class="ml-64 mt-16 p-6 h-[calc(100vh-4rem)] overflow-hidden flex flex-col">
+    <!-- Main Content Wrapper (Flex Item 2, takes remaining width) -->
+    <div class="flex-1 flex flex-col min-w-0 h-full relative">
         
-        <!-- Tool Toolbar -->
-        <div class="flex items-center justify-between mb-4 shrink-0">
-            <div class="flex items-center gap-4">
-                <h1 class="text-2xl font-bold text-slate-800">MOST Analysis Tool</h1>
-                
-                <!-- View Toggles -->
-                <div class="flex bg-white rounded-lg border border-slate-200 p-1 shadow-sm">
-                    <button id="nav-calc" class="px-3 py-1 text-xs font-semibold rounded-md bg-slate-100 text-slate-700 shadow-sm transition-all">Calculator</button>
-                    <button id="nav-theory" class="px-3 py-1 text-xs font-medium rounded-md text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-all">Help</button>
+        <!-- Header Container (Flex Item 2.1) -->
+        <div id="header-container"></div>
+
+        <!-- Tool Content Area (Flex Item 2.2, takes remaining height) -->
+        <main class="flex-1 p-6 overflow-hidden flex flex-col bg-slate-50">
+
+            <!-- Tool Toolbar -->
+            <div class="flex items-center justify-between mb-4 shrink-0">
+                <div class="flex items-center gap-4">
+                    <h1 class="text-2xl font-bold text-slate-800">MOST Analysis Tool</h1>
+
+                    <!-- View Toggles -->
+                    <div class="flex bg-white rounded-lg border border-slate-200 p-1 shadow-sm">
+                        <button id="nav-calc" class="px-3 py-1 text-xs font-semibold rounded-md bg-slate-100 text-slate-700 shadow-sm transition-all">Calculator</button>
+                        <button id="nav-theory" class="px-3 py-1 text-xs font-medium rounded-md text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-all">Help</button>
+                    </div>
+                </div>
+
+                <!-- Global Actions -->
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-1 shadow-sm">
+                        <button id="uomTmu" class="text-xs font-bold px-2 py-1 rounded bg-slate-100 text-blue-600">TMU</button>
+                        <button id="uomSec" class="text-xs font-bold px-2 py-1 rounded text-slate-400 hover:text-slate-600">Sec</button>
+                    </div>
+
+                     <select id="templateSelector" class="text-xs bg-white border-slate-200 rounded-lg px-3 py-1.5 text-slate-600 font-medium focus:ring-2 focus:ring-blue-500 shadow-sm">
+                        <option value="">Load Template...</option>
+                        <option value="default">Default Put Wall</option>
+                        <option value="simple">Simple Pick</option>
+                    </select>
+
+                    <button onclick="window.mostApp.openImportModal()" class="text-xs font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 px-3 py-1.5 rounded-lg shadow-sm transition-colors flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                        Import
+                    </button>
+                    <input type="file" id="importFile" accept=".json" class="hidden">
+
+                    <button id="resetBtn" class="text-xs font-semibold text-red-600 bg-white border border-red-100 hover:bg-red-50 px-3 py-1.5 rounded-lg shadow-sm transition-colors">
+                        Reset
+                    </button>
                 </div>
             </div>
 
-            <!-- Global Actions -->
-            <div class="flex items-center gap-3">
-                <div class="flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-1 shadow-sm">
-                    <button id="uomTmu" class="text-xs font-bold px-2 py-1 rounded bg-slate-100 text-blue-600">TMU</button>
-                    <button id="uomSec" class="text-xs font-bold px-2 py-1 rounded text-slate-400 hover:text-slate-600">Sec</button>
-                </div>
+            <!-- View: Calculator -->
+            <div id="view-calc" class="flex flex-1 w-full h-full overflow-hidden bg-white rounded-xl shadow-sm border border-slate-200">
 
-                 <select id="templateSelector" class="text-xs bg-white border-slate-200 rounded-lg px-3 py-1.5 text-slate-600 font-medium focus:ring-2 focus:ring-blue-500 shadow-sm">
-                    <option value="">Load Template...</option>
-                    <option value="default">Default Put Wall</option>
-                    <option value="simple">Simple Pick</option>
-                </select>
-                
-                <button onclick="window.mostApp.openImportModal()" class="text-xs font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 px-3 py-1.5 rounded-lg shadow-sm transition-colors flex items-center gap-1">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                    Import
-                </button>
-                <input type="file" id="importFile" accept=".json" class="hidden">
-
-                <button id="resetBtn" class="text-xs font-semibold text-red-600 bg-white border border-red-100 hover:bg-red-50 px-3 py-1.5 rounded-lg shadow-sm transition-colors">
-                    Reset
-                </button>
-            </div>
-        </div>
-
-        <!-- View: Calculator -->
-        <div id="view-calc" class="flex flex-1 w-full h-full overflow-hidden bg-white rounded-xl shadow-sm border border-slate-200">
-            
-            <!-- Left Column: Builder -->
-            <div class="w-1/2 flex flex-col border-r border-slate-200 bg-slate-50">
-                <div class="p-3 border-b border-slate-200 bg-white flex justify-between items-center shadow-sm z-10">
-                    <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Process Structure</h2>
-                    <div class="flex gap-2">
-                        <button onclick="window.mostApp.openActionModal()" class="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-semibold hover:bg-blue-700 shadow-md transition-colors">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                            Add Action
-                        </button>
-                    </div>
-                </div>
-                <!-- Drop zone on root -->
-                <div id="builderContainer" class="flex-1 p-6 overflow-y-auto"
-                     ondragover="window.mostApp.dragOver(event, -1)" 
-                     ondrop="window.mostApp.drop(event, -1)"></div>
-            </div>
-
-            <!-- Right Column: Results -->
-            <div class="w-1/2 flex flex-col bg-white overflow-y-auto z-20">
-                <!-- KPI Cards -->
-                <div class="grid grid-cols-3 gap-4 p-6 border-b border-slate-100">
-                    <div class="bg-blue-50 rounded-xl p-4 border border-blue-100">
-                        <div class="text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">Orders / Hr</div>
-                        <div id="totalOPH" class="text-2xl font-bold text-blue-700 font-mono">0</div>
-                        <div class="text-[10px] text-blue-400 mt-1 font-medium">Std (w/ Allow)</div>
-                    </div>
-                    <div class="bg-pink-50 rounded-xl p-4 border border-pink-100">
-                        <div class="text-xs font-bold text-pink-400 uppercase tracking-wider mb-1">Lines / Hr</div>
-                        <div id="totalLPH" class="text-2xl font-bold text-pink-700 font-mono">0</div>
-                    </div>
-                    <div class="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
-                        <div class="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-1">Units / Hr</div>
-                        <div id="totalPPH" class="text-2xl font-bold text-emerald-700 font-mono">0</div>
-                    </div>
-                </div>
-
-                <!-- Settings -->
-                <div class="px-6 py-5 border-b border-slate-100 bg-slate-50/50">
-                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Profile Assumptions</h3>
-                    <div class="grid grid-cols-4 gap-4">
-                        <div>
-                            <label class="block mb-1 text-xs font-medium text-slate-500">Lines / Order</label>
-                            <input type="number" id="linesPerOrder" value="1.5" step="0.1" class="w-full bg-white border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2">
-                        </div>
-                        <div>
-                            <label class="block mb-1 text-xs font-medium text-slate-500">Units / Line</label>
-                            <input type="number" id="unitsPerLine" value="1.2" step="0.1" class="w-full bg-white border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2">
-                        </div>
-                        <div>
-                            <label class="block mb-1 text-xs font-medium text-slate-500">Units / Grasp</label>
-                            <input type="number" id="unitsPerGrasp" value="1" class="w-full bg-white border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2">
-                        </div>
-                        <div>
-                            <label class="block mb-1 text-xs font-bold text-blue-600">PF&D Allowance %</label>
-                            <input type="number" id="pfdAllowance" value="10" step="1" class="w-full bg-blue-50 border border-blue-200 text-blue-700 font-bold text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2">
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Proposal Text -->
-                <div class="px-6 py-5 border-b border-slate-100">
-                      <div class="flex justify-between items-center mb-3">
-                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Description of Operations</h3>
-                        <button onclick="window.mostApp.copyDoo()" class="text-xs text-blue-600 hover:underline font-medium">Copy Text</button>
-                      </div>
-                      <div id="dooTextContainer" class="bg-white border border-slate-200 rounded p-4 text-sm text-slate-600 leading-relaxed font-medium mb-2"></div>
-                </div>
-
-                <!-- Table -->
-                <div class="p-6 flex-1">
-                    <div class="flex justify-between items-center mb-3">
-                        <h3 class="text-sm font-bold text-slate-800">Calculation Detail</h3>
+                <!-- Left Column: Builder -->
+                <div class="w-1/2 flex flex-col border-r border-slate-200 bg-slate-50">
+                    <div class="p-3 border-b border-slate-200 bg-white flex justify-between items-center shadow-sm z-10">
+                        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Process Structure</h2>
                         <div class="flex gap-2">
-                            <button onclick="window.mostApp.copyJSON()" class="text-xs font-medium text-blue-600 hover:underline flex items-center gap-1">Copy JSON</button>
-                            <button id="copyMostBtn" class="text-xs font-medium text-blue-600 hover:underline flex items-center gap-1">Copy Table</button>
+                            <button onclick="window.mostApp.openActionModal()" class="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-semibold hover:bg-blue-700 shadow-md transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                Add Action
+                            </button>
                         </div>
                     </div>
-                    <div class="overflow-x-auto border border-slate-200 rounded-lg">
-                        <table class="w-full text-sm text-left text-slate-500">
-                            <thead class="text-xs text-slate-700 uppercase bg-slate-50 border-b border-slate-200">
-                                <tr>
-                                    <th scope="col" class="px-4 py-3">Phase</th>
-                                    <th scope="col" class="px-4 py-3">Activity</th>
-                                    <th scope="col" class="px-4 py-3 text-center">Freq</th>
-                                    <th scope="col" class="px-4 py-3 text-right">Unit <span class="uomHeader">(TMU)</span></th>
-                                    <th scope="col" class="px-4 py-3 text-right text-slate-900 font-bold bg-slate-50">Total <span class="uomHeader">(TMU)</span></th>
-                                </tr>
-                            </thead>
-                            <tbody id="mostOutput" class="bg-white divide-y divide-slate-100"></tbody>
-                            <tfoot id="mostFooter" class="bg-slate-50 font-bold text-slate-800"></tfoot>
-                        </table>
+                    <!-- Drop zone on root -->
+                    <div id="builderContainer" class="flex-1 p-6 overflow-y-auto"
+                         ondragover="window.mostApp.dragOver(event, -1)"
+                         ondrop="window.mostApp.drop(event, -1)"></div>
+                </div>
+
+                <!-- Right Column: Results -->
+                <div class="w-1/2 flex flex-col bg-white overflow-y-auto z-20">
+                    <!-- KPI Cards -->
+                    <div class="grid grid-cols-3 gap-4 p-6 border-b border-slate-100">
+                        <div class="bg-blue-50 rounded-xl p-4 border border-blue-100">
+                            <div class="text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">Orders / Hr</div>
+                            <div id="totalOPH" class="text-2xl font-bold text-blue-700 font-mono">0</div>
+                            <div class="text-[10px] text-blue-400 mt-1 font-medium">Std (w/ Allow)</div>
+                        </div>
+                        <div class="bg-pink-50 rounded-xl p-4 border border-pink-100">
+                            <div class="text-xs font-bold text-pink-400 uppercase tracking-wider mb-1">Lines / Hr</div>
+                            <div id="totalLPH" class="text-2xl font-bold text-pink-700 font-mono">0</div>
+                        </div>
+                        <div class="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
+                            <div class="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-1">Units / Hr</div>
+                            <div id="totalPPH" class="text-2xl font-bold text-emerald-700 font-mono">0</div>
+                        </div>
+                    </div>
+
+                    <!-- Settings -->
+                    <div class="px-6 py-5 border-b border-slate-100 bg-slate-50/50">
+                        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Profile Assumptions</h3>
+                        <div class="grid grid-cols-4 gap-4">
+                            <div>
+                                <label class="block mb-1 text-xs font-medium text-slate-500">Lines / Order</label>
+                                <input type="number" id="linesPerOrder" value="1.5" step="0.1" class="w-full bg-white border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2">
+                            </div>
+                            <div>
+                                <label class="block mb-1 text-xs font-medium text-slate-500">Units / Line</label>
+                                <input type="number" id="unitsPerLine" value="1.2" step="0.1" class="w-full bg-white border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2">
+                            </div>
+                            <div>
+                                <label class="block mb-1 text-xs font-medium text-slate-500">Units / Grasp</label>
+                                <input type="number" id="unitsPerGrasp" value="1" class="w-full bg-white border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2">
+                            </div>
+                            <div>
+                                <label class="block mb-1 text-xs font-bold text-blue-600">PF&D Allowance %</label>
+                                <input type="number" id="pfdAllowance" value="10" step="1" class="w-full bg-blue-50 border border-blue-200 text-blue-700 font-bold text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Proposal Text -->
+                    <div class="px-6 py-5 border-b border-slate-100">
+                          <div class="flex justify-between items-center mb-3">
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Description of Operations</h3>
+                            <button onclick="window.mostApp.copyDoo()" class="text-xs text-blue-600 hover:underline font-medium">Copy Text</button>
+                          </div>
+                          <div id="dooTextContainer" class="bg-white border border-slate-200 rounded p-4 text-sm text-slate-600 leading-relaxed font-medium mb-2"></div>
+                    </div>
+
+                    <!-- Table -->
+                    <div class="p-6 flex-1">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="text-sm font-bold text-slate-800">Calculation Detail</h3>
+                            <div class="flex gap-2">
+                                <button onclick="window.mostApp.copyJSON()" class="text-xs font-medium text-blue-600 hover:underline flex items-center gap-1">Copy JSON</button>
+                                <button id="copyMostBtn" class="text-xs font-medium text-blue-600 hover:underline flex items-center gap-1">Copy Table</button>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto border border-slate-200 rounded-lg">
+                            <table class="w-full text-sm text-left text-slate-500">
+                                <thead class="text-xs text-slate-700 uppercase bg-slate-50 border-b border-slate-200">
+                                    <tr>
+                                        <th scope="col" class="px-4 py-3">Phase</th>
+                                        <th scope="col" class="px-4 py-3">Activity</th>
+                                        <th scope="col" class="px-4 py-3 text-center">Freq</th>
+                                        <th scope="col" class="px-4 py-3 text-right">Unit <span class="uomHeader">(TMU)</span></th>
+                                        <th scope="col" class="px-4 py-3 text-right text-slate-900 font-bold bg-slate-50">Total <span class="uomHeader">(TMU)</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="mostOutput" class="bg-white divide-y divide-slate-100"></tbody>
+                                <tfoot id="mostFooter" class="bg-slate-50 font-bold text-slate-800"></tfoot>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- View: Theory -->
-        <div id="view-theory" class="hidden w-full h-full p-10 overflow-y-auto bg-white rounded-xl shadow-sm border border-slate-200">
-            <div class="max-w-3xl mx-auto prose prose-slate">
-                <h1>Usage Guide</h1>
-                <h3>Sequence Models</h3>
-                <ul>
-                    <li><strong>GEN (General Move):</strong> A B G P. For moving objects freely through space.</li>
-                    <li><strong>CON (Controlled Move):</strong> A B G M X I. For objects on a controlled path.</li>
-                    <li><strong>OOL (Tool Use):</strong> A B G P T. For using hand tools.</li>
-                </ul>
-                <h3>Standard vs. Normal Time</h3>
-                <p><strong>Standard Time:</strong> Normal Time + PF&D Allowances. Used for "Orders/Hr".</p>
+            <!-- View: Theory -->
+            <div id="view-theory" class="hidden w-full h-full p-10 overflow-y-auto bg-white rounded-xl shadow-sm border border-slate-200">
+                <div class="max-w-3xl mx-auto prose prose-slate">
+                    <h1>Usage Guide</h1>
+                    <h3>Sequence Models</h3>
+                    <ul>
+                        <li><strong>GEN (General Move):</strong> A B G P. For moving objects freely through space.</li>
+                        <li><strong>CON (Controlled Move):</strong> A B G M X I. For objects on a controlled path.</li>
+                        <li><strong>OOL (Tool Use):</strong> A B G P T. For using hand tools.</li>
+                    </ul>
+                    <h3>Standard vs. Normal Time</h3>
+                    <p><strong>Standard Time:</strong> Normal Time + PF&D Allowances. Used for "Orders/Hr".</p>
+                </div>
             </div>
-        </div>
-    </main>
+        </main>
+    </div>
 
     <!-- Modal for Params -->
     <div id="paramModal" class="modal-overlay">
