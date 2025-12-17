@@ -6,8 +6,14 @@ let state = { steps: [], profile: { linesPerOrder: 1.5, unitsPerLine: 1.2, units
 const els = {};
 
 async function init() {
-    // Render Header and Sidebar
-    await renderHeader('header-container', 'MOST Analysis Tool');
+    // Render Header with Tabs
+    const headerTabs = `
+        <nav class="flex gap-1" id="mostViewTabs">
+            <button class="main-tab-button active" id="tab-calc">Calculator</button>
+            <button class="main-tab-button" id="tab-theory">Help</button>
+        </nav>
+    `;
+    await renderHeader('header-container', 'MOST Analysis Tool', headerTabs);
     renderSidebar('sidebar-container', 'most-calculator');
 
     ['builderContainer', 'mostOutput', 'mostFooter', 'dooTextContainer', 'inputs', 'stats'].forEach(id => els[id] = document.getElementById(id));
@@ -25,14 +31,28 @@ async function init() {
 }
 
 function bindEvents() {
-    // Nav
-    ['calc', 'theory'].forEach(v => {
-        document.getElementById(`nav-${v}`).addEventListener('click', () => {
-            document.getElementById('view-calc').classList.toggle('hidden', v !== 'calc');
-            document.getElementById('view-calc').classList.toggle('flex', v === 'calc');
-            document.getElementById('view-theory').classList.toggle('hidden', v !== 'theory');
+    // Nav Logic (Updated for new Header Tabs)
+    const tabCalc = document.getElementById('tab-calc');
+    const tabTheory = document.getElementById('tab-theory');
+
+    // Fallback if elements not found (e.g. race condition, though await renderHeader should prevent it)
+    if (tabCalc && tabTheory) {
+        tabCalc.addEventListener('click', () => {
+            tabCalc.classList.add('active');
+            tabTheory.classList.remove('active');
+            document.getElementById('view-calc').classList.remove('hidden');
+            document.getElementById('view-calc').classList.add('flex');
+            document.getElementById('view-theory').classList.add('hidden');
         });
-    });
+
+        tabTheory.addEventListener('click', () => {
+            tabTheory.classList.add('active');
+            tabCalc.classList.remove('active');
+            document.getElementById('view-calc').classList.add('hidden');
+            document.getElementById('view-calc').classList.remove('flex');
+            document.getElementById('view-theory').classList.remove('hidden');
+        });
+    }
 
     document.getElementById('resetBtn').addEventListener('click', () => { if(confirm("Clear?")) { state.steps = []; render(); }});
     
