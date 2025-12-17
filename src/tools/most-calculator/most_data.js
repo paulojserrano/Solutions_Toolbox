@@ -1,5 +1,5 @@
 // MOST Basic Parameters
-const MOST_DATA = {
+export const MOST_DATA = {
     'a': [ { v: 0, d: '< 2 in' }, { v: 1, d: 'Reach' }, { v: 3, d: '1-2 Steps' }, { v: 6, d: '3-4 Steps' }, { v: 10, d: '5-7 Steps' }, { v: 16, d: '8-10 Steps' }, { v: 24, d: '11-15 Steps' }, { v: 32, d: '16+ Steps' } ],
     'b': [ { v: 0, d: 'None' }, { v: 1, d: 'Light' }, { v: 3, d: 'Bend 50%' }, { v: 6, d: 'Bend 100%' }, { v: 10, d: 'Sit/Stand' }, { v: 16, d: 'Bend/Sit' } ],
     'g': [ { v: 0, d: 'None' }, { v: 1, d: 'Light' }, { v: 3, d: 'Heavy/Blind' }, { v: 6, d: 'Obstructed' } ],
@@ -11,7 +11,7 @@ const MOST_DATA = {
 };
 
 // Standard Move Library
-const STANDARD_ACTIVITIES = [
+export const STANDARD_ACTIVITIES = [
     { cat: "Walking & Travel", items: [
         { desc: "Walk to Location (3-4 steps)", a: 6, b: 0, g: 0, p: 0 },
         { desc: "Walk to Location (5-7 steps)", a: 10, b: 0, g: 0, p: 0 },
@@ -36,7 +36,7 @@ const STANDARD_ACTIVITIES = [
 ];
 
 // Default Templates
-const TEMPLATES = {
+export const TEMPLATES = {
     default: [
         { desc: "Operator walks to empty order tote conveyor", model: "general", freq: "Order", a: 6, b: 0, g: 1, p: 0 },
         { desc: "Walk to putwall and place tote", model: "general", freq: "Order", a: 6, b: 0, g: 1, p: 1 },

@@ -7,26 +7,19 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     
-    <!-- Custom Styles - Using absolute paths to ensure loading -->
+    <!-- Custom Styles - Using relative paths to match layout-tool -->
     <!-- Core style.css is loaded FIRST to establish layout defaults -->
-    <link rel="stylesheet" href="/src/core/css/style.css">
-    <link rel="stylesheet" href="/src/tools/most-calculator/styles.css">
+    <link rel="stylesheet" href="src/core/css/style.css">
+    <link rel="stylesheet" href="src/tools/most-calculator/styles.css">
 
-    <!-- Core Scripts - Using absolute paths -->
-    <script type="module" src="/src/core/utils/utils.js"></script>
-    <script type="module" src="/src/core/components/header.js"></script>
-    <script type="module" src="/src/core/components/sidebar.js"></script>
-
-    <!-- MOST Calculator Data and App - Using absolute paths -->
-    <!-- Not loaded as modules to ensure global window access for inline events -->
-    <script src="/src/tools/most-calculator/most_data.js"></script>
-    <script src="/src/tools/most-calculator/app.js"></script>
+    <!-- MOST Calculator Data and App - Using relative paths and module type -->
+    <script type="module" src="src/tools/most-calculator/app.js"></script>
 </head>
 <body class="bg-slate-50">
 
     <!-- Header & Sidebar Containers -->
-    <div id="header-container"></div>
     <div id="sidebar-container"></div>
+    <div id="header-container"></div>
 
     <!-- Main Content Area (Offset for Sidebar/Header) -->
     <main class="ml-64 mt-16 p-6 h-[calc(100vh-4rem)] overflow-hidden flex flex-col">
