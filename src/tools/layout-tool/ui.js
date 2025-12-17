@@ -364,7 +364,7 @@ function handleConfigCardClick(e) {
         robotPathACRContainer.style.display = key.includes('HPC') ? 'none' : 'flex';
     }
 
-    requestRedraw(true);
+    requestRedraw(false);
 }
 
 export function initializeUI(redrawInputs, numberInputs, decimalInputs = []) {
