@@ -204,7 +204,9 @@ export function calculateLayout(sysLength, sysWidth, config, pathSettings = null
             layoutItems.push({ type: 'rack', x: 0, width: singleRackWidth, rackType: 'single', row: rowCounter });
             currentX_world += singleRackWidth;
 
+            let safety = 0;
             while (true) {
+                if (safety++ > 1000) break;
                 if (currentX_world + aisleWidth + singleRackWidth <= usableWidth_h) {
                     if (currentX_world + aisleWidth + configRackWidth + aisleWidth + singleRackWidth <= usableWidth_h) {
                         layoutItems.push({ type: 'aisle', x: currentX_world, width: aisleWidth, row: -1 });
@@ -246,7 +248,9 @@ export function calculateLayout(sysLength, sysWidth, config, pathSettings = null
             };
         }
 
+        let safety = 0;
         while (true) {
+            if (safety++ > 1000) break;
             const nextUnitEndX = currentX_world + aisleWidth + doubleRackWidth;
             if (nextUnitEndX > usableWidth_h) break;
             if (nextUnitEndX + aisleWidth + singleRackWidth > usableWidth_h) break;
@@ -454,7 +458,9 @@ export function calculateElevationLayout(inputs, evenDistribution = false, hasBu
     const capacityLayout = [];
     let topToteHeightCapacity = 0;
 
+    let safety = 0;
     while (true) {
+        if (safety++ > 1000) break;
         if (currentToteTop > MaxLoadHeight) break;
 
         const currentLevelIndex = maxN; 
@@ -572,7 +578,7 @@ export function getMetrics(sysLength, sysWidth, sysHeight, config, pathSettings 
     }
 
     let calculatedAisleWidth = config['aisle-width-low'] || config['aisle-width'] || 2400; // Default fallback
-    const threshold = 10000; // 10m
+    const threshold = config['aisleWidthThreshold'] || 10000; // 10m
 
     // If config has specific low/high values, use them logic
     if (config['aisle-width-low'] && config['aisle-width-high']) {
@@ -590,7 +596,7 @@ export function getMetrics(sysLength, sysWidth, sysHeight, config, pathSettings 
     if (storageLevels < 0) storageLevels = 0;
 
     // Calculate Tunnel Levels
-    const tunnelThreshold = 6500; 
+    const tunnelThreshold = config['tunnelThreshold'] || 6500;
     const usedLevels = allLevels.slice(0, maxLevels);
     const numTunnelLevels = usedLevels.filter(level => level.beamBottom >= tunnelThreshold).length;
 

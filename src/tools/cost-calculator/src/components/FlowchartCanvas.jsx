@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { ZoomIn, ZoomOut, Maximize } from 'lucide-react';
 import { GRID_SIZE } from '../data/constants';
 import { formatNumber, formatCost3Decimals } from '../utils/formatters';
@@ -7,12 +7,6 @@ const FlowchartCanvas = ({
   nodes,
   edges,
   tool,
-  transform,
-  setTransform,
-  isPanning,
-  setIsPanning,
-  panStart,
-  setPanStart,
   connectionStart,
   setConnectionStart,
   draggingNodeId,
@@ -32,6 +26,10 @@ const FlowchartCanvas = ({
   outgoingSums,
   onAddNode
 }) => {
+  const [transform, setTransform] = useState({ x: 0, y: 0, k: 1 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+
   const svgRef = useRef(null);
   const contentRef = useRef(null);
 

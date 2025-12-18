@@ -1,6 +1,7 @@
 // --- Imports ---
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { formatNumber } from '../../core/utils/utils.js';
 
 // --- 3D Scene Globals ---
 let scene, camera, renderer, controls;
@@ -413,7 +414,7 @@ function renderResultsTable() {
                 <!-- New: Case Name Cell -->
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">${item.name}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">${item.dims}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">${item.count}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">${formatNumber(item.count)}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600">${(item.util * 100).toFixed(1)}%</td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button class="view-3d-btn text-blue-600 hover:text-blue-800" data-index="${index}">
@@ -424,7 +425,10 @@ function renderResultsTable() {
         `;
     });
 
-    table += `</tbody></table>`;
+    table += `</tbody></table>
+    <div class="mt-4 p-3 bg-yellow-50 text-yellow-800 text-xs rounded border border-yellow-200">
+        <strong>Note:</strong> This tool uses a heuristic (greedy) algorithm. While efficient, it may not always find the mathematically optimal packing solution.
+    </div>`;
     resultsContainer.innerHTML = table;
 
     // Add event listeners to NEW buttons
@@ -800,6 +804,9 @@ function init3D(packingData, toteDims, utilization, caseName) {
     const aspect = canvasContainer.clientWidth / canvasContainer.clientHeight;
     camera = new THREE.PerspectiveCamera(50, aspect, 0.1, 1000);
 
+    if (renderer) {
+        renderer.dispose();
+    }
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
     canvasContainer.appendChild(renderer.domElement);
@@ -981,18 +988,20 @@ async function generateHTMLReport() {
     `;
 
     try {
-        // Generate images asynchronously and track progress
-        const imagePromises = processedResults.map((item, index) => {
-            return generate3DImage(item.packingData, item.toteDims)
-                .then(dataUrl => {
-                    // Update progress
-                    const percent = Math.round(((index + 1) / processedResults.length) * 100);
-                    exportHtmlBtn.textContent = `Generating... (${percent}%)`;
-                    return { dataUrl, item }; // Pass data along
-                });
-        });
+        // Generate images sequentially to prevent UI freeze
+        const resultsWithImages = [];
+        for (let i = 0; i < processedResults.length; i++) {
+            const item = processedResults[i];
+            const dataUrl = await generate3DImage(item.packingData, item.toteDims);
 
-        const resultsWithImages = await Promise.all(imagePromises);
+            const percent = Math.round(((i + 1) / processedResults.length) * 100);
+            exportHtmlBtn.textContent = `Generating... (${percent}%)`;
+
+            resultsWithImages.push({ item, dataUrl });
+
+            // Small delay to allow UI to update
+            await new Promise(r => setTimeout(r, 0));
+        }
 
         // Use the already-sorted processedResults to map order, but build from new array
         const itemMap = new Map(resultsWithImages.map(({ item, dataUrl }) => [item, dataUrl]));
