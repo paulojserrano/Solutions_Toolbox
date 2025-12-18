@@ -28,14 +28,12 @@ import FlowchartCanvas from './components/FlowchartCanvas';
 
 export default function App() {
   // --- State ---
-  // Helper to load initial state once
   const loadState = (key, defaultVal) => {
     try {
       const saved = localStorage.getItem('flowchart-data-v20');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (key === 'scenarios') {
-           // Migration Logic: If we have old data structure but no scenarios
            if (!parsed.scenarios && parsed.nodes) {
               return [{
                  id: 'default',
@@ -67,43 +65,41 @@ export default function App() {
      operatingDays: 260
   }]));
   const [activeScenarioId, setActiveScenarioId] = useState('default');
-  const [compareScenarioId, setCompareScenarioId] = useState(null); // For split view
+  const [compareScenarioId, setCompareScenarioId] = useState(null);
   const [splitView, setSplitView] = useState(false);
+  const [selectedScenarioId, setSelectedScenarioId] = useState('default');
 
-  // Derived state for active scenario
   const activeScenario = scenarios.find(s => s.id === activeScenarioId) || scenarios[0];
   const compareScenario = scenarios.find(s => s.id === compareScenarioId) || (scenarios.length > 1 ? scenarios.find(s => s.id !== activeScenarioId) : activeScenario);
 
-  // Helper setters for active scenario properties
-  const setNodes = (newNodes) => {
-     setScenarios(prev => prev.map(s => s.id === activeScenarioId ? { ...s, nodes: typeof newNodes === 'function' ? newNodes(s.nodes) : newNodes } : s));
-  };
-  const setEdges = (newEdges) => {
-     setScenarios(prev => prev.map(s => s.id === activeScenarioId ? { ...s, edges: typeof newEdges === 'function' ? newEdges(s.edges) : newEdges } : s));
-  };
-  const setUomSettings = (val) => {
-     setScenarios(prev => prev.map(s => s.id === activeScenarioId ? { ...s, uomSettings: val } : s));
-  };
-  const setEquipmentSettings = (val) => {
-     setScenarios(prev => prev.map(s => s.id === activeScenarioId ? { ...s, equipmentSettings: val } : s));
-  };
-  const setOperatingDays = (val) => {
-     setScenarios(prev => prev.map(s => s.id === activeScenarioId ? { ...s, operatingDays: val } : s));
+  // Generalized Updater for any scenario
+  const updateScenario = (scenarioId, updates) => {
+      setScenarios(prev => prev.map(s => s.id === scenarioId ? { ...s, ...updates } : s));
   };
 
-  const nodes = activeScenario.nodes;
-  const edges = activeScenario.edges;
+  const setNodes = (scenarioId, newNodes) => {
+     setScenarios(prev => prev.map(s => s.id === scenarioId ? { ...s, nodes: typeof newNodes === 'function' ? newNodes(s.nodes) : newNodes } : s));
+  };
+  const setEdges = (scenarioId, newEdges) => {
+     setScenarios(prev => prev.map(s => s.id === scenarioId ? { ...s, edges: typeof newEdges === 'function' ? newEdges(s.edges) : newEdges } : s));
+  };
+
+  // Helpers for Active Scenario (Legacy support for some UI parts)
+  const setUomSettings = (val) => updateScenario(activeScenarioId, { uomSettings: val });
+  const setEquipmentSettings = (val) => updateScenario(activeScenarioId, { equipmentSettings: val });
+  const setOperatingDays = (val) => updateScenario(activeScenarioId, { operatingDays: val });
+
+  const activeNodes = activeScenario.nodes;
+  const activeEdges = activeScenario.edges;
   const uomSettings = activeScenario.uomSettings;
   const equipmentSettings = activeScenario.equipmentSettings;
   const operatingDays = activeScenario.operatingDays;
-
 
   // Viewport State
   const [transform, setTransform] = useState({ x: 0, y: 0, k: 1 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
 
-  // Viewport State for Split View
   const [compareTransform, setCompareTransform] = useState({ x: 0, y: 0, k: 1 });
 
   // UI State
@@ -125,8 +121,6 @@ export default function App() {
   const contentRef = useRef(null);
 
   // --- Effects ---
-
-  // Auth Effect
   useEffect(() => {
     async function fetchUser() {
       try {
@@ -147,58 +141,62 @@ export default function App() {
     fetchUser();
   }, []);
 
+  // Update logic for node validation (UOM matching)
+  // We need to run this for all scenarios? Or just active?
+  // Ideally for all, but for performance, maybe just active + compare.
   useEffect(() => {
-    let hasChanges = false;
-    const newNodes = nodes.map(node => {
-         if (node.type === 'circle') return node;
-         const incomingEdge = edges.find(e => e.target === node.id);
-         if (incomingEdge) {
-             const sourceNode = nodes.find(n => n.id === incomingEdge.source);
-             if (sourceNode && sourceNode.outputUom && sourceNode.outputUom !== node.inputUom) {
-                 hasChanges = true;
-                 return { ...node, inputUom: sourceNode.outputUom };
+    const processScenario = (s) => {
+        let hasChanges = false;
+        const newNodes = s.nodes.map(node => {
+             if (node.type === 'circle') return node;
+             const incomingEdge = s.edges.find(e => e.target === node.id);
+             if (incomingEdge) {
+                 const sourceNode = s.nodes.find(n => n.id === incomingEdge.source);
+                 if (sourceNode && sourceNode.outputUom && sourceNode.outputUom !== node.inputUom) {
+                     hasChanges = true;
+                     return { ...node, inputUom: sourceNode.outputUom };
+                 }
              }
-         }
-         return node;
-    });
-    if (hasChanges) {
-      setTimeout(() => setNodes(newNodes), 0);
-    }
-  }, [edges, nodes]); // This effect now depends on the active scenario's nodes/edges
+             return node;
+        });
+        if (hasChanges) {
+            setScenarios(prev => prev.map(x => x.id === s.id ? { ...x, nodes: newNodes } : x));
+        }
+    };
+    processScenario(activeScenario);
+    if(compareScenario && compareScenario.id !== activeScenario.id) processScenario(compareScenario);
+  }, [activeScenario.edges, activeScenario.nodes, compareScenario?.edges, compareScenario?.nodes]);
 
   // --- Calculations ---
-
-  // Calculate Outgoing Sums for Validation
-  const outgoingSums = useMemo(() => {
+  const getOutgoingSums = (edges) => {
     const sums = {};
     edges.forEach(e => {
       sums[e.source] = (sums[e.source] || 0) + (e.percentage || 0);
     });
     return sums;
-  }, [edges]);
+  };
+
+  const activeOutgoingSums = useMemo(() => getOutgoingSums(activeEdges), [activeEdges]);
+  const compareOutgoingSums = useMemo(() => compareScenario ? getOutgoingSums(compareScenario.edges) : {}, [compareScenario?.edges]);
 
   const metrics = useMemo(() => {
-    return calculateMetrics(nodes, edges, uomSettings, equipmentSettings, operatingDays);
-  }, [nodes, edges, uomSettings, equipmentSettings, operatingDays]);
+    return calculateMetrics(activeNodes, activeEdges, uomSettings, equipmentSettings, operatingDays);
+  }, [activeNodes, activeEdges, uomSettings, equipmentSettings, operatingDays]);
 
   const compareMetrics = useMemo(() => {
      if (!compareScenario) return null;
      return calculateMetrics(compareScenario.nodes, compareScenario.edges, compareScenario.uomSettings, compareScenario.equipmentSettings, compareScenario.operatingDays);
   }, [compareScenario]);
 
-  // --- Persistence ---
   useEffect(() => {
-    // Save all scenarios
     localStorage.setItem('flowchart-data-v20', JSON.stringify({ scenarios }));
   }, [scenarios]);
 
-  // --- Coordinate Helpers ---
-  // (Moved to FlowchartCanvas, but app still needs some logic for addNode which happens in response to toolbar click on canvas)
-  // Actually, handleSvgMouseDown was moved. We need to implement addNode logic inside FlowchartCanvas or pass it down.
-  // The simplest is to modify FlowchartCanvas to accept an onAddNode callback.
-
   // --- Operations ---
-  const addNode = (x, y, type) => {
+  const addNode = (x, y, type, targetScenarioId) => {
+    const s = scenarios.find(x => x.id === targetScenarioId);
+    if(!s) return;
+
     const newNode = {
       id: generateId(),
       type,
@@ -222,19 +220,23 @@ export default function App() {
       }),
       color: '#ffffff'
     };
-    setNodes([...nodes, newNode]);
+    setNodes(targetScenarioId, [...s.nodes, newNode]);
     setTool('select');
     setSelectedId(newNode.id);
+    setSelectedScenarioId(targetScenarioId);
     setSelectionType('node');
   };
 
   const deleteSelected = () => {
     if (!selectedId) return;
+    const s = scenarios.find(x => x.id === selectedScenarioId);
+    if (!s) return;
+
     if (selectionType === 'node') {
-      setNodes(nodes.filter(n => n.id !== selectedId));
-      setEdges(edges.filter(e => e.source !== selectedId && e.target !== selectedId));
+      setNodes(selectedScenarioId, s.nodes.filter(n => n.id !== selectedId));
+      setEdges(selectedScenarioId, s.edges.filter(e => e.source !== selectedId && e.target !== selectedId));
     } else {
-      setEdges(edges.filter(e => e.id !== selectedId));
+      setEdges(selectedScenarioId, s.edges.filter(e => e.id !== selectedId));
     }
     setSelectedId(null);
     setSelectionType(null);
@@ -242,13 +244,13 @@ export default function App() {
 
   const updateNodeProperty = (field, value) => {
     if (selectedId && selectionType === 'node') {
-      setNodes(nodes.map(n => n.id === selectedId ? { ...n, [field]: value } : n));
+      setNodes(selectedScenarioId, prev => prev.map(n => n.id === selectedId ? { ...n, [field]: value } : n));
     }
   };
 
   const updateEdgeProperty = (field, value) => {
     if (selectedId && selectionType === 'edge') {
-      setEdges(edges.map(e => e.id === selectedId ? { ...e, [field]: value } : e));
+      setEdges(selectedScenarioId, prev => prev.map(e => e.id === selectedId ? { ...e, [field]: value } : e));
     }
   };
 
@@ -290,12 +292,16 @@ export default function App() {
      }
   };
 
-  const clearCanvas = () => { if (confirm("Clear canvas?")) { setNodes([]); setEdges([]); setSelectedId(null); } };
+  const clearCanvas = () => { if (confirm("Clear active canvas?")) { setNodes(activeScenarioId, []); setEdges(activeScenarioId, []); setSelectedId(null); } };
 
-  const selectedNode = selectedId && selectionType === 'node' ? nodes.find(n => n.id === selectedId) : null;
-  const selectedEdge = selectedId && selectionType === 'edge' ? edges.find(e => e.id === selectedId) : null;
+  // Determine selected object based on selectedScenarioId
+  const selectionScenario = scenarios.find(s => s.id === selectedScenarioId);
+  const selectedNode = selectedId && selectionType === 'node' && selectionScenario ? selectionScenario.nodes.find(n => n.id === selectedId) : null;
+  const selectedEdge = selectedId && selectionType === 'edge' && selectionScenario ? selectionScenario.edges.find(e => e.id === selectedId) : null;
 
-  // Scenario Management
+  // Also need selectionMetrics for the sidebar
+  const selectionMetrics = selectedScenarioId === activeScenarioId ? metrics : compareMetrics;
+
   const addScenario = () => {
      const newScenario = {
         id: generateId(),
@@ -329,6 +335,7 @@ export default function App() {
             const newScenarios = prev.filter(s => s.id !== id);
             if (activeScenarioId === id) setActiveScenarioId(newScenarios[0].id);
             if (compareScenarioId === id) setCompareScenarioId(null);
+            if (selectedScenarioId === id) setSelectedScenarioId(newScenarios[0].id);
             return newScenarios;
         });
      }
@@ -341,7 +348,7 @@ export default function App() {
 
   const finishRename = () => {
      if (editingTabId) {
-        setScenarios(scenarios.map(s => s.id === editingTabId ? { ...s, name: editingTabName } : s));
+        setScenarios(prev => prev.map(s => s.id === editingTabId ? { ...s, name: editingTabName } : s));
         setEditingTabId(null);
      }
   };
@@ -398,126 +405,472 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Content */}
-      {activeTab === 'editor' ? (
-        <div className="flex flex-1 overflow-hidden">
-          <aside className="w-16 bg-white border-r border-slate-200 flex flex-col items-center py-4 gap-4 z-10 shadow-sm">
-            <ToolButton active={tool === 'select'} onClick={() => { setTool('select'); setConnectionStart(null); }} icon={<MousePointer2 size={20} />} label="Select" />
-            <ToolButton active={tool === 'hand'} onClick={() => setTool('hand')} icon={<Hand size={20} />} label="Pan" />
-            <div className="w-8 h-px bg-slate-200 my-1"></div>
-            <ToolButton active={tool === 'circle'} onClick={() => setTool('circle')} icon={<Circle size={20} />} label="Start/End" />
-            <ToolButton active={tool === 'rect'} onClick={() => setTool('rect')} icon={<Square size={20} />} label="Process" />
-            {/* Diamond Tool Removed */}
-            <div className="w-8 h-px bg-slate-200 my-1"></div>
-            <ToolButton active={tool === 'connect'} onClick={() => setTool('connect')} icon={<ArrowRight size={20} />} label="Connect" />
-          </aside>
+      {/* Main Content Area with Tab Footer */}
+      <div className="flex-1 flex overflow-hidden">
 
-          <main className="flex-1 relative bg-slate-50 overflow-hidden flex flex-col">
-             <div className="flex-1 relative flex overflow-hidden">
-               {/* Primary Canvas */}
-               <div className={`relative ${splitView ? 'w-1/2 border-r border-slate-300' : 'w-full'} h-full`}>
-                 <FlowchartCanvas
-                   nodes={nodes}
-                   edges={edges}
-                   tool={tool}
-                   transform={transform}
-                   setTransform={setTransform}
-                   isPanning={isPanning}
-                   setIsPanning={setIsPanning}
-                   panStart={panStart}
-                   setPanStart={setPanStart}
-                   connectionStart={connectionStart}
-                   setConnectionStart={setConnectionStart}
-                   draggingNodeId={draggingNodeId}
-                   setDraggingNodeId={setDraggingNodeId}
-                   offset={offset}
-                   setOffset={setOffset}
-                   mousePos={mousePos}
-                   setMousePos={setMousePos}
-                   selectedId={selectedId}
-                   setSelectedId={setSelectedId}
-                   selectionType={selectionType}
-                   setSelectionType={setSelectionType}
-                   setNodes={setNodes}
-                   setEdges={setEdges}
-                   metrics={metrics}
-                   outgoingSums={outgoingSums}
-                   onAddNode={addNode}
-                 />
+          {/* Sidebar - Only visible in Editor mode */}
+          {activeTab === 'editor' && (
+            <aside className="w-16 bg-white border-r border-slate-200 flex flex-col items-center py-4 gap-4 z-10 shadow-sm">
+                <ToolButton active={tool === 'select'} onClick={() => { setTool('select'); setConnectionStart(null); }} icon={<MousePointer2 size={20} />} label="Select" />
+                <ToolButton active={tool === 'hand'} onClick={() => setTool('hand')} icon={<Hand size={20} />} label="Pan" />
+                <div className="w-8 h-px bg-slate-200 my-1"></div>
+                <ToolButton active={tool === 'circle'} onClick={() => setTool('circle')} icon={<Circle size={20} />} label="Start/End" />
+                <ToolButton active={tool === 'rect'} onClick={() => setTool('rect')} icon={<Square size={20} />} label="Process" />
+                <div className="w-8 h-px bg-slate-200 my-1"></div>
+                <ToolButton active={tool === 'connect'} onClick={() => setTool('connect')} icon={<ArrowRight size={20} />} label="Connect" />
+            </aside>
+          )}
 
-                   {/* Legend - Bottom Left */}
-                    <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur border border-slate-200 p-3 rounded-xl shadow-sm flex flex-col gap-2 text-xs pointer-events-none">
-                       <div className="font-semibold text-slate-600 mb-1 border-b border-slate-100 pb-1">Map Legend</div>
-                       <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[8px]">1</div>
-                          <span className="text-slate-600">Headcount Needed</span>
-                       </div>
-                       <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-[8px]">1</div>
-                          <span className="text-slate-600">Assets Needed</span>
-                       </div>
-                       <div className="flex items-center gap-2">
-                          <div className="w-4 h-3 rounded bg-red-500"></div>
-                          <span className="text-slate-600">Branch Mismatch (≠100%)</span>
-                       </div>
-                    </div>
+          <div className="flex-1 flex flex-col relative overflow-hidden">
+              <main className="flex-1 relative overflow-hidden flex flex-col bg-slate-50">
+                {activeTab === 'editor' ? (
+                    <div className="flex-1 relative flex overflow-hidden">
+                    {/* Primary Canvas */}
+                    <div className={`relative ${splitView ? 'w-1/2 border-r border-slate-300' : 'w-full'} h-full`}>
+                        <FlowchartCanvas
+                        nodes={activeNodes}
+                        edges={activeEdges}
+                        tool={tool}
+                        transform={transform}
+                        setTransform={setTransform}
+                        isPanning={isPanning}
+                        setIsPanning={setIsPanning}
+                        panStart={panStart}
+                        setPanStart={setPanStart}
+                        connectionStart={connectionStart}
+                        setConnectionStart={setConnectionStart}
+                        draggingNodeId={draggingNodeId}
+                        setDraggingNodeId={setDraggingNodeId}
+                        offset={offset}
+                        setOffset={setOffset}
+                        mousePos={mousePos}
+                        setMousePos={setMousePos}
+                        selectedId={selectedScenarioId === activeScenarioId ? selectedId : null}
+                        setSelectedId={(id) => { setSelectedId(id); setSelectedScenarioId(activeScenarioId); }}
+                        selectionType={selectionType}
+                        setSelectionType={setSelectionType}
+                        setNodes={(val) => setNodes(activeScenarioId, val)}
+                        setEdges={(val) => setEdges(activeScenarioId, val)}
+                        metrics={metrics}
+                        outgoingSums={activeOutgoingSums}
+                        onAddNode={(x,y,t) => addNode(x,y,t, activeScenarioId)}
+                        />
 
-                    {/* Results Overlay */}
-                    <div className="absolute bottom-4 right-4 bg-white/95 backdrop-blur border border-blue-200 p-4 rounded-xl shadow-lg flex flex-col gap-2 min-w-[200px] animate-in fade-in slide-in-from-bottom-4 pointer-events-none">
-                       <span className="text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100 pb-2">System Results</span>
-                       <div className="flex flex-col gap-1 pb-2 border-b border-slate-100">
-                         <div className="flex justify-between items-baseline pt-1">
-                            <span className="text-[10px] font-bold text-slate-700 uppercase">Total CPU</span>
-                            <div className="flex items-baseline gap-1 text-xl font-bold text-slate-800">
-                                <span className="text-blue-600">$</span>{formatCost3Decimals(metrics.total)}
+                        {/* Legend - Bottom Left */}
+                        <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur border border-slate-200 p-3 rounded-xl shadow-sm flex flex-col gap-2 text-xs pointer-events-none">
+                            <div className="font-semibold text-slate-600 mb-1 border-b border-slate-100 pb-1">Map Legend</div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[8px]">1</div>
+                                <span className="text-slate-600">Headcount Needed</span>
                             </div>
-                         </div>
-                       </div>
-                    </div>
-               </div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-[8px]">1</div>
+                                <span className="text-slate-600">Assets Needed</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-4 h-3 rounded bg-red-500"></div>
+                                <span className="text-slate-600">Branch Mismatch (≠100%)</span>
+                            </div>
+                        </div>
 
-               {/* Split View Second Canvas */}
-               {splitView && (
-                 <div className="w-1/2 h-full relative bg-slate-100">
-                    <div className="absolute top-2 left-2 z-10 bg-white/80 p-2 rounded shadow-sm border border-slate-200">
-                       <label className="text-xs font-bold text-slate-500 uppercase mr-2">Compare With:</label>
-                       <select
-                         value={compareScenarioId || ''}
-                         onChange={(e) => setCompareScenarioId(e.target.value)}
-                         className="text-xs border border-slate-300 rounded p-1"
-                       >
-                         {scenarios.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                       </select>
+                        {/* Results Overlay */}
+                        <div className="absolute bottom-4 right-4 bg-white/95 backdrop-blur border border-blue-200 p-4 rounded-xl shadow-lg flex flex-col gap-2 min-w-[200px] animate-in fade-in slide-in-from-bottom-4 pointer-events-none">
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100 pb-2">System Results</span>
+                            <div className="flex flex-col gap-1 pb-2 border-b border-slate-100">
+                                <div className="flex justify-between items-baseline pt-1">
+                                <span className="text-[10px] font-bold text-slate-700 uppercase">Total CPU</span>
+                                <div className="flex items-baseline gap-1 text-xl font-bold text-slate-800">
+                                    <span className="text-blue-600">$</span>{formatCost3Decimals(metrics.total)}
+                                </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    {compareScenario && (
-                      <FlowchartCanvas
-                         nodes={compareScenario.nodes}
-                         edges={compareScenario.edges}
-                         tool="hand" // Read only / pan only
-                         transform={compareTransform}
-                         setTransform={setCompareTransform}
-                         isPanning={false} // Independent panning? Yes.
-                         setIsPanning={() => {}} // Simple mock
-                         panStart={{x:0,y:0}} setPanStart={()=>{}}
-                         metrics={compareMetrics}
-                         readOnly={true}
-                      />
+
+                    {/* Split View Second Canvas */}
+                    {splitView && (
+                        <div className="w-1/2 h-full relative bg-slate-100">
+                            <div className="absolute top-2 left-2 z-10 bg-white/80 p-2 rounded shadow-sm border border-slate-200">
+                                <label className="text-xs font-bold text-slate-500 uppercase mr-2">Compare With:</label>
+                                <select
+                                    value={compareScenarioId || ''}
+                                    onChange={(e) => setCompareScenarioId(e.target.value)}
+                                    className="text-xs border border-slate-300 rounded p-1"
+                                >
+                                    {scenarios.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                </select>
+                            </div>
+                            {compareScenario && (
+                                <>
+                                <FlowchartCanvas
+                                    nodes={compareScenario.nodes}
+                                    edges={compareScenario.edges}
+                                    tool={tool}
+                                    transform={compareTransform}
+                                    setTransform={setCompareTransform}
+                                    isPanning={isPanning}
+                                    setIsPanning={setIsPanning}
+                                    panStart={panStart}
+                                    setPanStart={setPanStart}
+                                    connectionStart={connectionStart}
+                                    setConnectionStart={setConnectionStart}
+                                    draggingNodeId={draggingNodeId}
+                                    setDraggingNodeId={setDraggingNodeId}
+                                    offset={offset}
+                                    setOffset={setOffset}
+                                    mousePos={mousePos}
+                                    setMousePos={setMousePos}
+                                    selectedId={selectedScenarioId === compareScenarioId ? selectedId : null}
+                                    setSelectedId={(id) => { setSelectedId(id); setSelectedScenarioId(compareScenarioId || activeScenarioId); }}
+                                    selectionType={selectionType}
+                                    setSelectionType={setSelectionType}
+                                    setNodes={(val) => setNodes(compareScenarioId || activeScenarioId, val)}
+                                    setEdges={(val) => setEdges(compareScenarioId || activeScenarioId, val)}
+                                    metrics={compareMetrics}
+                                    outgoingSums={compareOutgoingSums}
+                                    onAddNode={(x,y,t) => addNode(x,y,t, compareScenarioId || activeScenarioId)}
+                                />
+                                {/* Duplicate Results Overlay for Comparison */}
+                                <div className="absolute bottom-4 right-4 bg-white/95 backdrop-blur border border-blue-200 p-4 rounded-xl shadow-lg flex flex-col gap-2 min-w-[200px] animate-in fade-in slide-in-from-bottom-4 pointer-events-none">
+                                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100 pb-2">System Results</span>
+                                    <div className="flex flex-col gap-1 pb-2 border-b border-slate-100">
+                                        <div className="flex justify-between items-baseline pt-1">
+                                        <span className="text-[10px] font-bold text-slate-700 uppercase">Total CPU</span>
+                                        <div className="flex items-baseline gap-1 text-xl font-bold text-slate-800">
+                                            <span className="text-blue-600">$</span>{formatCost3Decimals(compareMetrics ? compareMetrics.total : 0)}
+                                        </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                </>
+                            )}
+                        </div>
                     )}
-                 </div>
-               )}
-             </div>
+                    </div>
+                ) : activeTab === 'analysis' ? (
+                    <div className="flex-1 p-8 overflow-auto bg-slate-50 flex flex-col items-center animate-in fade-in duration-300">
+                    <div className="w-full max-w-6xl space-y-8">
 
-             {/* Tab Bar */}
-             <div className="h-10 bg-slate-200 border-t border-slate-300 flex items-end px-2 overflow-x-auto gap-1 shrink-0">
-                 {scenarios.map(scenario => (
+                        {/* Scenario Comparison (if multiple scenarios) */}
+                        {scenarios.length > 1 && (
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                                <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2 mb-4">
+                                <Scale size={16} /> Scenario Comparison
+                                </h3>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm text-left">
+                                        <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+                                            <tr>
+                                                <th className="px-4 py-2">Scenario</th>
+                                                <th className="px-4 py-2 text-right">CPU</th>
+                                                <th className="px-4 py-2 text-right">Headcount</th>
+                                                <th className="px-4 py-2 text-right">Annual Cost</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {scenarios.map(scen => {
+                                                const m = calculateMetrics(scen.nodes, scen.edges, scen.uomSettings, scen.equipmentSettings, scen.operatingDays);
+                                                const isBest = false; // logic to highlight best?
+                                                return (
+                                                    <tr key={scen.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                                                        <td className="px-4 py-2 font-medium">{scen.name}</td>
+                                                        <td className="px-4 py-2 text-right font-mono">${formatCost3Decimals(m.total)}</td>
+                                                        <td className="px-4 py-2 text-right font-mono text-blue-600">{Math.ceil(m.totalFTE)}</td>
+                                                        <td className="px-4 py-2 text-right font-mono text-green-700">${formatNumber(m.annualSystemVolume * m.total)}</td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Executive Summary */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <StatCard
+                            label="Cost Per Unit"
+                            value={`$${formatCost3Decimals(metrics.total)}`}
+                            subtext="Fully Burdened (Labor + Equip)"
+                            icon={Activity}
+                            colorClass="text-purple-600"
+                            />
+                            <StatCard
+                            label="Annual System Cost"
+                            value={`$${formatNumber(metrics.annualSystemVolume * metrics.total)}`}
+                            subtext="Est. Annual OpEx"
+                            icon={DollarSign}
+                            colorClass="text-green-600"
+                            />
+                            <StatCard
+                            label="Headcount"
+                            value={Math.ceil(metrics.totalFTE)}
+                            subtext="Full Time Equivalents (Rounded)"
+                            icon={Users}
+                            colorClass="text-blue-600"
+                            />
+                            <StatCard
+                            label="Equipment Count"
+                            value={Object.values(metrics.machineCounts).reduce((a,b) => a+b, 0)}
+                            subtext="Total Assets Deployed"
+                            icon={Truck}
+                            colorClass="text-orange-600"
+                            />
+                        </div>
+
+                        {/* Visual Breakdown Row */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Cost Composition */}
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                                <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2 mb-4">
+                                <PieChart size={16} /> Cost Composition
+                                </h3>
+                                <div className="space-y-4">
+                                <ProgressBar label="Labor Cost" value={`${((metrics.totalLaborCost / metrics.total) * 100).toFixed(1)}%`} max={100} color="bg-blue-500" />
+                                <ProgressBar label="Equipment Cost" value={`${((metrics.totalEquipCost / metrics.total) * 100).toFixed(1)}%`} max={100} color="bg-orange-500" />
+                                <div className="pt-4 border-t border-slate-100 flex justify-between text-xs text-slate-500">
+                                    <span>Labor: ${formatCost3Decimals(metrics.totalLaborCost)}/unit</span>
+                                    <span>Equip: ${formatCost3Decimals(metrics.totalEquipCost)}/unit</span>
+                                </div>
+                                </div>
+                            </div>
+
+                            {/* Top Cost Drivers */}
+                            <BarChart
+                            title="Top Cost Drivers (Process Step)"
+                            data={Object.entries(metrics.weightedCosts)
+                                .map(([id, cost]) => ({ label: activeNodes.find(n => n.id === id)?.label || 'Unknown', value: cost }))
+                                .sort((a, b) => b.value - a.value)
+                                .slice(0, 5)}
+                            valueKey="value"
+                            labelKey="label"
+                            formatValue={(v) => `$${formatCost3Decimals(v)}`}
+                            color="bg-red-500"
+                            />
+                        </div>
+
+                        {/* Detailed Tables */}
+                        <div className="grid grid-cols-1 gap-8">
+
+                            {/* Staffing Plan */}
+                            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                                <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2 bg-slate-50">
+                                    <Briefcase size={18} className="text-slate-500"/>
+                                    <h3 className="font-semibold text-slate-700">Staffing Plan & Labor Budget</h3>
+                                </div>
+                                <table className="w-full text-sm text-left">
+                                <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+                                    <tr>
+                                        <th className="px-6 py-3">Process Step</th>
+                                        <th className="px-6 py-3 text-right">Headcount (FTE)</th>
+                                        <th className="px-6 py-3 text-right">Annual Rate</th>
+                                        <th className="px-6 py-3 text-right">Annual Budget</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {activeNodes.filter(n => n.type !== 'circle' && metrics.headcounts[n.id] > 0).map(node => (
+                                        <tr key={node.id} className="hover:bg-slate-50">
+                                            <td className="px-6 py-3 font-medium text-slate-700">{node.label}</td>
+                                            <td className="px-6 py-3 text-right font-mono text-blue-600">{formatNumber(metrics.headcounts[node.id])}</td>
+                                            <td className="px-6 py-3 text-right text-slate-600">{formatCurrency(node.yearlyBurdenedRate)}</td>
+                                            <td className="px-6 py-3 text-right font-mono font-medium text-slate-800">
+                                            {formatCurrency(metrics.headcounts[node.id] * (node.yearlyBurdenedRate || 45000))}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    <tr className="bg-slate-50 font-bold text-slate-800">
+                                        <td className="px-6 py-3">Total Labor</td>
+                                        <td className="px-6 py-3 text-right text-blue-600">{formatNumber(metrics.totalFTE)}</td>
+                                        <td className="px-6 py-3 text-right">-</td>
+                                        <td className="px-6 py-3 text-right">
+                                            {formatCurrency(
+                                            activeNodes.reduce((acc, node) => acc + (metrics.headcounts[node.id] || 0) * (node.yearlyBurdenedRate || 45000), 0)
+                                            )}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                                </table>
+                            </div>
+
+                            {/* Equipment Requirements */}
+                            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                                <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2 bg-slate-50">
+                                    <Truck size={18} className="text-slate-500"/>
+                                    <h3 className="font-semibold text-slate-700">Equipment Requirements (Assets)</h3>
+                                </div>
+                                <table className="w-full text-sm text-left">
+                                <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+                                    <tr>
+                                        <th className="px-6 py-3">Asset Type</th>
+                                        <th className="px-6 py-3 text-right">Qty Needed</th>
+                                        <th className="px-6 py-3 text-right">Unit Cost</th>
+                                        <th className="px-6 py-3 text-right">Total Investment</th>
+                                        <th className="px-6 py-3 text-right">Annual Maint.</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {/* Calculate Aggregates on the fly */}
+                                    {equipmentSettings.filter(eq => eq.id !== 'eq1').map(eq => {
+                                        const totalCount = activeNodes.reduce((acc, node) => {
+                                        if (node.equipmentId === eq.id) return acc + (metrics.machineCounts[node.id] || 0);
+                                        return acc;
+                                        }, 0);
+
+                                        if (totalCount === 0) return null;
+
+                                        return (
+                                        <tr key={eq.id} className="hover:bg-slate-50">
+                                            <td className="px-6 py-3 font-medium text-slate-700">{eq.name}</td>
+                                            <td className="px-6 py-3 text-right font-mono text-purple-600">{totalCount}</td>
+                                            <td className="px-6 py-3 text-right text-slate-600">{formatCurrency(eq.cost)}</td>
+                                            <td className="px-6 py-3 text-right font-mono text-slate-800">{formatCurrency(totalCount * eq.cost)}</td>
+                                            <td className="px-6 py-3 text-right text-slate-600">{formatCurrency(totalCount * eq.maintenance)}</td>
+                                        </tr>
+                                        );
+                                    })}
+                                </tbody>
+                                </table>
+                            </div>
+
+                        </div>
+                    </div>
+                    </div>
+                ) : activeTab === 'settings' ? (
+                    <div className="flex-1 p-8 overflow-auto bg-slate-50 flex flex-col items-center animate-in fade-in duration-300">
+                    <div className="w-full max-w-4xl space-y-6">
+
+                        {/* Global Operating Parameters */}
+                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                            <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2 bg-slate-50">
+                                <Calendar size={18} className="text-slate-500"/>
+                                <h3 className="font-semibold text-slate-700">Operating Schedule</h3>
+                            </div>
+                            <div className="p-6">
+                                <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-700">Operating Days per Year</label>
+                                <NumberInput
+                                    value={operatingDays}
+                                    onChange={(val) => setOperatingDays(val || 260)}
+                                    className="w-full p-2 border border-slate-300 rounded-md text-sm max-w-[200px]"
+                                    placeholder="e.g. 260"
+                                />
+                                <p className="text-xs text-slate-500">Used to annualize daily volume for equipment cost amortization.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* UOM Settings */}
+                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                                <div className="flex items-center gap-2">
+                                    <Settings size={18} className="text-slate-500"/>
+                                    <h3 className="font-semibold text-slate-700">Global UOM Settings</h3>
+                                </div>
+                                <button onClick={handleAddUom} className="flex items-center gap-1 text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded hover:bg-blue-100"><Plus size={14}/> Add UOM</button>
+                            </div>
+                            <div className="p-6">
+                                <table className="w-full text-sm text-left">
+                                <thead className="text-xs text-slate-500 uppercase bg-slate-50">
+                                    <tr>
+                                        <th className="px-4 py-2">Unit Name</th>
+                                        <th className="px-4 py-2">Base Units Conversion</th>
+                                        <th className="px-4 py-2 w-10"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {uomSettings.map((uom, index) => (
+                                        <tr key={index} className="border-b border-slate-100 last:border-0">
+                                            <td className="px-4 py-2">
+                                            <input type="text" value={uom.name} onChange={(e) => handleUpdateUom(index, 'name', e.target.value)} className="w-full bg-transparent outline-none focus:text-blue-600 font-medium" />
+                                            </td>
+                                            <td className="px-4 py-2">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-slate-400">1 {uom.name} =</span>
+                                                <input type="number" value={uom.factor} onChange={(e) => handleUpdateUom(index, 'factor', parseFloat(e.target.value))} className="w-20 bg-slate-50 border border-slate-200 rounded px-2 py-1 outline-none focus:border-blue-400" />
+                                                <span className="text-slate-400">Units</span>
+                                            </div>
+                                            </td>
+                                            <td className="px-4 py-2">{index > 2 && <button onClick={() => handleDeleteUom(index)} className="text-slate-400 hover:text-red-500"><X size={16}/></button>}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {/* Equipment Registry */}
+                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                                <div className="flex items-center gap-2">
+                                    <Truck size={18} className="text-slate-500"/>
+                                    <h3 className="font-semibold text-slate-700">Equipment Registry</h3>
+                                </div>
+                                <button onClick={handleAddEquip} className="flex items-center gap-1 text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded hover:bg-blue-100"><Plus size={14}/> Add Asset</button>
+                            </div>
+                            <div className="p-6">
+                                <table className="w-full text-sm text-left">
+                                <thead className="text-xs text-slate-500 uppercase bg-slate-50">
+                                    <tr>
+                                        <th className="px-4 py-2">Asset Name</th>
+                                        <th className="px-4 py-2">Purchase Cost ($)</th>
+                                        <th className="px-4 py-2">Life (Yrs)</th>
+                                        <th className="px-4 py-2">Annual Maint ($)</th>
+                                        <th className="px-4 py-2 w-10"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {equipmentSettings.map((eq, index) => (
+                                        <tr key={eq.id} className="border-b border-slate-100 last:border-0">
+                                            <td className="px-4 py-2">
+                                            <input type="text" value={eq.name} onChange={(e) => handleUpdateEquip(index, 'name', e.target.value)} className="w-full bg-transparent outline-none focus:text-blue-600 font-medium" />
+                                            </td>
+                                            <td className="px-4 py-2">
+                                            <input type="number" value={eq.cost} onChange={(e) => handleUpdateEquip(index, 'cost', parseFloat(e.target.value))} className="w-24 bg-slate-50 border border-slate-200 rounded px-2 py-1 outline-none" />
+                                            </td>
+                                            <td className="px-4 py-2">
+                                            <input type="number" value={eq.life} onChange={(e) => handleUpdateEquip(index, 'life', parseFloat(e.target.value))} className="w-16 bg-slate-50 border border-slate-200 rounded px-2 py-1 outline-none" />
+                                            </td>
+                                            <td className="px-4 py-2">
+                                            <input type="number" value={eq.maintenance} onChange={(e) => handleUpdateEquip(index, 'maintenance', parseFloat(e.target.value))} className="w-20 bg-slate-50 border border-slate-200 rounded px-2 py-1 outline-none" />
+                                            </td>
+                                            <td className="px-4 py-2">{index > 0 && <button onClick={() => handleDeleteEquip(index)} className="text-slate-400 hover:text-red-500"><X size={16}/></button>}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div className="px-6 py-4 flex justify-end">
+                            <button onClick={() => setActiveTab('editor')} className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors">Done</button>
+                        </div>
+                    </div>
+                    </div>
+                ) : (
+                    <div className="flex-1 p-8 overflow-auto bg-slate-50 flex flex-col items-center animate-in fade-in duration-300">
+                    <div className="w-full max-w-4xl bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[80vh]">
+                        <div className="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                        <div className="flex items-center gap-2"><FileJson size={18} className="text-slate-500"/><h3 className="font-semibold text-slate-700">Process Data</h3></div>
+                        <button onClick={handleCopyJson} className="flex items-center gap-2 text-xs font-medium bg-white border border-slate-200 px-3 py-1.5 rounded hover:bg-slate-50 transition-colors text-slate-600">
+                            {copied ? <Check size={14} className="text-green-600"/> : <Copy size={14}/>} {copied ? 'Copied!' : 'Copy'}
+                        </button>
+                        </div>
+                        <textarea readOnly className="w-full h-full p-4 font-mono text-sm text-slate-600 resize-none focus:outline-none bg-transparent" value={JSON.stringify({ scenarios }, null, 2)} />
+                    </div>
+                    </div>
+                )}
+
+                {/* Tab Bar - Now Always Visible */}
+                <div className="h-10 bg-slate-200 border-t border-slate-300 flex items-end px-2 overflow-x-auto gap-1 shrink-0">
+                    {scenarios.map(scenario => (
                     <div
-                      key={scenario.id}
-                      className={`group relative flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wide border-t-2 cursor-pointer select-none rounded-t-lg transition-colors min-w-[120px] max-w-[200px] ${activeScenarioId === scenario.id ? 'bg-slate-50 border-blue-600 text-blue-700 shadow-sm z-10 mb-[-1px] pb-2.5' : 'bg-slate-300 border-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-700 mb-1'}`}
-                      onClick={() => setActiveScenarioId(scenario.id)}
-                      onDoubleClick={() => startRename(scenario.id, scenario.name)}
+                        key={scenario.id}
+                        className={`group relative flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wide border-t-2 cursor-pointer select-none rounded-t-lg transition-colors min-w-[120px] max-w-[200px] ${activeScenarioId === scenario.id ? 'bg-slate-50 border-blue-600 text-blue-700 shadow-sm z-10 mb-[-1px] pb-2.5' : 'bg-slate-300 border-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-700 mb-1'}`}
+                        onClick={() => setActiveScenarioId(scenario.id)}
+                        onDoubleClick={() => startRename(scenario.id, scenario.name)}
                     >
-                       {editingTabId === scenario.id ? (
-                          <input
+                        {editingTabId === scenario.id ? (
+                            <input
                             autoFocus
                             type="text"
                             value={editingTabName}
@@ -525,37 +878,38 @@ export default function App() {
                             onBlur={finishRename}
                             onKeyDown={(e) => e.key === 'Enter' && finishRename()}
                             className="bg-white border border-blue-400 rounded px-1 py-0.5 outline-none w-full text-slate-800"
-                          />
-                       ) : (
-                          <span className="truncate flex-1">{scenario.name}</span>
-                       )}
-                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                          <button
+                            />
+                        ) : (
+                            <span className="truncate flex-1">{scenario.name}</span>
+                        )}
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                            <button
                             onClick={(e) => { e.stopPropagation(); duplicateScenario(scenario.id); }}
                             className="hover:bg-blue-100 hover:text-blue-600 p-0.5 rounded-full"
                             title="Duplicate Scenario"
-                          >
-                             <Copy size={12}/>
-                          </button>
-                          {scenarios.length > 1 && (
-                              <button
+                            >
+                                <Copy size={12}/>
+                            </button>
+                            {scenarios.length > 1 && (
+                                <button
                                 onClick={(e) => { e.stopPropagation(); deleteScenario(scenario.id); }}
                                 className="hover:bg-red-100 hover:text-red-600 p-0.5 rounded-full"
                                 title="Delete Scenario"
-                              >
-                                 <X size={12}/>
-                              </button>
-                          )}
-                       </div>
+                                >
+                                    <X size={12}/>
+                                </button>
+                            )}
+                        </div>
                     </div>
-                 ))}
-                 <button onClick={addScenario} className="mb-1 p-1.5 hover:bg-slate-300 rounded text-slate-500 hover:text-slate-700" title="New Scenario">
+                    ))}
+                    <button onClick={addScenario} className="mb-1 p-1.5 hover:bg-slate-300 rounded text-slate-500 hover:text-slate-700" title="New Scenario">
                     <Plus size={16}/>
-                 </button>
-             </div>
-          </main>
+                    </button>
+                </div>
+              </main>
+          </div>
 
-          {selectedId && (
+          {activeTab === 'editor' && selectedId && (
             <aside className="w-72 bg-white border-l border-slate-200 p-4 shadow-xl z-20 flex flex-col gap-4 overflow-y-auto max-h-screen">
               <h2 className="text-sm font-bold uppercase text-slate-400 tracking-wider mb-2">Properties</h2>
               {selectionType === 'node' && selectedNode && (
@@ -657,7 +1011,7 @@ export default function App() {
                            <div className="space-y-0.5">
                               <span className="text-[10px] text-slate-400">Input UOM</span>
                               {(() => {
-                                const incomingEdge = edges.find(e => e.target === selectedNode.id);
+                                const incomingEdge = selectionScenario.edges.find(e => e.target === selectedNode.id);
                                 const isInputDisabled = !!incomingEdge;
                                 return (
                                   <select
@@ -700,32 +1054,32 @@ export default function App() {
                       <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 space-y-2 mt-2">
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-slate-500 text-xs">Volume Arriving:</span>
-                          <span className="font-mono font-bold text-slate-700">{formatNumber(Math.round(metrics.dailyFlows[selectedNode.id] || 0))} <span className="text-[10px] font-normal">{selectedNode.inputUom}/day</span></span>
+                          <span className="font-mono font-bold text-slate-700">{formatNumber(Math.round(selectionMetrics.dailyFlows[selectedNode.id] || 0))} <span className="text-[10px] font-normal">{selectedNode.inputUom}/day</span></span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-slate-500 text-xs">Total FTE Needed:</span>
                           <span className="font-mono font-bold text-blue-600 flex items-center gap-1">
-                            <Users size={12}/> {formatNumber(metrics.headcounts[selectedNode.id])}
+                            <Users size={12}/> {formatNumber(selectionMetrics.headcounts[selectedNode.id])}
                           </span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-slate-500 text-xs">Machines Needed:</span>
                           <span className="font-mono font-bold text-purple-600 flex items-center gap-1">
-                            <Truck size={12}/> {formatNumber(metrics.machineCounts[selectedNode.id])}
+                            <Truck size={12}/> {formatNumber(selectionMetrics.machineCounts[selectedNode.id])}
                           </span>
                         </div>
                         <div className="h-px bg-slate-200 my-1"></div>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-slate-800 font-semibold text-xs">Labor CPU:</span>
-                          <span className="font-mono text-slate-600">${formatCost3Decimals(metrics.laborCosts[selectedNode.id])}</span>
+                          <span className="font-mono text-slate-600">${formatCost3Decimals(selectionMetrics.laborCosts[selectedNode.id])}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-slate-800 font-semibold text-xs">Equip CPU:</span>
-                          <span className="font-mono text-slate-600">${formatCost3Decimals(metrics.equipCosts[selectedNode.id])}</span>
+                          <span className="font-mono text-slate-600">${formatCost3Decimals(selectionMetrics.equipCosts[selectedNode.id])}</span>
                         </div>
                         <div className="flex justify-between items-center text-sm font-bold">
                           <span className="text-slate-800 text-xs">Total CPU:</span>
-                          <span className="font-mono text-green-600">${formatCost3Decimals(metrics.laborCosts[selectedNode.id] + metrics.equipCosts[selectedNode.id])}</span>
+                          <span className="font-mono text-green-600">${formatCost3Decimals(selectionMetrics.laborCosts[selectedNode.id] + selectionMetrics.equipCosts[selectedNode.id])}</span>
                         </div>
                       </div>
                     </div>
@@ -751,319 +1105,7 @@ export default function App() {
               </div>
             </aside>
           )}
-        </div>
-      ) : activeTab === 'analysis' ? (
-        <div className="flex-1 p-8 overflow-auto bg-slate-50 flex flex-col items-center animate-in fade-in duration-300">
-           <div className="w-full max-w-6xl space-y-8">
-
-              {/* Scenario Comparison (if multiple scenarios) */}
-              {scenarios.length > 1 && (
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                    <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2 mb-4">
-                      <Scale size={16} /> Scenario Comparison
-                    </h3>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
-                                <tr>
-                                    <th className="px-4 py-2">Scenario</th>
-                                    <th className="px-4 py-2 text-right">CPU</th>
-                                    <th className="px-4 py-2 text-right">Headcount</th>
-                                    <th className="px-4 py-2 text-right">Annual Cost</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {scenarios.map(scen => {
-                                    const m = calculateMetrics(scen.nodes, scen.edges, scen.uomSettings, scen.equipmentSettings, scen.operatingDays);
-                                    const isBest = false; // logic to highlight best?
-                                    return (
-                                        <tr key={scen.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
-                                            <td className="px-4 py-2 font-medium">{scen.name}</td>
-                                            <td className="px-4 py-2 text-right font-mono">${formatCost3Decimals(m.total)}</td>
-                                            <td className="px-4 py-2 text-right font-mono text-blue-600">{Math.ceil(m.totalFTE)}</td>
-                                            <td className="px-4 py-2 text-right font-mono text-green-700">${formatNumber(m.annualSystemVolume * m.total)}</td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-              )}
-
-              {/* Executive Summary */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                 <StatCard
-                   label="Cost Per Unit"
-                   value={`$${formatCost3Decimals(metrics.total)}`}
-                   subtext="Fully Burdened (Labor + Equip)"
-                   icon={Activity}
-                   colorClass="text-purple-600"
-                 />
-                 <StatCard
-                   label="Annual System Cost"
-                   value={`$${formatNumber(metrics.annualSystemVolume * metrics.total)}`}
-                   subtext="Est. Annual OpEx"
-                   icon={DollarSign}
-                   colorClass="text-green-600"
-                 />
-                 <StatCard
-                   label="Headcount"
-                   value={Math.ceil(metrics.totalFTE)}
-                   subtext="Full Time Equivalents (Rounded)"
-                   icon={Users}
-                   colorClass="text-blue-600"
-                 />
-                 <StatCard
-                   label="Equipment Count"
-                   value={Object.values(metrics.machineCounts).reduce((a,b) => a+b, 0)}
-                   subtext="Total Assets Deployed"
-                   icon={Truck}
-                   colorClass="text-orange-600"
-                 />
-              </div>
-
-              {/* Visual Breakdown Row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 {/* Cost Composition */}
-                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                    <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2 mb-4">
-                      <PieChart size={16} /> Cost Composition
-                    </h3>
-                    <div className="space-y-4">
-                       <ProgressBar label="Labor Cost" value={`${((metrics.totalLaborCost / metrics.total) * 100).toFixed(1)}%`} max={100} color="bg-blue-500" />
-                       <ProgressBar label="Equipment Cost" value={`${((metrics.totalEquipCost / metrics.total) * 100).toFixed(1)}%`} max={100} color="bg-orange-500" />
-                       <div className="pt-4 border-t border-slate-100 flex justify-between text-xs text-slate-500">
-                          <span>Labor: ${formatCost3Decimals(metrics.totalLaborCost)}/unit</span>
-                          <span>Equip: ${formatCost3Decimals(metrics.totalEquipCost)}/unit</span>
-                       </div>
-                    </div>
-                 </div>
-
-                 {/* Top Cost Drivers */}
-                 <BarChart
-                   title="Top Cost Drivers (Process Step)"
-                   data={Object.entries(metrics.weightedCosts)
-                     .map(([id, cost]) => ({ label: nodes.find(n => n.id === id)?.label || 'Unknown', value: cost }))
-                     .sort((a, b) => b.value - a.value)
-                     .slice(0, 5)}
-                   valueKey="value"
-                   labelKey="label"
-                   formatValue={(v) => `$${formatCost3Decimals(v)}`}
-                   color="bg-red-500"
-                 />
-              </div>
-
-              {/* Detailed Tables */}
-              <div className="grid grid-cols-1 gap-8">
-
-                 {/* Staffing Plan */}
-                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2 bg-slate-50">
-                        <Briefcase size={18} className="text-slate-500"/>
-                        <h3 className="font-semibold text-slate-700">Staffing Plan & Labor Budget</h3>
-                    </div>
-                    <table className="w-full text-sm text-left">
-                       <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
-                          <tr>
-                             <th className="px-6 py-3">Process Step</th>
-                             <th className="px-6 py-3 text-right">Headcount (FTE)</th>
-                             <th className="px-6 py-3 text-right">Annual Rate</th>
-                             <th className="px-6 py-3 text-right">Annual Budget</th>
-                          </tr>
-                       </thead>
-                       <tbody className="divide-y divide-slate-100">
-                          {nodes.filter(n => n.type !== 'circle' && metrics.headcounts[n.id] > 0).map(node => (
-                             <tr key={node.id} className="hover:bg-slate-50">
-                                <td className="px-6 py-3 font-medium text-slate-700">{node.label}</td>
-                                <td className="px-6 py-3 text-right font-mono text-blue-600">{formatNumber(metrics.headcounts[node.id])}</td>
-                                <td className="px-6 py-3 text-right text-slate-600">{formatCurrency(node.yearlyBurdenedRate)}</td>
-                                <td className="px-6 py-3 text-right font-mono font-medium text-slate-800">
-                                   {formatCurrency(metrics.headcounts[node.id] * (node.yearlyBurdenedRate || 45000))}
-                                </td>
-                             </tr>
-                          ))}
-                          <tr className="bg-slate-50 font-bold text-slate-800">
-                             <td className="px-6 py-3">Total Labor</td>
-                             <td className="px-6 py-3 text-right text-blue-600">{formatNumber(metrics.totalFTE)}</td>
-                             <td className="px-6 py-3 text-right">-</td>
-                             <td className="px-6 py-3 text-right">
-                                {formatCurrency(
-                                   nodes.reduce((acc, node) => acc + (metrics.headcounts[node.id] || 0) * (node.yearlyBurdenedRate || 45000), 0)
-                                )}
-                             </td>
-                          </tr>
-                       </tbody>
-                    </table>
-                 </div>
-
-                 {/* Equipment Requirements */}
-                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2 bg-slate-50">
-                        <Truck size={18} className="text-slate-500"/>
-                        <h3 className="font-semibold text-slate-700">Equipment Requirements (Assets)</h3>
-                    </div>
-                    <table className="w-full text-sm text-left">
-                       <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
-                          <tr>
-                             <th className="px-6 py-3">Asset Type</th>
-                             <th className="px-6 py-3 text-right">Qty Needed</th>
-                             <th className="px-6 py-3 text-right">Unit Cost</th>
-                             <th className="px-6 py-3 text-right">Total Investment</th>
-                             <th className="px-6 py-3 text-right">Annual Maint.</th>
-                          </tr>
-                       </thead>
-                       <tbody className="divide-y divide-slate-100">
-                          {/* Calculate Aggregates on the fly */}
-                          {equipmentSettings.filter(eq => eq.id !== 'eq1').map(eq => {
-                             const totalCount = nodes.reduce((acc, node) => {
-                               if (node.equipmentId === eq.id) return acc + (metrics.machineCounts[node.id] || 0);
-                               return acc;
-                             }, 0);
-
-                             if (totalCount === 0) return null;
-
-                             return (
-                               <tr key={eq.id} className="hover:bg-slate-50">
-                                  <td className="px-6 py-3 font-medium text-slate-700">{eq.name}</td>
-                                  <td className="px-6 py-3 text-right font-mono text-purple-600">{totalCount}</td>
-                                  <td className="px-6 py-3 text-right text-slate-600">{formatCurrency(eq.cost)}</td>
-                                  <td className="px-6 py-3 text-right font-mono text-slate-800">{formatCurrency(totalCount * eq.cost)}</td>
-                                  <td className="px-6 py-3 text-right text-slate-600">{formatCurrency(totalCount * eq.maintenance)}</td>
-                               </tr>
-                             );
-                          })}
-                       </tbody>
-                    </table>
-                 </div>
-
-              </div>
-           </div>
-        </div>
-      ) : activeTab === 'settings' ? (
-        <div className="flex-1 p-8 overflow-auto bg-slate-50 flex flex-col items-center animate-in fade-in duration-300">
-           <div className="w-full max-w-4xl space-y-6">
-
-              {/* Global Operating Parameters */}
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-                 <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2 bg-slate-50">
-                     <Calendar size={18} className="text-slate-500"/>
-                     <h3 className="font-semibold text-slate-700">Operating Schedule</h3>
-                 </div>
-                 <div className="p-6">
-                    <div className="space-y-2">
-                       <label className="text-sm font-medium text-slate-700">Operating Days per Year</label>
-                       <NumberInput
-                         value={operatingDays}
-                         onChange={(val) => setOperatingDays(val || 260)}
-                         className="w-full p-2 border border-slate-300 rounded-md text-sm max-w-[200px]"
-                         placeholder="e.g. 260"
-                       />
-                       <p className="text-xs text-slate-500">Used to annualize daily volume for equipment cost amortization.</p>
-                    </div>
-                 </div>
-              </div>
-
-              {/* UOM Settings */}
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-                  <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-                      <div className="flex items-center gap-2">
-                        <Settings size={18} className="text-slate-500"/>
-                        <h3 className="font-semibold text-slate-700">Global UOM Settings</h3>
-                      </div>
-                      <button onClick={handleAddUom} className="flex items-center gap-1 text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded hover:bg-blue-100"><Plus size={14}/> Add UOM</button>
-                  </div>
-                  <div className="p-6">
-                    <table className="w-full text-sm text-left">
-                       <thead className="text-xs text-slate-500 uppercase bg-slate-50">
-                          <tr>
-                             <th className="px-4 py-2">Unit Name</th>
-                             <th className="px-4 py-2">Base Units Conversion</th>
-                             <th className="px-4 py-2 w-10"></th>
-                          </tr>
-                       </thead>
-                       <tbody>
-                          {uomSettings.map((uom, index) => (
-                             <tr key={index} className="border-b border-slate-100 last:border-0">
-                                <td className="px-4 py-2">
-                                   <input type="text" value={uom.name} onChange={(e) => handleUpdateUom(index, 'name', e.target.value)} className="w-full bg-transparent outline-none focus:text-blue-600 font-medium" />
-                                </td>
-                                <td className="px-4 py-2">
-                                   <div className="flex items-center gap-2">
-                                      <span className="text-slate-400">1 {uom.name} =</span>
-                                      <input type="number" value={uom.factor} onChange={(e) => handleUpdateUom(index, 'factor', parseFloat(e.target.value))} className="w-20 bg-slate-50 border border-slate-200 rounded px-2 py-1 outline-none focus:border-blue-400" />
-                                      <span className="text-slate-400">Units</span>
-                                   </div>
-                                </td>
-                                <td className="px-4 py-2">{index > 2 && <button onClick={() => handleDeleteUom(index)} className="text-slate-400 hover:text-red-500"><X size={16}/></button>}</td>
-                             </tr>
-                          ))}
-                       </tbody>
-                    </table>
-                  </div>
-              </div>
-
-              {/* Equipment Registry */}
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-                  <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-                      <div className="flex items-center gap-2">
-                        <Truck size={18} className="text-slate-500"/>
-                        <h3 className="font-semibold text-slate-700">Equipment Registry</h3>
-                      </div>
-                      <button onClick={handleAddEquip} className="flex items-center gap-1 text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded hover:bg-blue-100"><Plus size={14}/> Add Asset</button>
-                  </div>
-                  <div className="p-6">
-                    <table className="w-full text-sm text-left">
-                       <thead className="text-xs text-slate-500 uppercase bg-slate-50">
-                          <tr>
-                             <th className="px-4 py-2">Asset Name</th>
-                             <th className="px-4 py-2">Purchase Cost ($)</th>
-                             <th className="px-4 py-2">Life (Yrs)</th>
-                             <th className="px-4 py-2">Annual Maint ($)</th>
-                             <th className="px-4 py-2 w-10"></th>
-                          </tr>
-                       </thead>
-                       <tbody>
-                          {equipmentSettings.map((eq, index) => (
-                             <tr key={eq.id} className="border-b border-slate-100 last:border-0">
-                                <td className="px-4 py-2">
-                                   <input type="text" value={eq.name} onChange={(e) => handleUpdateEquip(index, 'name', e.target.value)} className="w-full bg-transparent outline-none focus:text-blue-600 font-medium" />
-                                </td>
-                                <td className="px-4 py-2">
-                                   <input type="number" value={eq.cost} onChange={(e) => handleUpdateEquip(index, 'cost', parseFloat(e.target.value))} className="w-24 bg-slate-50 border border-slate-200 rounded px-2 py-1 outline-none" />
-                                </td>
-                                <td className="px-4 py-2">
-                                   <input type="number" value={eq.life} onChange={(e) => handleUpdateEquip(index, 'life', parseFloat(e.target.value))} className="w-16 bg-slate-50 border border-slate-200 rounded px-2 py-1 outline-none" />
-                                </td>
-                                <td className="px-4 py-2">
-                                   <input type="number" value={eq.maintenance} onChange={(e) => handleUpdateEquip(index, 'maintenance', parseFloat(e.target.value))} className="w-20 bg-slate-50 border border-slate-200 rounded px-2 py-1 outline-none" />
-                                </td>
-                                <td className="px-4 py-2">{index > 0 && <button onClick={() => handleDeleteEquip(index)} className="text-slate-400 hover:text-red-500"><X size={16}/></button>}</td>
-                             </tr>
-                          ))}
-                       </tbody>
-                    </table>
-                  </div>
-              </div>
-
-              <div className="px-6 py-4 flex justify-end">
-                  <button onClick={() => setActiveTab('editor')} className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors">Done</button>
-              </div>
-           </div>
-        </div>
-      ) : (
-        <div className="flex-1 p-8 overflow-auto bg-slate-50 flex flex-col items-center animate-in fade-in duration-300">
-          <div className="w-full max-w-4xl bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[80vh]">
-            <div className="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <div className="flex items-center gap-2"><FileJson size={18} className="text-slate-500"/><h3 className="font-semibold text-slate-700">Process Data</h3></div>
-              <button onClick={handleCopyJson} className="flex items-center gap-2 text-xs font-medium bg-white border border-slate-200 px-3 py-1.5 rounded hover:bg-slate-50 transition-colors text-slate-600">
-                {copied ? <Check size={14} className="text-green-600"/> : <Copy size={14}/>} {copied ? 'Copied!' : 'Copy'}
-              </button>
-            </div>
-            <textarea readOnly className="w-full h-full p-4 font-mono text-sm text-slate-600 resize-none focus:outline-none bg-transparent" value={JSON.stringify({ scenarios }, null, 2)} />
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
