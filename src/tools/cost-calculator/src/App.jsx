@@ -62,11 +62,33 @@ export default function App() {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [copied, setCopied] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [userInfo, setUserInfo] = useState(null);
 
   const svgRef = useRef(null);
   const contentRef = useRef(null);
 
   // --- Effects ---
+
+  // Auth Effect
+  useEffect(() => {
+    async function fetchUser() {
+      try {
+        const response = await fetch('/.auth/me');
+        if (response.ok) {
+          const payload = await response.json();
+          const { clientPrincipal } = payload;
+          if (clientPrincipal) {
+            const nameClaim = clientPrincipal.claims.find(c => c.typ === "name");
+            const displayName = (nameClaim && nameClaim.val) ? nameClaim.val : (clientPrincipal.userDetails || clientPrincipal.userId || "User");
+            setUserInfo({ name: displayName, ...clientPrincipal });
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch user info", error);
+      }
+    }
+    fetchUser();
+  }, []);
 
   useEffect(() => {
     let hasChanges = false;
@@ -495,26 +517,48 @@ export default function App() {
     <div className="flex flex-col h-screen w-full bg-slate-50 text-slate-900 font-sans overflow-hidden">
 
       {/* Header */}
-      <header className="flex items-center justify-between px-6 py-3 bg-white border-b border-slate-200 shadow-sm z-30">
-        <div className="flex items-center gap-2">
-          <div className="p-2 bg-blue-600 rounded-lg text-white"><RotateCcw size={20} className="transform rotate-90" /></div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-800">Cost per Unit <span className="text-blue-600">Calculator</span></h1>
+      <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6 z-10 shrink-0 w-full shadow-none">
+        <div className="flex items-center gap-4">
+           <a href="/index.html" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+              <div className="w-6 h-6 rounded bg-blue-600 flex items-center justify-center text-white font-bold text-xs">E</div>
+           </a>
+           <h2 className="text-lg font-bold text-slate-800 tracking-tight">Cost per Unit Calculator</h2>
+           <div className="h-4 w-px bg-slate-200"></div>
+           <nav className="flex gap-1">
+              <button onClick={() => setActiveTab('editor')} className={`main-tab-button ${activeTab === 'editor' ? 'active' : ''}`}>
+                 Editor
+              </button>
+              <button onClick={() => setActiveTab('stats')} className={`main-tab-button ${activeTab === 'stats' ? 'active' : ''}`}>
+                 Statistics
+              </button>
+              <button onClick={() => setActiveTab('settings')} className={`main-tab-button ${activeTab === 'settings' ? 'active' : ''}`}>
+                 Settings
+              </button>
+              <button onClick={() => setActiveTab('json')} className={`main-tab-button ${activeTab === 'json' ? 'active' : ''}`}>
+                 JSON
+              </button>
+           </nav>
         </div>
-        <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 mx-4">
-          <button onClick={() => setActiveTab('editor')} className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-all ${activeTab === 'editor' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-            <Layout size={16} /> Editor
-          </button>
-          <button onClick={() => setActiveTab('stats')} className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-all ${activeTab === 'stats' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-            <BarChart2 size={16} /> Statistics
-          </button>
-          <button onClick={() => setActiveTab('settings')} className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-all ${activeTab === 'settings' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-            <Settings size={16} /> Settings
-          </button>
-          <button onClick={() => setActiveTab('json')} className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-all ${activeTab === 'json' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-            <FileJson size={16} /> JSON
-          </button>
+        <div className="flex items-center gap-3">
+             <button onClick={clearCanvas} className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"><Trash2 size={16} /> Clear</button>
+             <div className="h-6 w-px bg-slate-200 mx-2"></div>
+             {userInfo ? (
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-xs font-bold text-white shadow-lg">
+                        {userInfo.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-700 truncate max-w-[150px]">{userInfo.name}</p>
+                        <a href="/.auth/logout" className="text-xs text-slate-500 hover:text-blue-400 transition-colors">Log out</a>
+                    </div>
+                </div>
+             ) : (
+                <div className="flex items-center gap-3 opacity-50">
+                     <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-500">G</div>
+                     <p className="text-sm font-medium text-slate-500">Guest</p>
+                </div>
+             )}
         </div>
-        <button onClick={clearCanvas} className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"><Trash2 size={16} /> Clear</button>
       </header>
 
       {/* Main Content */}

@@ -40,7 +40,9 @@ export async function renderHeader(containerId, pageTitle, customHtml = '') {
                     if (clientPrincipal) {
                         // Attempt to find First/Last Name claim
                         const nameClaim = clientPrincipal.claims.find(c => c.typ === "name");
-                        userProfileName.textContent = nameClaim ? nameClaim.val : (clientPrincipal.userDetails || clientPrincipal.userId);
+                        // Fallback logic: Name Claim -> User Details (Email) -> User ID -> "User"
+                        const displayName = (nameClaim && nameClaim.val) ? nameClaim.val : (clientPrincipal.userDetails || clientPrincipal.userId || "User");
+                        userProfileName.textContent = displayName;
                         
                         userProfileContainer.classList.remove('hidden');
                         userProfileContainer.classList.add('flex');
