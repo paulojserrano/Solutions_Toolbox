@@ -76,19 +76,19 @@ export default function App() {
 
   // Helper setters for active scenario properties
   const setNodes = (newNodes) => {
-     setScenarios(scenarios.map(s => s.id === activeScenarioId ? { ...s, nodes: typeof newNodes === 'function' ? newNodes(s.nodes) : newNodes } : s));
+     setScenarios(prev => prev.map(s => s.id === activeScenarioId ? { ...s, nodes: typeof newNodes === 'function' ? newNodes(s.nodes) : newNodes } : s));
   };
   const setEdges = (newEdges) => {
-     setScenarios(scenarios.map(s => s.id === activeScenarioId ? { ...s, edges: typeof newEdges === 'function' ? newEdges(s.edges) : newEdges } : s));
+     setScenarios(prev => prev.map(s => s.id === activeScenarioId ? { ...s, edges: typeof newEdges === 'function' ? newEdges(s.edges) : newEdges } : s));
   };
   const setUomSettings = (val) => {
-     setScenarios(scenarios.map(s => s.id === activeScenarioId ? { ...s, uomSettings: val } : s));
+     setScenarios(prev => prev.map(s => s.id === activeScenarioId ? { ...s, uomSettings: val } : s));
   };
   const setEquipmentSettings = (val) => {
-     setScenarios(scenarios.map(s => s.id === activeScenarioId ? { ...s, equipmentSettings: val } : s));
+     setScenarios(prev => prev.map(s => s.id === activeScenarioId ? { ...s, equipmentSettings: val } : s));
   };
   const setOperatingDays = (val) => {
-     setScenarios(scenarios.map(s => s.id === activeScenarioId ? { ...s, operatingDays: val } : s));
+     setScenarios(prev => prev.map(s => s.id === activeScenarioId ? { ...s, operatingDays: val } : s));
   };
 
   const nodes = activeScenario.nodes;
@@ -306,17 +306,31 @@ export default function App() {
         equipmentSettings: [...DEFAULT_EQUIPMENT],
         operatingDays: 260
      };
-     setScenarios([...scenarios, newScenario]);
+     setScenarios(prev => [...prev, newScenario]);
      setActiveScenarioId(newScenario.id);
+  };
+
+  const duplicateScenario = (id) => {
+    const sourceScenario = scenarios.find(s => s.id === id);
+    if (!sourceScenario) return;
+    const newScenario = {
+      ...JSON.parse(JSON.stringify(sourceScenario)),
+      id: generateId(),
+      name: `Copy of ${sourceScenario.name}`
+    };
+    setScenarios(prev => [...prev, newScenario]);
+    setActiveScenarioId(newScenario.id);
   };
 
   const deleteScenario = (id) => {
      if (scenarios.length <= 1) return;
      if (confirm(`Delete scenario "${scenarios.find(s=>s.id===id)?.name}"?`)) {
-        const newScenarios = scenarios.filter(s => s.id !== id);
-        setScenarios(newScenarios);
-        if (activeScenarioId === id) setActiveScenarioId(newScenarios[0].id);
-        if (compareScenarioId === id) setCompareScenarioId(null);
+        setScenarios(prev => {
+            const newScenarios = prev.filter(s => s.id !== id);
+            if (activeScenarioId === id) setActiveScenarioId(newScenarios[0].id);
+            if (compareScenarioId === id) setCompareScenarioId(null);
+            return newScenarios;
+        });
      }
   };
 
@@ -515,14 +529,24 @@ export default function App() {
                        ) : (
                           <span className="truncate flex-1">{scenario.name}</span>
                        )}
-                       {scenarios.length > 1 && (
+                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
                           <button
-                            onClick={(e) => { e.stopPropagation(); deleteScenario(scenario.id); }}
-                            className={`opacity-0 group-hover:opacity-100 hover:bg-red-100 hover:text-red-600 p-0.5 rounded-full transition-all`}
+                            onClick={(e) => { e.stopPropagation(); duplicateScenario(scenario.id); }}
+                            className="hover:bg-blue-100 hover:text-blue-600 p-0.5 rounded-full"
+                            title="Duplicate Scenario"
                           >
-                             <X size={12}/>
+                             <Copy size={12}/>
                           </button>
-                       )}
+                          {scenarios.length > 1 && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); deleteScenario(scenario.id); }}
+                                className="hover:bg-red-100 hover:text-red-600 p-0.5 rounded-full"
+                                title="Delete Scenario"
+                              >
+                                 <X size={12}/>
+                              </button>
+                          )}
+                       </div>
                     </div>
                  ))}
                  <button onClick={addScenario} className="mb-1 p-1.5 hover:bg-slate-300 rounded text-slate-500 hover:text-slate-700" title="New Scenario">
