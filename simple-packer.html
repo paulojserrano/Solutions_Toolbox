@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Case Packer</title>
+
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="src/core/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <!-- Import Map for Three.js -->
+    <!-- Using the version from layout-tool for consistency -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <!-- Load jsPDF for PDF exporting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style type="text/tailwindcss">
+        /* Custom style for file input */
+        input[type="file"]::file-selector-button {
+            @apply bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg cursor-pointer hover:bg-blue-700 transition-colors duration-200;
+        }
+        /* Ensure canvas is responsive */
+        #canvas-container canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        /* Style for sortable table headers */
+        .sort-btn {
+            @apply font-medium text-gray-500 uppercase tracking-wider p-0 bg-transparent border-none cursor-pointer hover:text-gray-700;
+        }
+        .sort-btn.asc::after {
+            content: ' ▲';
+            @apply text-xs;
+        }
+        .sort-btn.desc::after {
+            content: ' ▼';
+            @apply text-xs;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans h-screen flex overflow-hidden selection:bg-blue-100 selection:text-blue-700">
+
+    <div id="global-sidebar"></div>
+
+    <div class="flex-1 flex flex-col min-w-0 bg-white">
+        <div id="global-header"></div>
+
+        <main class="flex-1 overflow-y-auto p-8 relative bg-slate-50">
+            <div class="max-w-7xl mx-auto bg-white rounded-xl shadow-xl p-8">
+                <!-- MODIFIED: Added flex container for title and logo -->
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                    <h1 class="text-4xl font-bold text-slate-900">3D Case Packer</h1>
+                    <!-- NEW: Added id="logo-image" -->
+                    <img id="logo-image"
+                         src="src/tools/simple-packer/assets/hai-logo.png"
+                         alt="Hai Robotics"
+                         class="mt-4 md:mt-0"
+                         style="width: 320px; height: 32px; aspect-ratio: 640/64; object-fit: contain;">
+                </div>
+
+                <!-- Section 1: Tote Dimensions -->
+                <div class="mb-8 p-6 bg-slate-100 rounded-lg">
+                    <h2 class="text-2xl font-semibold text-slate-800 mb-4">1. Enter Tote Dimensions</h2>
+                    <!-- Updated grid to be 4 columns -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                            <label for="tote_L" class="block text-sm font-medium text-slate-600 mb-1">Tote Length (tote_L)</label>
+                            <div class="relative">
+                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                    <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
+                                </div>
+                                <input type="number" id="tote_L" class="w-full p-3 pl-10 border border-gray-300 rounded-lg" value="31.9">
+                            </div>
+                        </div>
+                        <div>
+                            <label for="tote_W" class="block text-sm font-medium text-slate-600 mb-1">Tote Width (tote_W)</label>
+                            <div class="relative">
+                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                     <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 6.75V15m0 0v-8.25m0 8.25h.375c.621 0 1.125-.504 1.125-1.125V8.625c0-.621-.504-1.125-1.125-1.125H9.375m-1.5 6.75V15m0 0v-8.25m0 8.25h.375c.621 0 1.125-.504 1.125-1.125V8.625c0-.621-.504-1.125-1.125-1.125H7.875m6.75 6.75V15m0 0v-8.25m0 8.25h.375c.621 0 1.125-.504 1.125-1.125V8.625c0-.621-.504-1.125-1.125-1.125h-.375m-1.5 6.75V15m0 0v-8.25m0 8.25h.375c.621 0 1.125-.504 1.125-1.125V8.625c0-.621-.504-1.125-1.125-1.125h-.375" /></svg>
+                                </div>
+                                <input type="number" id="tote_W" class="w-full p-3 pl-10 border border-gray-300 rounded-lg" value="24">
+                            </div>
+                        </div>
+                        <div>
+                            <label for="tote_H" class="block text-sm font-medium text-slate-600 mb-1">Tote Height (tote_H)</label>
+                            <div class="relative">
+                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                    <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v18m0-18h7.5M12 3H4.5m7.5 18h7.5M12 18H4.5m1.5-15h4.5m-4.5 0v15m0-15h-3m3 15h-3" /></svg>
+                                </div>
+                                <input type="number" id="tote_H" class="w-full p-3 pl-10 border border-gray-300 rounded-lg" value="14.9">
+                            </div>
+                        </div>
+                        <!-- New: Max Cases Input -->
+                        <div>
+                            <label for="max-cases-input" class="block text-sm font-medium text-slate-600 mb-1">Max Cases (Optional)</label>
+                            <div class="relative">
+                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                     <svg class="h-5 w-5 text-gray-400"  xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"> <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10.5 11.25h3M12 15V3.75" /> </svg>
+                                </div>
+                                <input type="number" id="max-cases-input" class="w-full p-3 pl-10 border border-gray-300 rounded-lg" placeholder="e.g., 100">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Stacking Checkbox -->
+                    <div class="relative flex items-start mt-6">
+                        <div class="flex h-6 items-center">
+                            <input id="stacking-enabled" name="stacking-enabled" type="checkbox" checked class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600">
+                        </div>
+                        <div class="ml-3 text-sm leading-6">
+                            <label for="stacking-enabled" class="font-medium text-slate-700">Enable Stacking</label>
+                            <p class="text-slate-500">Allow packing multiple layers high (up to tote height).</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: CSV Upload -->
+                <div class="mb-8">
+                    <h2 class="text-2xl font-semibold text-slate-800 mb-4">2. Process Cases</h2>
+                    <div class="p-6 border border-gray-200 rounded-lg">
+                        <h3 class="text-lg font-medium text-slate-700 mb-2">2a. Upload Case Dimensions CSV</h3>
+                        <p class="text-sm text-slate-600 mb-4">Upload a CSV file with case dimensions. The first row must be a header.</p>
+                        <input type="file" id="csvFile" accept=".csv" class="w-full text-sm text-slate-500 file:mr-4 file:border-0">
+                    </div>
+
+                    <!-- 2b. Header Mapping -->
+                    <div id="mapping-container" class="hidden mt-6 p-6 border border-gray-200 rounded-lg">
+                        <h3 class="text-lg font-medium text-slate-700 mb-4">2b. Map CSV Headers</h3>
+                        <p class="text-sm text-slate-600 mb-4">Match your CSV columns to the required dimensions.</p>
+                        <!-- MODIFIED: 4-col grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <!-- NEW: Name Map -->
+                            <div>
+                                <label for="name-map" class="block text-sm font-medium text-slate-600 mb-1">Case Name (Optional)</label>
+                                <select id="name-map" class="w-full p-3 border border-gray-300 rounded-lg bg-white"></select>
+                            </div>
+                            <div>
+                                <label for="length-map" class="block text-sm font-medium text-slate-600 mb-1">Length</label>
+                                <select id="length-map" class="w-full p-3 border border-gray-300 rounded-lg bg-white"></select>
+                            </div>
+                            <div>
+                                <label for="width-map" class="block text-sm font-medium text-slate-600 mb-1">Width</label>
+                                <select id="width-map" class="w-full p-3 border border-gray-300 rounded-lg bg-white"></select>
+                            </div>
+                            <div>
+                                <label for="height-map" class="block text-sm font-medium text-slate-600 mb-1">Height</label>
+                                <select id="height-map" class="w-full p-3 border border-gray-300 rounded-lg bg-white"></select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2c. Process Button -->
+                    <div class="mt-6 text-right">
+                        <button id="process-btn" disabled class="w-full md:w-auto bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors duration-200 disabled:bg-slate-400 disabled:cursor-not-allowed">
+                            Process CSV
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Section 3: Results -->
+                <div>
+                    <!-- Stats block -->
+                    <div id="stats-container" class="hidden mb-6 p-6 bg-slate-100 rounded-lg">
+                        <h3 class="text-xl font-semibold text-slate-800 mb-4">Fit Statistics</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            <div class="bg-white p-4 rounded-lg shadow-sm">
+                                <div class="text-sm font-medium text-slate-500">Min Cases Fit</div>
+                                <div id="stat-min" class="text-2xl font-bold text-slate-900">-</div>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg shadow-sm">
+                                <div class="text-sm font-medium text-slate-500">Median Cases Fit</div>
+                                <div id="stat-median" class="text-2xl font-bold text-slate-900">-</div>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg shadow-sm">
+                                <div class="text-sm font-medium text-slate-500">Max Cases Fit</div>
+                                <div id="stat-max" class="text-2xl font-bold text-slate-900">-</div>
+                            </div>
+                        </div>
+                        <h4 class="text-lg font-semibold text-slate-700 mb-2">Fit Distribution (Histogram)</h4>
+                        <!-- MODIFIED: Added gap-1 for spacing like the other one -->
+                        <div id="histogram-container" class="w-full bg-white p-4 rounded-lg shadow-sm min-h-[150px] flex items-end gap-1">
+                            <!-- Fit Histogram will be generated here -->
+                        </div>
+
+                        <!-- Utilization Stats -->
+                        <h3 class="text-xl font-semibold text-slate-800 mt-6 mb-4">Utilization Statistics</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            <div class="bg-white p-4 rounded-lg shadow-sm">
+                                <div class="text-sm font-medium text-slate-500">Min Utilization</div>
+                                <div id="stat-util-min" class="text-2xl font-bold text-slate-900">-</div>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg shadow-sm">
+                                <div class="text-sm font-medium text-slate-500">Median Utilization</div>
+                                <div id="stat-util-median" class="text-2xl font-bold text-slate-900">-</div>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg shadow-sm">
+                                <div class="text-sm font-medium text-slate-500">Max Utilization</div>
+                                <div id="stat-util-max" class="text-2xl font-bold text-slate-900">-</div>
+                            </div>
+                        </div>
+                        <h4 class="text-lg font-semibold text-slate-700 mb-2">Utilization Distribution (Histogram)</h4>
+                        <div id="histogram-util-container" class="w-full bg-white p-4 rounded-lg shadow-sm min-h-[150px] flex items-end gap-1">
+                            <!-- Utilization Histogram will be generated here -->
+                        </div>
+                    </div>
+
+                    <!-- Collapsible table section -->
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-semibold text-slate-800">3. Packing Results Table</h2>
+                        <div class="flex items-center gap-4">
+                            <!-- NEW: Export HTML Button -->
+                            <button id="export-html-btn" class="hidden text-sm bg-cyan-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-cyan-700 transition-colors duration-200 disabled:bg-slate-400 disabled:cursor-wait">
+                                Export Report (HTML)
+                            </button>
+                            <!-- Export PDF Button -->
+                            <button id="export-pdf-btn" class="hidden text-sm bg-green-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-700 transition-colors duration-200 disabled:bg-slate-400 disabled:cursor-wait">
+                                Export Report (PDF)
+                            </button>
+                            <button id="toggle-results-btn" class="text-blue-600 hover:text-blue-800 text-sm font-medium hidden">
+                                Hide
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- This div is now the ONLY collapsible part -->
+                    <div id="results-content" class="hidden">
+                        <div id="results-container" class="overflow-x-auto rounded-lg border border-gray-200 min-h-[100px]">
+                            <p class="text-slate-500 p-4">Upload a CSV and set tote dimensions to see results.</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal for 3D Visualization -->
+    <div id="modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl h-[80vh] p-6 relative flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="modal-title" class="text-2xl font-bold text-slate-900">3D Packing Visual</h3>
+                <button id="closeModal" class="absolute top-4 right-4 text-slate-500 hover:text-slate-800 text-3xl z-10">&times;</button>
+            </div>
+            <div id="canvas-container" class="flex-grow bg-slate-200 rounded-lg overflow-hidden relative">
+                <!-- 3D Canvas will be appended here -->
+                <div class="absolute top-2 left-2 bg-white/70 p-2 rounded text-xs text-slate-700">Use mouse to orbit (drag) and zoom (scroll).</div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { renderHeader } from './src/core/components/header.js';
+        import { renderSidebar } from './src/core/components/sidebar.js';
+
+        // Initialize Layout
+        renderHeader('global-header', '3D Case Packer');
+        renderSidebar('global-sidebar', 'simple-packer');
+    </script>
+    <script type="module" src="src/tools/simple-packer/main.js"></script>
+</body>
+</html>
