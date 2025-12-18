@@ -66,6 +66,8 @@ export const configTemplate = {
     "overhead-clearance": 500,
     "sprinkler-threshold": 7620,
     "sprinkler-clearance": 450,
+    "tunnelThreshold": 6500,
+    "aisleWidthThreshold": 10000,
     "max-perf-density": 50,
 };
 
@@ -137,6 +139,8 @@ export const configurations = {
         "overhead-clearance": 915,
         "sprinkler-threshold": 4572,
         "sprinkler-clearance": 200,
+        "tunnelThreshold": 6500,
+        "aisleWidthThreshold": 10000,
         "max-perf-density": 1.2,
         "robot-path-first-offset": 500,
         "robot-path-gap": 600,
@@ -211,6 +215,8 @@ export const configurations = {
         "overhead-clearance": 915, 
         "sprinkler-threshold": 4572,
         "sprinkler-clearance": 200,
+        "tunnelThreshold": 6500,
+        "aisleWidthThreshold": 10000,
         "max-perf-density": 0.9,
         "robot-path-first-offset": 500,
         "robot-path-gap": 600,
@@ -287,6 +293,8 @@ export const configurations = {
         "overhead-clearance": 915,
         "sprinkler-threshold": 4572,
         "sprinkler-clearance": 200,
+        "tunnelThreshold": 6500,
+        "aisleWidthThreshold": 10000,
         "max-perf-density": 0.8,
         "robot-path-first-offset": 465,
         "robot-path-gap": 810,
@@ -364,6 +372,8 @@ export const configurations = {
         "overhead-clearance": 915,
         "sprinkler-threshold": 4572,
         "sprinkler-clearance": 200,
+        "tunnelThreshold": 6500,
+        "aisleWidthThreshold": 10000,
         "max-perf-density": 0.6,
         "robot-path-first-offset": 465,
         "robot-path-gap": [810, 850],
@@ -431,6 +441,8 @@ export const configurations = {
         "overhead-clearance": 915,
         "sprinkler-threshold": 4572,
         "sprinkler-clearance": 200,
+        "tunnelThreshold": 6500,
+        "aisleWidthThreshold": 10000,
         "max-perf-density": 2.5,
     },
     "HPC-DD": {
@@ -494,6 +506,8 @@ export const configurations = {
         "overhead-clearance": 915,
         "sprinkler-threshold": 4572,
         "sprinkler-clearance": 200,
+        "tunnelThreshold": 6500,
+        "aisleWidthThreshold": 10000,
         "max-perf-density": 2.5,
     }
 };

@@ -41,6 +41,16 @@ let debounceTimer = null;
 let lastContentScaleWarehouse = 1;
 let is3DInitialized = false;
 
+// Shared Debounce Utility
+function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+        const context = this;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(context, args), wait);
+    };
+}
+
 function initializeVisTabs() {
     if (!visTabsNav) return;
     visTabsNav.addEventListener('click', (e) => {
@@ -413,7 +423,8 @@ export function initializeUI(redrawInputs, numberInputs, decimalInputs = []) {
     // General inputs just redraw
     redrawInputs.forEach(input => { 
         if (input && !reSolveInputs.includes(input)) {
-            input.addEventListener('input', () => requestRedraw(false)); 
+            // Use debounce to prevent DOM thrashing
+            input.addEventListener('input', debounce(() => requestRedraw(false), 50));
         }
     });
     
