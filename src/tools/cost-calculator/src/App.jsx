@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
-  Square, Circle, Diamond, ArrowRight, Trash2, RotateCcw,
+  Square, Circle, ArrowRight, Trash2, RotateCcw,
   MousePointer2, FileJson, Layout, Copy, Check, Percent, Calculator,
   Users, Scale, Settings, Plus, X, Hand, ZoomIn, ZoomOut, Maximize,
   ToggleLeft, ToggleRight, BarChart2, TrendingUp, DollarSign, Activity,
   PieChart, Truck, Clock, Briefcase, Layers, Calendar, AlertTriangle,
-  Info, Palette
+  Info, Palette, Edit2, SplitSquareHorizontal, Table, ChevronRight, XCircle
 } from 'lucide-react';
 
 // Imported Constants & Data
@@ -24,6 +24,7 @@ import { calculateMetrics } from './logic/metricCalculations';
 import NumberInput from './components/NumberInput';
 import ToolButton from './components/ToolButton';
 import { StatCard, ProgressBar, BarChart } from './components/StatsComponents';
+import FlowchartCanvas from './components/FlowchartCanvas';
 
 export default function App() {
   // --- State ---
@@ -33,6 +34,21 @@ export default function App() {
       const saved = localStorage.getItem('flowchart-data-v20');
       if (saved) {
         const parsed = JSON.parse(saved);
+        if (key === 'scenarios') {
+           // Migration Logic: If we have old data structure but no scenarios
+           if (!parsed.scenarios && parsed.nodes) {
+              return [{
+                 id: 'default',
+                 name: 'Base Scenario',
+                 nodes: parsed.nodes,
+                 edges: parsed.edges || [],
+                 uomSettings: parsed.uomSettings || DEFAULT_UOMS,
+                 equipmentSettings: parsed.equipmentSettings || DEFAULT_EQUIPMENT,
+                 operatingDays: parsed.operatingDays || 260
+              }];
+           }
+           return parsed.scenarios || defaultVal;
+        }
         return parsed[key] !== undefined ? parsed[key] : defaultVal;
       }
     } catch (e) {
@@ -41,16 +57,54 @@ export default function App() {
     return defaultVal;
   };
 
-  const [nodes, setNodes] = useState(() => loadState('nodes', INITIAL_NODES));
-  const [edges, setEdges] = useState(() => loadState('edges', INITIAL_EDGES));
-  const [uomSettings, setUomSettings] = useState(() => loadState('uomSettings', DEFAULT_UOMS));
-  const [equipmentSettings, setEquipmentSettings] = useState(() => loadState('equipmentSettings', DEFAULT_EQUIPMENT));
-  const [operatingDays, setOperatingDays] = useState(() => loadState('operatingDays', 260)); // Days per year
+  const [scenarios, setScenarios] = useState(() => loadState('scenarios', [{
+     id: 'default',
+     name: 'Base Scenario',
+     nodes: INITIAL_NODES,
+     edges: INITIAL_EDGES,
+     uomSettings: DEFAULT_UOMS,
+     equipmentSettings: DEFAULT_EQUIPMENT,
+     operatingDays: 260
+  }]));
+  const [activeScenarioId, setActiveScenarioId] = useState('default');
+  const [compareScenarioId, setCompareScenarioId] = useState(null); // For split view
+  const [splitView, setSplitView] = useState(false);
+
+  // Derived state for active scenario
+  const activeScenario = scenarios.find(s => s.id === activeScenarioId) || scenarios[0];
+  const compareScenario = scenarios.find(s => s.id === compareScenarioId) || (scenarios.length > 1 ? scenarios.find(s => s.id !== activeScenarioId) : activeScenario);
+
+  // Helper setters for active scenario properties
+  const setNodes = (newNodes) => {
+     setScenarios(scenarios.map(s => s.id === activeScenarioId ? { ...s, nodes: typeof newNodes === 'function' ? newNodes(s.nodes) : newNodes } : s));
+  };
+  const setEdges = (newEdges) => {
+     setScenarios(scenarios.map(s => s.id === activeScenarioId ? { ...s, edges: typeof newEdges === 'function' ? newEdges(s.edges) : newEdges } : s));
+  };
+  const setUomSettings = (val) => {
+     setScenarios(scenarios.map(s => s.id === activeScenarioId ? { ...s, uomSettings: val } : s));
+  };
+  const setEquipmentSettings = (val) => {
+     setScenarios(scenarios.map(s => s.id === activeScenarioId ? { ...s, equipmentSettings: val } : s));
+  };
+  const setOperatingDays = (val) => {
+     setScenarios(scenarios.map(s => s.id === activeScenarioId ? { ...s, operatingDays: val } : s));
+  };
+
+  const nodes = activeScenario.nodes;
+  const edges = activeScenario.edges;
+  const uomSettings = activeScenario.uomSettings;
+  const equipmentSettings = activeScenario.equipmentSettings;
+  const operatingDays = activeScenario.operatingDays;
+
 
   // Viewport State
   const [transform, setTransform] = useState({ x: 0, y: 0, k: 1 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+
+  // Viewport State for Split View
+  const [compareTransform, setCompareTransform] = useState({ x: 0, y: 0, k: 1 });
 
   // UI State
   const [activeTab, setActiveTab] = useState('editor');
@@ -63,6 +117,9 @@ export default function App() {
   const [copied, setCopied] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [userInfo, setUserInfo] = useState(null);
+
+  const [editingTabId, setEditingTabId] = useState(null);
+  const [editingTabName, setEditingTabName] = useState("");
 
   const svgRef = useRef(null);
   const contentRef = useRef(null);
@@ -107,7 +164,7 @@ export default function App() {
     if (hasChanges) {
       setTimeout(() => setNodes(newNodes), 0);
     }
-  }, [edges, nodes]);
+  }, [edges, nodes]); // This effect now depends on the active scenario's nodes/edges
 
   // --- Calculations ---
 
@@ -124,52 +181,21 @@ export default function App() {
     return calculateMetrics(nodes, edges, uomSettings, equipmentSettings, operatingDays);
   }, [nodes, edges, uomSettings, equipmentSettings, operatingDays]);
 
+  const compareMetrics = useMemo(() => {
+     if (!compareScenario) return null;
+     return calculateMetrics(compareScenario.nodes, compareScenario.edges, compareScenario.uomSettings, compareScenario.equipmentSettings, compareScenario.operatingDays);
+  }, [compareScenario]);
+
   // --- Persistence ---
   useEffect(() => {
-    localStorage.setItem('flowchart-data-v20', JSON.stringify({ nodes, edges, uomSettings, equipmentSettings, operatingDays }));
-  }, [nodes, edges, uomSettings, equipmentSettings, operatingDays]);
+    // Save all scenarios
+    localStorage.setItem('flowchart-data-v20', JSON.stringify({ scenarios }));
+  }, [scenarios]);
 
   // --- Coordinate Helpers ---
-  const getMouseCoords = (e) => {
-    const svg = svgRef.current;
-    const content = contentRef.current;
-    if (!svg || !content) return { x: 0, y: 0 };
-    let pt = svg.createSVGPoint();
-    pt.x = e.clientX;
-    pt.y = e.clientY;
-    const globalPoint = pt.matrixTransform(content.getScreenCTM().inverse());
-    return { x: globalPoint.x, y: globalPoint.y };
-  };
-
-  const getHandleCoordsRelative = (node, handle) => {
-    const w = node.width;
-    const h = node.height;
-    let coords = { x: 0, y: 0 };
-    if (node.type === 'parallelogram') {
-       const skew = 20;
-       switch(handle) {
-         case 'top': coords = { x: (w + skew)/2, y: 0 }; break;
-         case 'right': coords = { x: w - skew/2, y: h/2 }; break;
-         case 'bottom': coords = { x: (w - skew)/2, y: h }; break;
-         case 'left': coords = { x: skew/2, y: h/2 }; break;
-       }
-    } else {
-       switch(handle) {
-         case 'top': coords = { x: w/2, y: 0 }; break;
-         case 'right': coords = { x: w, y: h/2 }; break;
-         case 'bottom': coords = { x: w/2, y: h }; break;
-         case 'left': coords = { x: 0, y: h/2 }; break;
-       }
-    }
-    return coords;
-  };
-
-  const getHandleCoordsAbsolute = (nodeId, handle) => {
-    const node = nodes.find(n => n.id === nodeId);
-    if (!node) return { x: 0, y: 0 };
-    const rel = getHandleCoordsRelative(node, handle);
-    return { x: node.x + rel.x, y: node.y + rel.y };
-  };
+  // (Moved to FlowchartCanvas, but app still needs some logic for addNode which happens in response to toolbar click on canvas)
+  // Actually, handleSvgMouseDown was moved. We need to implement addNode logic inside FlowchartCanvas or pass it down.
+  // The simplest is to modify FlowchartCanvas to accept an onAddNode callback.
 
   // --- Operations ---
   const addNode = (x, y, type) => {
@@ -178,8 +204,8 @@ export default function App() {
       type,
       x,
       y,
-      label: type === 'circle' ? 'Start' : type === 'diamond' ? '?' : 'Process',
-      width: type === 'diamond' ? 100 : 140,
+      label: type === 'circle' ? 'Start' : 'Process',
+      width: 140,
       height: type === 'circle' ? 60 : 80,
       ...(type === 'circle' ? {
         dailyVolume: 4000,
@@ -227,7 +253,7 @@ export default function App() {
   };
 
   const handleCopyJson = () => {
-    const data = JSON.stringify({ nodes, edges }, null, 2);
+    const data = JSON.stringify({ scenarios }, null, 2);
     const textArea = document.createElement("textarea");
     textArea.value = data;
     textArea.style.position = "fixed";
@@ -264,254 +290,47 @@ export default function App() {
      }
   };
 
-  const handleWheel = (e) => {
-    e.preventDefault();
-    const zoomSensitivity = 0.001;
-    const newK = Math.min(Math.max(0.1, transform.k - e.deltaY * zoomSensitivity), 5);
-    setTransform(t => ({ ...t, k: newK }));
-  };
-
-  const zoomIn = () => setTransform(t => ({ ...t, k: Math.min(t.k * 1.2, 5) }));
-  const zoomOut = () => setTransform(t => ({ ...t, k: Math.max(t.k / 1.2, 0.1) }));
-
-  const zoomToFit = () => {
-    if (nodes.length === 0 || !svgRef.current) return;
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    nodes.forEach(n => {
-      minX = Math.min(minX, n.x);
-      minY = Math.min(minY, n.y);
-      maxX = Math.max(maxX, n.x + n.width);
-      maxY = Math.max(maxY, n.y + n.height);
-    });
-    const padding = 50;
-    const bboxWidth = maxX - minX + padding * 2;
-    const bboxHeight = maxY - minY + padding * 2;
-    const { clientWidth, clientHeight } = svgRef.current;
-    const scaleX = clientWidth / bboxWidth;
-    const scaleY = clientHeight / bboxHeight;
-    const k = Math.min(scaleX, scaleY, 1);
-    const x = clientWidth / 2 - (minX + (maxX - minX) / 2) * k;
-    const y = clientHeight / 2 - (minY + (maxY - minY) / 2) * k;
-    setTransform({ x, y, k });
-  };
-
-  const handleSvgMouseDown = (e) => {
-    if (tool === 'hand' || e.button === 1 || (tool === 'select' && e.target === svgRef.current)) {
-      setIsPanning(true);
-      setPanStart({ x: e.clientX, y: e.clientY });
-      return;
-    }
-    if (e.target === svgRef.current) {
-      if (['rect', 'circle', 'diamond', 'parallelogram'].includes(tool)) {
-         const coords = getMouseCoords(e);
-         addNode(coords.x, coords.y, tool);
-      } else {
-         setSelectedId(null); setSelectionType(null); setConnectionStart(null);
-      }
-    }
-  };
-
-  const handleNodeMouseDown = (e, id) => {
-    if (tool === 'hand') return;
-    if (tool === 'select') {
-      e.stopPropagation();
-      const coords = getMouseCoords(e);
-      const node = nodes.find(n => n.id === id);
-      setDraggingNodeId(id);
-      setOffset({ x: coords.x - node.x, y: coords.y - node.y });
-      setSelectedId(id);
-      setSelectionType('node');
-    }
-  };
-
-  const handleConnectorClick = (e, nodeId, handle) => {
-    if (tool === 'hand') return;
-    e.stopPropagation();
-    if (tool === 'connect' || tool === 'select') {
-       if (!connectionStart) {
-         const coords = getMouseCoords(e);
-         setConnectionStart({ nodeId, handle, x: coords.x, y: coords.y });
-         setSelectedId(null);
-       } else {
-         if (connectionStart.nodeId === nodeId && connectionStart.handle === handle) {
-           setConnectionStart(null); return;
-         }
-         const newEdge = { id: generateId(), source: connectionStart.nodeId, sourceHandle: connectionStart.handle, target: nodeId, targetHandle: handle, percentage: 100 };
-         const exists = edges.find(edge => edge.source === newEdge.source && edge.target === newEdge.target && edge.sourceHandle === newEdge.sourceHandle && edge.targetHandle === newEdge.targetHandle);
-         if (!exists) setEdges([...edges, newEdge]);
-         setConnectionStart(null);
-       }
-    }
-  };
-
-  const handleMouseMove = (e) => {
-    if (isPanning) {
-      const dx = e.clientX - panStart.x;
-      const dy = e.clientY - panStart.y;
-      setTransform(t => ({ ...t, x: t.x + dx, y: t.y + dy }));
-      setPanStart({ x: e.clientX, y: e.clientY });
-      return;
-    }
-    const coords = getMouseCoords(e);
-    if (draggingNodeId && tool === 'select') {
-      setNodes(nodes.map(n => {
-        if (n.id === draggingNodeId) {
-          const rawX = coords.x - offset.x;
-          const rawY = coords.y - offset.y;
-          return { ...n, x: Math.round(rawX/GRID_SIZE)*GRID_SIZE, y: Math.round(rawY/GRID_SIZE)*GRID_SIZE };
-        }
-        return n;
-      }));
-    }
-    if (tool === 'connect' && connectionStart) setMousePos(coords);
-  };
-
-  const handleMouseUp = () => { setDraggingNodeId(null); setIsPanning(false); };
-
-  const renderShape = (node) => {
-    const isSelected = selectedId === node.id;
-    const stroke = isSelected ? '#3b82f6' : '#334155';
-    const strokeWidth = isSelected ? 3 : 2;
-    const fill = node.color || '#ffffff';
-    const commonProps = { stroke, strokeWidth, fill, className: "transition-all duration-200 ease-in-out shadow-sm" };
-
-    let shape;
-    const w = node.width;
-    const h = node.height;
-
-    const laborCpu = metrics.laborCosts[node.id];
-    const equipCpu = metrics.equipCosts[node.id];
-    const totalCpu = laborCpu + equipCpu;
-    const flow = metrics.flows[node.id]; // Hourly flow for rate calc
-    const dailyFlow = metrics.dailyFlows[node.id]; // Daily flow for display
-    const headcount = metrics.headcounts[node.id];
-    const machineCount = metrics.machineCounts[node.id];
-    const hasMachine = node.equipmentId && node.equipmentId !== 'eq1';
-
-    switch (node.type) {
-      case 'circle': shape = <ellipse cx={w/2} cy={h/2} rx={w/2} ry={h/2} {...commonProps} />; break;
-      case 'diamond': shape = <polygon points={`${w/2},0 ${w},${h/2} ${w/2},${h} 0,${h/2}`} {...commonProps} />; break;
-      case 'parallelogram': {
-        const skew = 20;
-        shape = <polygon points={`${skew},0 ${w},0 ${w - skew},${h} 0,${h}`} {...commonProps} />;
-        break;
-      }
-      case 'rect': default: shape = <rect x={0} y={0} width={w} height={h} rx={4} {...commonProps} />; break;
-    }
-
-    const connectors = ['top', 'right', 'bottom', 'left'].map(handle => {
-      const pos = getHandleCoordsRelative(node, handle);
-      const isStart = connectionStart?.nodeId === node.id && connectionStart?.handle === handle;
-      return (
-        <circle key={handle} cx={pos.x} cy={pos.y} r={5} className={`cursor-crosshair transition-all duration-200 ${tool === 'connect' || isStart || connectionStart ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} ${isStart ? 'fill-blue-600 stroke-white' : 'fill-white stroke-slate-400 hover:fill-blue-100 hover:stroke-blue-600'}`} strokeWidth={1.5} onMouseDown={(e) => handleConnectorClick(e, node.id, handle)} />
-      );
-    });
-
-    return (
-      <g key={node.id} transform={`translate(${node.x},${node.y})`} onMouseDown={(e) => handleNodeMouseDown(e, node.id)} className={`group ${draggingNodeId === node.id ? 'cursor-grabbing' : 'cursor-grab'}`}>
-        {shape}
-        <foreignObject x={0} y={0} width={w} height={h} style={{ pointerEvents: 'none' }}>
-          <div className="w-full h-full relative">
-            {node.type !== 'circle' && (
-              <div className="absolute top-1 left-2 text-[8px] font-bold text-slate-400 select-none text-left leading-tight">
-                  {(() => {
-                    let rate = node.throughput;
-                    if (node.roundUpHeadcount) {
-                       const shifts = metrics.shifts[node.id] || 1;
-                       const hcPerShift = headcount / shifts;
-                       if (hcPerShift > 0 && flow > 0) rate = flow / hcPerShift;
-                    }
-                    return `${formatNumber(rate)} ${node.inputUom} / hr`;
-                  })()}
-              </div>
-            )}
-            <div className="w-full h-full flex flex-col items-center justify-center p-1 text-center select-none overflow-hidden leading-tight">
-                <span className="text-sm font-medium text-slate-700 mt-2">{node.label}</span>
-                {node.type !== 'circle' && (
-                  <div className="flex gap-1 mt-1 justify-center">
-                    <span className="text-[9px] bg-slate-100 px-1 rounded text-slate-500 border border-slate-200 font-mono" title="Cost Per Unit">${formatCost3Decimals(totalCpu)}</span>
-                  </div>
-                )}
-                {node.type === 'circle' && (
-                    <span className="text-[9px] bg-green-50 px-1 rounded text-green-700 border border-green-100 mt-1 font-mono">{formatNumber(dailyFlow)}/day</span>
-                )}
-            </div>
-          </div>
-        </foreignObject>
-
-        {/* Asset Badge (Green) */}
-        {node.type !== 'circle' && hasMachine && (
-           <g transform={`translate(${w - 28}, 0)`}>
-             <circle cx="0" cy="0" r="8" className="fill-emerald-500 stroke-white stroke-2 shadow-sm" />
-             <text x="0" y="0" dy="3" textAnchor="middle" className="text-[9px] font-bold fill-white pointer-events-none">
-               {formatNumber(machineCount)}
-             </text>
-           </g>
-        )}
-
-        {/* Headcount Badge (Blue) */}
-        {node.type !== 'circle' && headcount > 0 && (
-           <g transform={`translate(${w - 8}, 0)`}>
-             <circle cx="0" cy="0" r="10" className="fill-blue-600 stroke-white stroke-2 shadow-sm" />
-             <text x="0" y="0" dy="3" textAnchor="middle" className="text-[9px] font-bold fill-white pointer-events-none">{formatNumber(headcount)}</text>
-           </g>
-        )}
-        {connectors}
-      </g>
-    );
-  };
-
-  const renderEdge = (edge) => {
-    const start = getHandleCoordsAbsolute(edge.source, edge.sourceHandle || 'bottom');
-    const end = getHandleCoordsAbsolute(edge.target, edge.targetHandle || 'top');
-    const isSelected = selectedId === edge.id;
-    const dist = Math.hypot(end.x - start.x, end.y - start.y);
-    const curvature = Math.min(dist * 0.5, 100);
-    const offset = (h) => {
-      if(h==='top') return {x:0, y:-curvature};
-      if(h==='bottom') return {x:0, y:curvature};
-      if(h==='left') return {x:-curvature, y:0};
-      return {x:curvature, y:0};
-    };
-    const cp1 = { x: start.x + offset(edge.sourceHandle||'bottom').x, y: start.y + offset(edge.sourceHandle||'bottom').y };
-    const cp2 = { x: end.x + offset(edge.targetHandle||'top').x, y: end.y + offset(edge.targetHandle||'top').y };
-    const path = `M ${start.x} ${start.y} C ${cp1.x} ${cp1.y}, ${cp2.x} ${cp2.y}, ${end.x} ${end.y}`;
-    const t = 0.5;
-    const mx = (1-t)**3*start.x + 3*(1-t)**2*t*cp1.x + 3*(1-t)*t**2*cp2.x + t**3*end.x;
-    const my = (1-t)**3*start.y + 3*(1-t)**2*t*cp1.y + 3*(1-t)*t**2*cp2.y + t**3*end.y;
-
-    // Check branch validation
-    const totalOutgoing = outgoingSums[edge.source];
-    const isInvalid = totalOutgoing !== 100 && totalOutgoing !== undefined;
-
-    return (
-      <g key={edge.id} onClick={(e) => { e.stopPropagation(); setSelectedId(edge.id); setSelectionType('edge'); }} className="cursor-pointer group">
-        <path d={path} stroke="transparent" strokeWidth="15" fill="none" />
-        <path d={path} stroke={isSelected ? "#3b82f6" : "#94a3b8"} strokeWidth={isSelected ? "3" : "2"} fill="none" markerEnd="url(#arrowhead)" className="transition-colors group-hover:stroke-blue-400" />
-        {edge.percentage !== undefined && (
-          <g transform={`translate(${mx}, ${my})`}>
-             <rect
-               x="-16" y="-10" width="32" height="20" rx="4"
-               className={isInvalid ? "fill-red-500 stroke-red-600" : "fill-white stroke-slate-200"}
-               stroke={isSelected ? "#3b82f6" : isInvalid ? "#dc2626" : "#cbd5e1"}
-               strokeWidth="1"
-             />
-             <text
-               x="0" y="0" dy="4" textAnchor="middle"
-               className={`text-[10px] font-bold select-none pointer-events-none ${isInvalid ? "fill-white" : "fill-slate-600"}`}
-             >
-               {edge.percentage}%
-             </text>
-          </g>
-        )}
-      </g>
-    );
-  };
-
   const clearCanvas = () => { if (confirm("Clear canvas?")) { setNodes([]); setEdges([]); setSelectedId(null); } };
 
   const selectedNode = selectedId && selectionType === 'node' ? nodes.find(n => n.id === selectedId) : null;
   const selectedEdge = selectedId && selectionType === 'edge' ? edges.find(e => e.id === selectedId) : null;
+
+  // Scenario Management
+  const addScenario = () => {
+     const newScenario = {
+        id: generateId(),
+        name: `Scenario ${scenarios.length + 1}`,
+        nodes: JSON.parse(JSON.stringify(INITIAL_NODES)),
+        edges: JSON.parse(JSON.stringify(INITIAL_EDGES)),
+        uomSettings: [...DEFAULT_UOMS],
+        equipmentSettings: [...DEFAULT_EQUIPMENT],
+        operatingDays: 260
+     };
+     setScenarios([...scenarios, newScenario]);
+     setActiveScenarioId(newScenario.id);
+  };
+
+  const deleteScenario = (id) => {
+     if (scenarios.length <= 1) return;
+     if (confirm(`Delete scenario "${scenarios.find(s=>s.id===id)?.name}"?`)) {
+        const newScenarios = scenarios.filter(s => s.id !== id);
+        setScenarios(newScenarios);
+        if (activeScenarioId === id) setActiveScenarioId(newScenarios[0].id);
+        if (compareScenarioId === id) setCompareScenarioId(null);
+     }
+  };
+
+  const startRename = (id, currentName) => {
+     setEditingTabId(id);
+     setEditingTabName(currentName);
+  };
+
+  const finishRename = () => {
+     if (editingTabId) {
+        setScenarios(scenarios.map(s => s.id === editingTabId ? { ...s, name: editingTabName } : s));
+        setEditingTabId(null);
+     }
+  };
 
   return (
     <div className="flex flex-col h-screen w-full bg-slate-50 text-slate-900 font-sans overflow-hidden">
@@ -528,8 +347,8 @@ export default function App() {
               <button onClick={() => setActiveTab('editor')} className={`main-tab-button ${activeTab === 'editor' ? 'active' : ''}`}>
                  Editor
               </button>
-              <button onClick={() => setActiveTab('stats')} className={`main-tab-button ${activeTab === 'stats' ? 'active' : ''}`}>
-                 Statistics
+              <button onClick={() => setActiveTab('analysis')} className={`main-tab-button ${activeTab === 'analysis' ? 'active' : ''}`}>
+                 Analysis
               </button>
               <button onClick={() => setActiveTab('settings')} className={`main-tab-button ${activeTab === 'settings' ? 'active' : ''}`}>
                  Settings
@@ -540,6 +359,10 @@ export default function App() {
            </nav>
         </div>
         <div className="flex items-center gap-3">
+             <button onClick={() => setSplitView(!splitView)} className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${splitView ? 'bg-blue-50 text-blue-600' : 'text-slate-600 hover:bg-slate-100'}`}>
+                <SplitSquareHorizontal size={16}/> {splitView ? 'Single View' : 'Split View'}
+             </button>
+             <div className="h-6 w-px bg-slate-200 mx-2"></div>
              <button onClick={clearCanvas} className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"><Trash2 size={16} /> Clear</button>
              <div className="h-6 w-px bg-slate-200 mx-2"></div>
              {userInfo ? (
@@ -570,105 +393,142 @@ export default function App() {
             <div className="w-8 h-px bg-slate-200 my-1"></div>
             <ToolButton active={tool === 'circle'} onClick={() => setTool('circle')} icon={<Circle size={20} />} label="Start/End" />
             <ToolButton active={tool === 'rect'} onClick={() => setTool('rect')} icon={<Square size={20} />} label="Process" />
-            <ToolButton active={tool === 'diamond'} onClick={() => setTool('diamond')} icon={<Diamond size={20} />} label="Decision" />
+            {/* Diamond Tool Removed */}
             <div className="w-8 h-px bg-slate-200 my-1"></div>
             <ToolButton active={tool === 'connect'} onClick={() => setTool('connect')} icon={<ArrowRight size={20} />} label="Connect" />
           </aside>
 
-          <main className="flex-1 relative bg-slate-50 overflow-hidden cursor-crosshair">
-            <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#64748b 1px, transparent 1px)', backgroundSize: '20px 20px', transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.k})` }}></div>
+          <main className="flex-1 relative bg-slate-50 overflow-hidden flex flex-col">
+             <div className="flex-1 relative flex overflow-hidden">
+               {/* Primary Canvas */}
+               <div className={`relative ${splitView ? 'w-1/2 border-r border-slate-300' : 'w-full'} h-full`}>
+                 <FlowchartCanvas
+                   nodes={nodes}
+                   edges={edges}
+                   tool={tool}
+                   transform={transform}
+                   setTransform={setTransform}
+                   isPanning={isPanning}
+                   setIsPanning={setIsPanning}
+                   panStart={panStart}
+                   setPanStart={setPanStart}
+                   connectionStart={connectionStart}
+                   setConnectionStart={setConnectionStart}
+                   draggingNodeId={draggingNodeId}
+                   setDraggingNodeId={setDraggingNodeId}
+                   offset={offset}
+                   setOffset={setOffset}
+                   mousePos={mousePos}
+                   setMousePos={setMousePos}
+                   selectedId={selectedId}
+                   setSelectedId={setSelectedId}
+                   selectionType={selectionType}
+                   setSelectionType={setSelectionType}
+                   setNodes={setNodes}
+                   setEdges={setEdges}
+                   metrics={metrics}
+                   outgoingSums={outgoingSums}
+                   onAddNode={addNode}
+                 />
 
-            <svg
-              ref={svgRef}
-              className="w-full h-full touch-none"
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseDown={handleSvgMouseDown}
-              onWheel={handleWheel}
-              style={{ cursor: tool === 'hand' || isPanning ? 'grab' : tool === 'select' ? 'default' : 'crosshair' }}
-            >
-              <defs>
-                <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#94a3b8" /></marker>
-              </defs>
-
-              <g ref={contentRef} transform={`translate(${transform.x},${transform.y}) scale(${transform.k})`}>
-                {edges.map(renderEdge)}
-                {tool === 'connect' && connectionStart && (
-                  <line x1={getHandleCoordsAbsolute(connectionStart.nodeId, connectionStart.handle).x} y1={getHandleCoordsAbsolute(connectionStart.nodeId, connectionStart.handle).y} x2={mousePos.x} y2={mousePos.y} stroke="#3b82f6" strokeWidth="2" strokeDasharray="5,5" />
-                )}
-                {nodes.map(renderShape)}
-              </g>
-            </svg>
-
-            <div className="absolute top-4 right-4 flex flex-col gap-2 bg-white rounded-lg shadow-md border border-slate-200 p-1">
-              <button onClick={zoomIn} className="p-1.5 hover:bg-slate-100 rounded text-slate-600" title="Zoom In"><ZoomIn size={18}/></button>
-              <button onClick={zoomOut} className="p-1.5 hover:bg-slate-100 rounded text-slate-600" title="Zoom Out"><ZoomOut size={18}/></button>
-              <div className="h-px bg-slate-200 mx-1"></div>
-              <button onClick={zoomToFit} className="p-1.5 hover:bg-slate-100 rounded text-slate-600" title="Fit to Screen"><Maximize size={18}/></button>
-            </div>
-
-            {/* Legend - Bottom Left */}
-            <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur border border-slate-200 p-3 rounded-xl shadow-sm flex flex-col gap-2 text-xs">
-               <div className="font-semibold text-slate-600 mb-1 border-b border-slate-100 pb-1">Map Legend</div>
-               <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[8px]">1</div>
-                  <span className="text-slate-600">Headcount Needed</span>
-               </div>
-               <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-[8px]">1</div>
-                  <span className="text-slate-600">Assets Needed</span>
-               </div>
-               <div className="flex items-center gap-2">
-                  <div className="w-4 h-3 rounded bg-red-500"></div>
-                  <span className="text-slate-600">Branch Mismatch (≠100%)</span>
-               </div>
-            </div>
-
-            <div className="absolute bottom-4 right-4 bg-white/95 backdrop-blur border border-blue-200 p-4 rounded-xl shadow-lg flex flex-col gap-2 min-w-[200px] animate-in fade-in slide-in-from-bottom-4">
-               <span className="text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100 pb-2">System Results</span>
-
-               {/* Cost Breakdown */}
-               <div className="flex flex-col gap-1 pb-2 border-b border-slate-100">
-                 <div className="flex justify-between items-center text-xs text-slate-500">
-                   <span>Labor CPU:</span>
-                   <span className="font-mono">${formatCost3Decimals(metrics.totalLaborCost)}</span>
-                 </div>
-                 <div className="flex justify-between items-center text-xs text-slate-500">
-                   <span>Capital CPU:</span>
-                   <span className="font-mono">${formatCost3Decimals(metrics.totalEquipCost)}</span>
-                 </div>
-                 <div className="flex justify-between items-baseline pt-1">
-                    <span className="text-[10px] font-bold text-slate-700 uppercase">Total CPU</span>
-                    <div className="flex items-baseline gap-1 text-xl font-bold text-slate-800">
-                        <span className="text-blue-600">$</span>{formatCost3Decimals(metrics.total)}
+                   {/* Legend - Bottom Left */}
+                    <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur border border-slate-200 p-3 rounded-xl shadow-sm flex flex-col gap-2 text-xs pointer-events-none">
+                       <div className="font-semibold text-slate-600 mb-1 border-b border-slate-100 pb-1">Map Legend</div>
+                       <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[8px]">1</div>
+                          <span className="text-slate-600">Headcount Needed</span>
+                       </div>
+                       <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-[8px]">1</div>
+                          <span className="text-slate-600">Assets Needed</span>
+                       </div>
+                       <div className="flex items-center gap-2">
+                          <div className="w-4 h-3 rounded bg-red-500"></div>
+                          <span className="text-slate-600">Branch Mismatch (≠100%)</span>
+                       </div>
                     </div>
-                 </div>
+
+                    {/* Results Overlay */}
+                    <div className="absolute bottom-4 right-4 bg-white/95 backdrop-blur border border-blue-200 p-4 rounded-xl shadow-lg flex flex-col gap-2 min-w-[200px] animate-in fade-in slide-in-from-bottom-4 pointer-events-none">
+                       <span className="text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100 pb-2">System Results</span>
+                       <div className="flex flex-col gap-1 pb-2 border-b border-slate-100">
+                         <div className="flex justify-between items-baseline pt-1">
+                            <span className="text-[10px] font-bold text-slate-700 uppercase">Total CPU</span>
+                            <div className="flex items-baseline gap-1 text-xl font-bold text-slate-800">
+                                <span className="text-blue-600">$</span>{formatCost3Decimals(metrics.total)}
+                            </div>
+                         </div>
+                       </div>
+                    </div>
                </div>
 
-               {/* Volumes */}
-               <div className="grid grid-cols-2 gap-4 pt-2">
-                  <div className="flex flex-col gap-0.5">
-                     <span className="text-[9px] text-slate-400 uppercase">Daily Units</span>
-                     <span className="text-sm font-bold text-slate-700">{formatNumber(metrics.systemDailyVolume)}</span>
-                  </div>
-                  <div className="flex flex-col gap-0.5">
-                     <span className="text-[9px] text-slate-400 uppercase">Hourly Units</span>
-                     <span className="text-sm font-bold text-slate-700">{formatNumber(metrics.systemHourlyVolume)}</span>
-                  </div>
-               </div>
+               {/* Split View Second Canvas */}
+               {splitView && (
+                 <div className="w-1/2 h-full relative bg-slate-100">
+                    <div className="absolute top-2 left-2 z-10 bg-white/80 p-2 rounded shadow-sm border border-slate-200">
+                       <label className="text-xs font-bold text-slate-500 uppercase mr-2">Compare With:</label>
+                       <select
+                         value={compareScenarioId || ''}
+                         onChange={(e) => setCompareScenarioId(e.target.value)}
+                         className="text-xs border border-slate-300 rounded p-1"
+                       >
+                         {scenarios.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                       </select>
+                    </div>
+                    {compareScenario && (
+                      <FlowchartCanvas
+                         nodes={compareScenario.nodes}
+                         edges={compareScenario.edges}
+                         tool="hand" // Read only / pan only
+                         transform={compareTransform}
+                         setTransform={setCompareTransform}
+                         isPanning={false} // Independent panning? Yes.
+                         setIsPanning={() => {}} // Simple mock
+                         panStart={{x:0,y:0}} setPanStart={()=>{}}
+                         metrics={compareMetrics}
+                         readOnly={true}
+                      />
+                    )}
+                 </div>
+               )}
+             </div>
 
-               {/* Headcount Breakdown */}
-               <div className="flex flex-col gap-1 pt-2 border-t border-slate-100">
-                 <div className="flex justify-between items-center">
-                    <span className="text-[10px] text-slate-400 uppercase">Total Headcount (Day)</span>
-                    <span className="text-sm font-bold text-blue-600">{Math.ceil(metrics.totalFTE)}</span>
-                 </div>
-                 <div className="flex justify-between items-center">
-                    <span className="text-[10px] text-slate-400 uppercase">Avg Per Shift</span>
-                    <span className="text-sm font-bold text-slate-600">{Math.ceil(metrics.totalPerShiftFTE)}</span>
-                 </div>
-               </div>
-            </div>
+             {/* Tab Bar */}
+             <div className="h-10 bg-slate-200 border-t border-slate-300 flex items-end px-2 overflow-x-auto gap-1 shrink-0">
+                 {scenarios.map(scenario => (
+                    <div
+                      key={scenario.id}
+                      className={`group relative flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wide border-t-2 cursor-pointer select-none rounded-t-lg transition-colors min-w-[120px] max-w-[200px] ${activeScenarioId === scenario.id ? 'bg-slate-50 border-blue-600 text-blue-700 shadow-sm z-10 mb-[-1px] pb-2.5' : 'bg-slate-300 border-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-700 mb-1'}`}
+                      onClick={() => setActiveScenarioId(scenario.id)}
+                      onDoubleClick={() => startRename(scenario.id, scenario.name)}
+                    >
+                       {editingTabId === scenario.id ? (
+                          <input
+                            autoFocus
+                            type="text"
+                            value={editingTabName}
+                            onChange={(e) => setEditingTabName(e.target.value)}
+                            onBlur={finishRename}
+                            onKeyDown={(e) => e.key === 'Enter' && finishRename()}
+                            className="bg-white border border-blue-400 rounded px-1 py-0.5 outline-none w-full text-slate-800"
+                          />
+                       ) : (
+                          <span className="truncate flex-1">{scenario.name}</span>
+                       )}
+                       {scenarios.length > 1 && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); deleteScenario(scenario.id); }}
+                            className={`opacity-0 group-hover:opacity-100 hover:bg-red-100 hover:text-red-600 p-0.5 rounded-full transition-all`}
+                          >
+                             <X size={12}/>
+                          </button>
+                       )}
+                    </div>
+                 ))}
+                 <button onClick={addScenario} className="mb-1 p-1.5 hover:bg-slate-300 rounded text-slate-500 hover:text-slate-700" title="New Scenario">
+                    <Plus size={16}/>
+                 </button>
+             </div>
           </main>
 
           {selectedId && (
@@ -868,9 +728,44 @@ export default function App() {
             </aside>
           )}
         </div>
-      ) : activeTab === 'stats' ? (
+      ) : activeTab === 'analysis' ? (
         <div className="flex-1 p-8 overflow-auto bg-slate-50 flex flex-col items-center animate-in fade-in duration-300">
            <div className="w-full max-w-6xl space-y-8">
+
+              {/* Scenario Comparison (if multiple scenarios) */}
+              {scenarios.length > 1 && (
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                    <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2 mb-4">
+                      <Scale size={16} /> Scenario Comparison
+                    </h3>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                            <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+                                <tr>
+                                    <th className="px-4 py-2">Scenario</th>
+                                    <th className="px-4 py-2 text-right">CPU</th>
+                                    <th className="px-4 py-2 text-right">Headcount</th>
+                                    <th className="px-4 py-2 text-right">Annual Cost</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {scenarios.map(scen => {
+                                    const m = calculateMetrics(scen.nodes, scen.edges, scen.uomSettings, scen.equipmentSettings, scen.operatingDays);
+                                    const isBest = false; // logic to highlight best?
+                                    return (
+                                        <tr key={scen.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                                            <td className="px-4 py-2 font-medium">{scen.name}</td>
+                                            <td className="px-4 py-2 text-right font-mono">${formatCost3Decimals(m.total)}</td>
+                                            <td className="px-4 py-2 text-right font-mono text-blue-600">{Math.ceil(m.totalFTE)}</td>
+                                            <td className="px-4 py-2 text-right font-mono text-green-700">${formatNumber(m.annualSystemVolume * m.total)}</td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+              )}
 
               {/* Executive Summary */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -1141,7 +1036,7 @@ export default function App() {
                 {copied ? <Check size={14} className="text-green-600"/> : <Copy size={14}/>} {copied ? 'Copied!' : 'Copy'}
               </button>
             </div>
-            <textarea readOnly className="w-full h-full p-4 font-mono text-sm text-slate-600 resize-none focus:outline-none bg-transparent" value={JSON.stringify({ nodes, edges, uomSettings, equipmentSettings, operatingDays, calculatedMetrics: metrics }, null, 2)} />
+            <textarea readOnly className="w-full h-full p-4 font-mono text-sm text-slate-600 resize-none focus:outline-none bg-transparent" value={JSON.stringify({ scenarios }, null, 2)} />
           </div>
         </div>
       )}
