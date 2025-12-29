@@ -2,7 +2,7 @@ import { renderHeader } from '../../core/components/header.js';
 import { renderSidebar } from '../../core/components/sidebar.js';
 import { MOST_DATA, STANDARD_ACTIVITIES, TEMPLATES } from './most_data.js';
 
-let state = { steps: [], profile: { linesPerOrder: 1.5, unitsPerLine: 1.2, unitsPerGrasp: 1, pfdAllowance: 10 }, uom: 'tmu', dragSrcIdx: null };
+let state = { rows: [], profile: { linesPerOrder: 1.5, unitsPerLine: 1.2, unitsPerGrasp: 1, pfdAllowance: 10 }, uom: 'tmu', dragSrcIdx: null };
 const els = {};
 
 async function init() {
@@ -54,7 +54,7 @@ function bindEvents() {
         });
     }
 
-    document.getElementById('resetBtn').addEventListener('click', () => { if(confirm("Clear?")) { state.steps = []; render(); }});
+    document.getElementById('resetBtn').addEventListener('click', () => { if(confirm("Clear?")) { state.rows = []; render(); }});
     
     // Import
     const fileInput = document.getElementById('importFile');
@@ -77,14 +77,14 @@ function bindEvents() {
 function generateId() { return 's_' + Math.random().toString(36).substr(2, 9); }
 function loadTemplate(key) {
     if(TEMPLATES[key]) {
-        state.steps = TEMPLATES[key].map(t => ({ ...t, id: generateId(), originalDesc: t.desc, includeInDoo: true }));
+        state.rows = TEMPLATES[key].map(t => ({ ...t, id: generateId(), originalDesc: t.desc, includeInDoo: true }));
         render();
     }
 }
 
 function addAction(standardItem) {
     const item = standardItem || { desc: 'Custom Activity', model: 'general', freq: 'Order' };
-    state.steps.push({
+    state.rows.push({
         id: generateId(),
         desc: item.desc,
         originalDesc: item.desc,
@@ -104,9 +104,9 @@ function addAction(standardItem) {
     render();
 }
 
-function removeStep(id) { state.steps = state.steps.filter(s => s.id !== id); render(); }
+function removeStep(id) { state.rows = state.rows.filter(s => s.id !== id); render(); }
 function updateStep(id, field, value) { 
-    const s = state.steps.find(x => x.id === id); 
+    const s = state.rows.find(x => x.id === id);
     if(s) { s[field] = value; render(); } 
 }
 
@@ -115,7 +115,7 @@ function render() {
     const container = document.getElementById('builderContainer');
     container.innerHTML = '';
     
-    if (state.steps.length === 0) {
+    if (state.rows.length === 0) {
         container.innerHTML = `<div class="p-8 text-center border-2 border-dashed border-slate-300 rounded-lg text-slate-400 pointer-events-none"><p>Empty Process</p></div>`;
     }
 
@@ -125,8 +125,8 @@ function render() {
     let graspLoop = null;
     let unitLoop = null;
 
-    // Render steps linearly, creating containers as needed
-    state.steps.forEach((step, idx) => {
+    // Render rows linearly, creating containers as needed
+    state.rows.forEach((step, idx) => {
         let parent = root;
 
         if (step.freq === 'Order' || step.freq === 'Shift') {
@@ -273,8 +273,8 @@ function createStepEl(step, idx) {
 
 function moveStep(from, to) {
     if(from === null || from === to) return;
-    const item = state.steps.splice(from, 1)[0];
-    state.steps.splice(to, 0, item);
+    const item = state.rows.splice(from, 1)[0];
+    state.rows.splice(to, 0, item);
     state.dragSrcIdx = null;
     render();
 }
@@ -294,7 +294,7 @@ function calculate() {
     let grandTotal = 0;
     let dooHtml = "";
     
-    state.steps.forEach(step => {
+    state.rows.forEach(step => {
         let mult = 1;
         if(step.freq === 'Line') mult = state.profile.linesPerOrder;
         else if(step.freq === 'Unit') mult = state.profile.linesPerOrder * state.profile.unitsPerLine;
@@ -363,10 +363,14 @@ function processImportText() {
 }
 
 function processImportData(data) {
-    // Fix: check for steps in data (new flat structure)
-    if (data.steps && data.profile) {
+    // Check for rows or steps
+    const dataRows = data.rows || data.steps;
+
+    if (dataRows && data.profile) {
         state = data;
-        
+        state.rows = dataRows; // Ensure internal consistency if migrating
+        if (data.steps) delete state.steps; // Cleanup if migrating
+
         // Restore Inputs
         els.inputs.linesPerOrder.value = state.profile.linesPerOrder;
         els.inputs.unitsPerLine.value = state.profile.unitsPerLine;
@@ -385,7 +389,7 @@ function processImportData(data) {
 
 // --- Misc Utils ---
 function cycleModel(id) {
-    const s = state.steps.find(x=>x.id===id);
+    const s = state.rows.find(x=>x.id===id);
     const models = ['general','controlled','tool'];
     s.model = models[(models.indexOf(s.model||'general')+1)%3];
     render();
@@ -393,7 +397,7 @@ function cycleModel(id) {
 
 function openParam(id, type) {
     state.activeParam = {id, type};
-    document.getElementById('paramList').innerHTML = (MOST_DATA[type]||[]).map(o => `<div class="param-option" onclick="window.mostApp.selectParam('${o.v}')"><span class="param-val">${o.v}</span><span class="param-desc">${o.d}</span></div>`).join('');
+    document.getElementById('paramList').innerHTML = (MOST_DATA[type]||[]).map(o => `<div class="param-option" onclick="window.mostApp.selectParam('${o.tmu}')"><span class="param-val">${o.tmu}</span><span class="param-desc">${o.label}</span></div>`).join('');
     document.getElementById('paramModal').classList.add('active');
 }
 function selectParam(val) {
@@ -453,7 +457,7 @@ function drop(e, idx) {
     e.stopPropagation();
     if (state.dragSrcIdx === null) return;
     let toIdx = idx;
-    if (toIdx === -1) toIdx = state.steps.length; // Append
+    if (toIdx === -1) toIdx = state.rows.length; // Append
     moveStep(state.dragSrcIdx, toIdx);
 }
 

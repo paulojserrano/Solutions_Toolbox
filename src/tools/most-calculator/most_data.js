@@ -1,13 +1,13 @@
 // MOST Basic Parameters
 export const MOST_DATA = {
-    'a': [ { v: 0, d: '< 2 in' }, { v: 1, d: 'Reach' }, { v: 3, d: '1-2 Steps' }, { v: 6, d: '3-4 Steps' }, { v: 10, d: '5-7 Steps' }, { v: 16, d: '8-10 Steps' }, { v: 24, d: '11-15 Steps' }, { v: 32, d: '16+ Steps' } ],
-    'b': [ { v: 0, d: 'None' }, { v: 1, d: 'Light' }, { v: 3, d: 'Bend 50%' }, { v: 6, d: 'Bend 100%' }, { v: 10, d: 'Sit/Stand' }, { v: 16, d: 'Bend/Sit' } ],
-    'g': [ { v: 0, d: 'None' }, { v: 1, d: 'Light' }, { v: 3, d: 'Heavy/Blind' }, { v: 6, d: 'Obstructed' } ],
-    'p': [ { v: 0, d: 'Toss' }, { v: 1, d: 'Loose' }, { v: 3, d: 'Adjust' }, { v: 6, d: 'Pressure' }, { v: 10, d: 'Precision' } ],
-    'm': [ { v: 1, d: '< 12 in' }, { v: 3, d: '> 12 in' }, { v: 6, d: '2 Stages' }, { v: 10, d: '3-4 Stages' }, { v: 16, d: 'Crank/Push' } ],
-    'x': [ { v: 0, d: '0 sec' }, { v: 1, d: '0.5 sec' }, { v: 3, d: '1.5 sec' }, { v: 6, d: '2.5 sec' }, { v: 10, d: '4.5 sec' }, { v: 16, d: '7 sec' }, { v: 24, d: '11 sec' }, { v: 32, d: '16 sec' } ],
-    'i': [ { v: 0, d: 'None' }, { v: 1, d: '1 Point' }, { v: 3, d: '2 Points' }, { v: 6, d: 'Precision' }, { v: 16, d: 'Prec. Simo' } ],
-    't': [ { v: 0, d: 'None' }, { v: 1, d: 'Fasten' }, { v: 3, d: 'Loosen' }, { v: 6, d: 'Cut' }, { v: 10, d: 'Surface' }, { v: 16, d: 'Record' }, { v: 24, d: 'Think' }, { v: 32, d: 'Measure' } ]
+    'a': [ { tmu: 0, label: '< 2 in' }, { tmu: 1, label: 'Reach' }, { tmu: 3, label: '1-2 Steps' }, { tmu: 6, label: '3-4 Steps' }, { tmu: 10, label: '5-7 Steps' }, { tmu: 16, label: '8-10 Steps' }, { tmu: 24, label: '11-15 Steps' }, { tmu: 32, label: '16+ Steps' } ],
+    'b': [ { tmu: 0, label: 'None' }, { tmu: 1, label: 'Light' }, { tmu: 3, label: 'Bend 50%' }, { tmu: 6, label: 'Bend 100%' }, { tmu: 10, label: 'Sit/Stand' }, { tmu: 16, label: 'Bend/Sit' } ],
+    'g': [ { tmu: 0, label: 'None' }, { tmu: 1, label: 'Light' }, { tmu: 3, label: 'Heavy/Blind' }, { tmu: 6, label: 'Obstructed' } ],
+    'p': [ { tmu: 0, label: 'Toss' }, { tmu: 1, label: 'Loose' }, { tmu: 3, label: 'Adjust' }, { tmu: 6, label: 'Pressure' }, { tmu: 10, label: 'Precision' } ],
+    'm': [ { tmu: 1, label: '< 12 in' }, { tmu: 3, label: '> 12 in' }, { tmu: 6, label: '2 Stages' }, { tmu: 10, label: '3-4 Stages' }, { tmu: 16, label: 'Crank/Push' } ],
+    'x': [ { tmu: 0, label: '0 sec' }, { tmu: 1, label: '0.5 sec' }, { tmu: 3, label: '1.5 sec' }, { tmu: 6, label: '2.5 sec' }, { tmu: 10, label: '4.5 sec' }, { tmu: 16, label: '7 sec' }, { tmu: 24, label: '11 sec' }, { tmu: 32, label: '16 sec' } ],
+    'i': [ { tmu: 0, label: 'None' }, { tmu: 1, label: '1 Point' }, { tmu: 3, label: '2 Points' }, { tmu: 6, label: 'Precision' }, { tmu: 16, label: 'Prec. Simo' } ],
+    't': [ { tmu: 0, label: 'None' }, { tmu: 1, label: 'Fasten' }, { tmu: 3, label: 'Loosen' }, { tmu: 6, label: 'Cut' }, { tmu: 10, label: 'Surface' }, { tmu: 16, label: 'Record' }, { tmu: 24, label: 'Think' }, { tmu: 32, label: 'Measure' } ]
 };
 
 // Standard Move Library
