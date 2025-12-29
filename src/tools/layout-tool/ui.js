@@ -31,7 +31,7 @@ import { exportToHTML } from './htmlExport.js';
 import { parseNumber, formatNumber, formatDecimalNumber } from '../../core/utils/utils.js';
 import { configurations } from './config.js';
 import { getViewState } from './viewState.js';
-import { getMetrics } from './calculations.js';
+import { getMetrics, calculateLayout, calculateElevationLayout } from './calculations.js';
 import { 
     selectedSolverResult, setSelectedSolverResult, 
     getSolverResultByKey, updateSolverResults, 
@@ -370,6 +370,7 @@ function handleConfigCardClick(e) {
 }
 
 export function initializeUI(redrawInputs, numberInputs, decimalInputs = []) {
+    console.log("initializeUI called. Export button:", exportHtmlButton);
     // Fine Adjustment Inputs -> Trigger Re-Solve
     const reSolveInputs = [
         robotPathTopLinesInput, robotPathBottomLinesInput,
