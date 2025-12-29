@@ -17,6 +17,7 @@ export let elevationCtx;
 // NEW: 3D View Container
 export let viewContainer3D;
 export let bomList; // NEW
+export let exportHtmlButton; // NEW
 
 // Get Tab elements
 export let mainViewTabs;
@@ -206,6 +207,7 @@ export function refreshDOMElements() {
 
     viewContainer3D = document.getElementById('viewContainer-3d');
     bomList = document.getElementById('bomList');
+    exportHtmlButton = document.getElementById('exportHtmlButton');
 
     mainViewTabs = document.getElementById('mainViewTabs');
 
