@@ -155,7 +155,9 @@ export let metricTotBays;
 export let metricTotLocsTotal;
 
 // --- NEW: Debug Tab ---
+export let debugTabContent;
 export let debugBayListBody;
+export let debugLineListBody;
 
 // --- NEW: Auth Elements ---
 export let userProfileContainer;
@@ -325,7 +327,9 @@ export function refreshDOMElements() {
     metricTotBays = document.getElementById('metric-tot-bays');
     metricTotLocsTotal = document.getElementById('metric-tot-locs-total');
 
+    debugTabContent = document.getElementById('debugTabContent');
     debugBayListBody = document.getElementById('debugBayListBody');
+    debugLineListBody = document.getElementById('debugLineListBody');
 
     userProfileContainer = document.getElementById('userProfileContainer');
     userProfileName = document.getElementById('userProfileName');
