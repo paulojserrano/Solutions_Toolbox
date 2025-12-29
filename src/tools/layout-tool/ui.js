@@ -17,7 +17,8 @@ import {
     manualSystemConfigSelect, manualToteSizeSelect, manualToteHeightSelect,
     manualClearHeightInput, manualThroughputInput,
     pdUtilCard, solverResultPDUtil,
-    detailViewToggle // Imported detail toggle
+    detailViewToggle, // Imported detail toggle
+    exportHtmlButton // NEW
 } from './dom.js';
 
 import { drawWarehouse } from './drawing/warehouseView.js';
@@ -25,6 +26,7 @@ import { drawRackDetail } from './drawing/rackDetailView.js';
 import { drawElevationView } from './drawing/elevationView.js';
 // NEW: Import 3D view functions
 import { init3DView, draw3DView, animate3D, stopAnimate3D } from './drawing/3dview.js';
+import { exportToHTML } from './htmlExport.js';
 
 import { parseNumber, formatNumber, formatDecimalNumber } from '../../core/utils/utils.js';
 import { configurations } from './config.js';
@@ -496,6 +498,62 @@ export function initializeUI(redrawInputs, numberInputs, decimalInputs = []) {
     if (solverConfigResultsScroller) solverConfigResultsScroller.addEventListener('click', handleConfigCardClick);
     
     if (solverToteHeightSelect) solverToteHeightSelect.addEventListener('change', () => requestRedraw(false));
+
+    // NEW: HTML Export Button
+    if (exportHtmlButton) {
+        exportHtmlButton.addEventListener('click', () => {
+            if (!selectedSolverResult) {
+                alert('Please run a layout analysis first.');
+                return;
+            }
+
+            const config = configurations[selectedSolverResult.configKey];
+            const sysLength = selectedSolverResult.L;
+            const sysWidth = selectedSolverResult.W;
+            const sysHeight = selectedSolverResult.sysHeight ? selectedSolverResult.sysHeight : parseNumber(clearHeightInput.value);
+            const toteHeight = selectedSolverResult.resolvedToteHeight ? selectedSolverResult.resolvedToteHeight : 300;
+
+            const pathSettings = {
+                topAMRLines: robotPathTopLinesInput ? parseNumber(robotPathTopLinesInput.value) : 3,
+                bottomAMRLines: robotPathBottomLinesInput ? parseNumber(robotPathBottomLinesInput.value) : 3,
+                addLeftACR: robotPathAddLeftACRCheckbox ? robotPathAddLeftACRCheckbox.checked : false,
+                addRightACR: robotPathAddRightACRCheckbox ? robotPathAddRightACRCheckbox.checked : false,
+                userSetbackTop: userSetbackTopInput ? parseNumber(userSetbackTopInput.value) : 500,
+                userSetbackBottom: userSetbackBottomInput ? parseNumber(userSetbackBottomInput.value) : 500,
+                userSetbackLeft: userSetbackLeftInput ? parseNumber(userSetbackLeftInput.value) : 500,
+                userSetbackRight: userSetbackRightInput ? parseNumber(userSetbackRightInput.value) : 500
+            };
+
+            // 1. Calculate Full Layout
+            const layoutData = calculateLayout(sysLength, sysWidth, config, pathSettings);
+
+            // 2. Calculate Elevation
+            const coreElevationInputs = {
+                WH: sysHeight,
+                BaseHeight: config['base-beam-height'] || 0,
+                BW: config['beam-width'] || 0,
+                TH: toteHeight,
+                MC: config['min-clearance'] || 0,
+                OC: config['overhead-clearance'] || 0,
+                SC: config['sprinkler-clearance'] || 0,
+                ST: config['sprinkler-threshold'] || 0
+            };
+            const hasBufferLayer = config['hasBufferLayer'] || false;
+            let elevResult = calculateElevationLayout(coreElevationInputs, false, hasBufferLayer);
+
+            // Filter elevation levels if solver result has restricted them
+            if (selectedSolverResult.maxLevels > 0 && elevResult) {
+                elevResult = {
+                    ...elevResult,
+                    levels: elevResult.levels.slice(0, selectedSolverResult.maxLevels),
+                    N: selectedSolverResult.maxLevels
+                };
+            }
+
+            // 3. Export
+            exportToHTML({ ...config, 'tote-height': toteHeight }, layoutData, elevResult, pathSettings);
+        });
+    }
 
     initializeVisTabs();
 }
