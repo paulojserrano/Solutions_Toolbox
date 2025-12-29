@@ -7,7 +7,9 @@ import {
     metricRowBpConfig, metricBpConfigLabel, metricBpConfigLocsLvl, metricBpConfigLevels, metricBpConfigBays, metricBpConfigLocsTotal,
     metricRowTunConfig, metricTunConfigLabel, metricTunConfigLocsLvl, metricTunConfigLevels, metricTunConfigBays, metricTunConfigLocsTotal,
     metricTotBays, metricTotLocsTotal,
+    debugTabContent,
     debugBayListBody,
+    debugLineListBody,
     robotPathTopLinesInput,
     robotPathBottomLinesInput,
     robotPathAddLeftACRCheckbox,
@@ -506,35 +508,56 @@ export function drawWarehouse(warehouseLength, warehouseWidth, sysHeight, config
         console.error("Error updating metrics table:", e);
     }
 
+    // --- Update Debug Tables ---
+    // Only update if the debug tab is actually visible
     try {
-        if (debugBayListBody) {
-            let bayHtml = '';
-            if (layout.allBays.length > 0) {
-                // Limit display to 50 for performance
-                const displayBays = layout.allBays.slice(0, 50);
-                for (const bay of displayBays) {
-                    bayHtml += `
-                        <tr>
-                            <td>${bay.id}</td>
-                            <td>${bay.x.toFixed(0)}</td>
-                            <td>${bay.y.toFixed(0)}</td>
-                            <td>${bay.bayType}</td>
-                        </tr>
-                    `;
+        if (debugTabContent && debugTabContent.style.display !== 'none') {
+
+            // 1. Bays Table
+            if (debugBayListBody) {
+                let bayHtml = '';
+                if (layout.allBays.length > 0) {
+                    // Show all bays (no limit)
+                    for (const bay of layout.allBays) {
+                        bayHtml += `
+                            <tr>
+                                <td>${bay.id}</td>
+                                <td>${bay.x.toFixed(0)}</td>
+                                <td>${bay.y.toFixed(0)}</td>
+                                <td>${bay.bayType}</td>
+                            </tr>
+                        `;
+                    }
+                } else {
+                    bayHtml = '<tr><td colspan="4">No bays generated.</td></tr>';
                 }
-                if (layout.allBays.length > 50) {
-                    bayHtml += `<tr><td colspan="4">... ${layout.allBays.length - 50} more bays ...</td></tr>`;
-                }
-            } else {
-                bayHtml = '<tr><td colspan="4">No bays generated.</td></tr>';
+                debugBayListBody.innerHTML = bayHtml;
             }
-            debugBayListBody.innerHTML = bayHtml;
+
+            // 2. Lines (Paths) Table
+            if (debugLineListBody) {
+                let lineHtml = '';
+                if (layout.paths && layout.paths.length > 0) {
+                    for (const path of layout.paths) {
+                        lineHtml += `
+                            <tr>
+                                <td>${path.type}</td>
+                                <td>${path.x1.toFixed(0)}</td>
+                                <td>${path.y1.toFixed(0)}</td>
+                                <td>${path.x2.toFixed(0)}</td>
+                                <td>${path.y2.toFixed(0)}</td>
+                                <td>${path.orientation || '-'}</td>
+                            </tr>
+                        `;
+                    }
+                } else {
+                    lineHtml = '<tr><td colspan="6">No paths generated.</td></tr>';
+                }
+                debugLineListBody.innerHTML = lineHtml;
+            }
         }
     } catch (e) {
-        console.error("Error updating debug bay list:", e);
-        if (debugBayListBody) {
-            debugBayListBody.innerHTML = '<tr><td colspan="4">Error loading bay data.</td></tr>';
-        }
+        console.error("Error updating debug lists:", e);
     }
 
     // --- 3. CANVAS DRAWING (Conditional) ---
