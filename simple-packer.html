@@ -50,28 +50,18 @@
         }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900 font-sans h-screen flex overflow-hidden selection:bg-blue-100 selection:text-blue-700">
+<body class="bg-white text-slate-900 font-sans flex min-h-screen selection:bg-blue-100 selection:text-blue-700">
 
     <div id="global-sidebar"></div>
 
     <div class="flex-1 flex flex-col min-w-0 bg-white">
         <div id="global-header"></div>
 
-        <main class="flex-1 overflow-y-auto p-8 relative bg-slate-50">
-            <div class="max-w-7xl mx-auto bg-white rounded-xl shadow-xl p-8">
-                <!-- MODIFIED: Added flex container for title and logo -->
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-                    <h1 class="text-4xl font-bold text-slate-900">3D Case Packer</h1>
-                    <!-- NEW: Added id="logo-image" -->
-                    <img id="logo-image"
-                         src="src/tools/simple-packer/assets/hai-logo.png"
-                         alt="Hai Robotics"
-                         class="mt-4 md:mt-0"
-                         style="width: 320px; height: 32px; aspect-ratio: 640/64; object-fit: contain;">
-                </div>
+        <main class="flex-1 p-6 md:p-10 relative bg-white">
+            <div class="max-w-screen-2xl mx-auto">
 
                 <!-- Section 1: Tote Dimensions -->
-                <div class="mb-8 p-6 bg-slate-100 rounded-lg">
+                <div class="mb-8 p-6 bg-slate-50 border border-slate-200 rounded-lg">
                     <h2 class="text-2xl font-semibold text-slate-800 mb-4">1. Enter Tote Dimensions</h2>
                     <!-- Updated grid to be 4 columns -->
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
